@@ -673,7 +673,7 @@ function syncShared(){
   if(!sharedCol)return;
   const ids=new Set();
   for(const t of state.tasks){if(t.list!==SHARED)continue;ids.add(t.id);const j=JSON.stringify(t);
-    if(sharedSeen[t.id]!==j){sharedSeen[t.id]=j;sharedCol.doc(t.id).set({json:j,updatedAt:Date.now()}).catch(()=>{});}}
+    if(sharedSeen[t.id]!==j){sharedSeen[t.id]=j;sharedCol.doc(t.id).set(j).catch(()=>{});}}
   for(const id in sharedSeen)if(!ids.has(id)){delete sharedSeen[id];sharedCol.doc(id).delete().catch(()=>{});}
 }
 /* ---------- family sharing (Firebase) ---------- */
@@ -690,22 +690,66 @@ function newCode(){let c='';const r=new Uint32Array(12);crypto.getRandomValues(r
 const fmtCode=c=>c.replace(/(.{4})(?=.)/g,'$1-');
 const cleanCode=v=>(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 function setFamStatus(st,msg){famStatus=st;const el=document.getElementById('fam-status');if(el){el.className='fam-status'+(st==='ok'?' ok':st==='err'?' err':'');el.innerHTML='<i></i>'+esc(msg);}}
+/* Scrambling: shared jobs are locked on the phone with a key made from the family code.
+   The database only ever sees a scrambled family id and scrambled jobs, never the code or the job text. */
+const enc=new TextEncoder(),dec=new TextDecoder();
+const b64=u=>{let s='';const a=new Uint8Array(u);for(let i=0;i<a.length;i+=0x8000)s+=String.fromCharCode.apply(null,a.subarray(i,i+0x8000));return btoa(s);};
+const unb64=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+const famCrypto={};
+async function famKeys(code){
+  if(famCrypto[code])return famCrypto[code];
+  if(!window.crypto||!crypto.subtle)throw new Error('nocrypto');
+  const base=await crypto.subtle.importKey('raw',enc.encode(code),'PBKDF2',false,['deriveBits','deriveKey']);
+  const idBits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode('mum-brain/family-id/v1'),iterations:200000,hash:'SHA-256'},base,256);
+  const key=await crypto.subtle.deriveKey({name:'PBKDF2',salt:enc.encode('mum-brain/family-key/v1'),iterations:200000,hash:'SHA-256'},base,{name:'AES-GCM',length:256},false,['encrypt','decrypt']);
+  const fid=[...new Uint8Array(idBits)].map(b=>b.toString(16).padStart(2,'0')).join('');
+  return famCrypto[code]={fid,key};
+}
+async function lockJob(key,id,json){
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:enc.encode(id)},key,enc.encode(json));
+  return {v:2,iv:b64(iv),ct:b64(ct),updatedAt:Date.now()};
+}
+async function unlockJob(key,id,d){
+  if(!d||d.v!==2||typeof d.ct!=='string')return null;
+  try{const pt=await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(d.iv),additionalData:enc.encode(id)},key,unb64(d.ct));return JSON.parse(dec.decode(pt));}catch(e){return null;}
+}
+/* One-off move from the old, readable format (stored under the plain code) to the scrambled one. */
+async function migrateLegacy(fs,db,code,fid,key){
+  const oldTasks=await fs.getDocs(fs.collection(db,'families',code,'tasks'));
+  const oldMeta=await fs.getDoc(fs.doc(db,'families',code,'meta','info'));
+  if(oldTasks.empty&&!oldMeta.exists())return;
+  const have=await fs.getDocs(fs.collection(db,'families',fid,'tasks'));
+  const got=new Set(have.docs.map(x=>x.id));
+  await fs.setDoc(fs.doc(db,'families',fid,'meta','info'),{v:2,created:Date.now()},{merge:true});
+  for(const x of oldTasks.docs){
+    const v=x.data();
+    if(!got.has(x.id)&&v&&typeof v.json==='string'){try{JSON.parse(v.json);await fs.setDoc(fs.doc(db,'families',fid,'tasks',x.id),await lockJob(key,x.id,v.json));}catch(e){}}
+    await fs.deleteDoc(x.ref);
+  }
+  if(oldMeta.exists())await fs.deleteDoc(oldMeta.ref);
+}
 async function connectFamily(){
   if(famUnsub){try{famUnsub();}catch(e){}famUnsub=null;}
   sharedCol=null;sharedSeen={};
   if(!family||!family.code)return;
   setFamStatus('wait','Connecting…');
+  const code=family.code;
   try{
-    const {fs,db}=await fbLoad();
-    const code=family.code;
-    const colRef=fs.collection(db,'families',code,'tasks');
-    const adapter={doc:id=>({set:v=>fs.setDoc(fs.doc(db,'families',code,'tasks',id),v),delete:()=>fs.deleteDoc(fs.doc(db,'families',code,'tasks',id))})};
-    let first=true;
-    famUnsub=fs.onSnapshot(colRef,{includeMetadataChanges:false},qs=>{
+    const [{fs,db},{fid,key}]=await Promise.all([fbLoad(),famKeys(code)]);
+    if(!family||family.code!==code)return;
+    try{await migrateLegacy(fs,db,code,fid,key);}catch(e){}
+    const colRef=fs.collection(db,'families',fid,'tasks');
+    const adapter={doc:id=>({set:async j=>fs.setDoc(fs.doc(db,'families',fid,'tasks',id),await lockJob(key,id,j)),delete:()=>fs.deleteDoc(fs.doc(db,'families',fid,'tasks',id))})};
+    let first=true,seq=0;
+    famUnsub=fs.onSnapshot(colRef,{includeMetadataChanges:false},async qs=>{
       if(!family||family.code!==code)return;
       if(qs.metadata.hasPendingWrites&&!first)return;
+      const my=++seq;
+      const docs=await Promise.all(qs.docs.map(async x=>{const t=await unlockJob(key,x.id,x.data());return t&&t.id===x.id?t:null;}));
+      if(my!==seq||!family||family.code!==code)return;
       const rem=[];const seen={};
-      qs.docs.forEach(x=>{const v=x.data();if(!v||typeof v.json!=='string')return;try{const t=JSON.parse(v.json);t.list=SHARED;rem.push(t);seen[t.id]=JSON.stringify(t);}catch(e){}});
+      for(const t of docs){if(!t)continue;t.list=SHARED;rem.push(t);seen[t.id]=JSON.stringify(t);}
       // jobs added to Shared before we connected get sent up rather than lost
       const since=family.lastSync||Infinity;
       const localOnly=first?state.tasks.filter(t=>t.list===SHARED&&!seen[t.id]&&t.ts&&t.ts>since):[];
@@ -713,16 +757,16 @@ async function connectFamily(){
       family.lastSync=Date.now();saveFamily();
       state.tasks=state.tasks.filter(t=>t.list!==SHARED).concat(rem,localOnly);cache();
       if(localOnly.length)syncShared();
-      setFamStatus('ok','Connected. Changes appear for everyone straight away.');
+      setFamStatus('ok','Connected. Shared jobs are scrambled before they leave your phone.');
       if(!draft)render();
     },err=>{setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');});
-  }catch(e){setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');}
+  }catch(e){setFamStatus('err',e&&e.message==='nocrypto'?'This browser can\'t scramble shared jobs. Open the app from your home screen.':'Can\'t reach the family list right now. Check your internet connection.');}
 }
 function saveFamily(){try{localStorage.setItem(KEY+'-family',JSON.stringify(family));}catch(e){}SHARING=!!(family&&family.code);}
 async function createFamily(){
   const code=newCode();
   setFamStatus('wait','Creating your family…');
-  try{const {fs,db}=await fbLoad();await fs.setDoc(fs.doc(db,'families',code,'meta','info'),{created:Date.now()});}
+  try{const [{fs,db},{fid}]=await Promise.all([fbLoad(),famKeys(code)]);await fs.setDoc(fs.doc(db,'families',fid,'meta','info'),{v:2,created:Date.now()});}
   catch(e){setFamStatus('err','Couldn\'t create a family. Check your internet connection and try again.');return;}
   family={code};saveFamily();paintFamily();render();connectFamily();
 }
@@ -730,8 +774,10 @@ async function joinFamily(raw){
   const code=cleanCode(raw);
   if(code.length!==12){setFamStatus('err','Family codes are 12 letters and numbers, like ABCD-EFGH-JKLM.');return;}
   setFamStatus('wait','Checking the code…');
-  try{const {fs,db}=await fbLoad();const snap=await fs.getDoc(fs.doc(db,'families',code,'meta','info'));
-    if(!snap.exists()){setFamStatus('err','That code wasn\'t found. Check it with whoever sent it.');return;}}
+  try{const [{fs,db},{fid}]=await Promise.all([fbLoad(),famKeys(code)]);
+    let ok=(await fs.getDoc(fs.doc(db,'families',fid,'meta','info'))).exists();
+    if(!ok)ok=(await fs.getDoc(fs.doc(db,'families',code,'meta','info'))).exists();
+    if(!ok){setFamStatus('err','That code wasn\'t found. Check it with whoever sent it.');return;}}
   catch(e){setFamStatus('err','Couldn\'t check the code. Check your internet connection and try again.');return;}
   state.tasks=state.tasks.filter(t=>t.list!==SHARED);cache();
   family={code};saveFamily();paintFamily();render();connectFamily();
@@ -746,11 +792,11 @@ function leaveFamily(){
 function paintFamily(){
   const el=document.getElementById('s-family');if(!el)return;
   if(family&&family.code){
-    el.innerHTML=`<p class="fam-p">Anything in the <b>Shared</b> list is shared with everyone who joins using this code.</p>
+    el.innerHTML=`<p class="fam-p">Anything in the <b>Shared</b> list is shared with everyone who joins using this code. It's scrambled on your phone first, so only people with the code can read it.</p>
       <div class="fam-code">${fmtCode(family.code)}</div>
       <div class="row"><button class="opt on" data-fam="share">Send code</button><button class="opt" data-fam="leave">Leave family</button></div>
       <div class="fam-status" id="fam-status"><i></i>Connecting…</div>`;
-    if(famStatus==='ok')setFamStatus('ok','Connected. Changes appear for everyone straight away.');
+    if(famStatus==='ok')setFamStatus('ok','Connected. Shared jobs are scrambled before they leave your phone.');
     else if(famStatus==='err')setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');
   }else{
     el.innerHTML=`<p class="fam-p">Share a list with your family. Everyone sees the same jobs, and ticks show up for all.</p>
@@ -766,7 +812,7 @@ document.getElementById('s-family').addEventListener('click',async e=>{
   if(a==='create'){showSt();createFamily();}
   else if(a==='join'){showSt();joinFamily(document.getElementById('fam-in').value);}
   else if(a==='share'){
-    const text=`Join our family list in Mum Brain, Sorted. Open ${location.origin+location.pathname}, add it to your home screen, then go to the gear menu, Family sharing, and enter this code: ${fmtCode(family.code)}`;
+    const text=`Join our family list in Mum Brain, Sorted. Open ${location.origin+location.pathname}, add it to your home screen, then tap the settings icon ⚙️, Family sharing, and enter this code: ${fmtCode(family.code)}`;
     try{if(navigator.share){await navigator.share({title:'Mum Brain, Sorted',text});return;}}catch(err){return;}
     try{await navigator.clipboard.writeText(text);b.textContent='Copied';setTimeout(()=>b.textContent='Send code',1500);}catch(err){}
   }
