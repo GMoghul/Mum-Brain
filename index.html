@@ -1118,7 +1118,7 @@ function renderDump(){
   const sched=T.filter(t=>!isRep(t)&&t.date&&!t.done).sort((a,b)=>a.date.localeCompare(b.date)||byStar(a,b));
   const reps=T.filter(isRep).sort(byStar);
   const done=T.filter(t=>!isRep(t)&&t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
-  let h=`<header class="head"><h1>Brain dump</h1><p class="sub">Get it out of your head. Sort it later.</p></header>${nudgeCard()}${filterBar()}
+  let h=`<header class="head"><h1>Brain dump</h1><p class="sub">Out of your head. Into your day.</p></header>${nudgeCard()}${filterBar()}
   <div class="quick"><input id="quick" placeholder="Add a job…" autocomplete="off" enterkeyhint="done" aria-label="Add a job"><button data-act="quick" aria-label="Add">${I.plus}</button></div>`;
   if(!undated.length&&!sched.length&&!reps.length&&!done.length){
     h+=`<div class="empty"><strong>Nothing here yet${ui.filter===STAR?' starred':ui.filter?' in '+esc(listName(ui.filter)):''}</strong>Type anything on your mind above. You can give it a day, a colour or a repeat whenever you like.</div>`;
