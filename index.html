@@ -301,6 +301,10 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .lrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
 .lrow span{flex:1}
 .lrow button{font-size:14px;color:var(--warn);font-weight:600}
+.lrow span.fixed{flex:none}
+.fchip[data-lid]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.fchip.dragging{border-radius:17px;background:var(--surface)}
+.fchip.on.dragging{background:var(--accent)}
 .lrow .fixed{font-size:13px;color:var(--muted)}
 
 /* undo bar */
@@ -1030,10 +1034,23 @@ const STAR='starred';
 const vis=t=>!ui.filter||(ui.filter===STAR?!!t.starred:(t.list||null)===ui.filter);
 const newDefaults=()=>ui.filter===STAR?{starred:true}:{list:ui.filter};
 const T=()=>state.tasks.filter(vis);
+function listOrder(){
+  const L=state.lists.map(l=>[l.id,l.name]);
+  if(SHARING){const p=state.prefs&&state.prefs.sharedAt;L.splice(p==null?L.length:Math.max(0,Math.min(L.length,p)),0,[SHARED,'Shared']);}
+  return L;
+}
+function applyOrder(ids){
+  const by=Object.fromEntries(state.lists.map(l=>[l.id,l]));
+  const si=ids.indexOf(SHARED),rest=ids.filter(id=>id!==SHARED);
+  state.lists=rest.map(id=>by[id]).filter(Boolean).concat(state.lists.filter(l=>!rest.includes(l.id)));
+  if(si<0||si>=rest.length)delete state.prefs.sharedAt;else state.prefs.sharedAt=si;
+  save();
+}
 function filterBar(){
   const nStar=state.tasks.filter(t=>t.starred&&!(!isRep(t)&&t.done)).length;
-  const all=[[null,'All'],[STAR,'Starred'+(nStar?' '+nStar:'')]].concat(state.lists.map(l=>[l.id,l.name]),(SHARING?[[SHARED,'Shared']]:[]));
-  return `<div class="filters" role="tablist" aria-label="Lists">${all.map(([id,n])=>`<button class="fchip${(ui.filter||null)===id?' on':''}" data-act="filter" data-f="${id||''}">${id===SHARED?I.people:id===STAR?'<span aria-hidden="true">★</span>':''}${esc(n)}</button>`).join('')}</div>`;
+  const all=[[null,'All'],[STAR,'Starred'+(nStar?' '+nStar:'')]].concat(listOrder());
+  const drag=listOrder().length>1;
+  return `<div class="filters" role="tablist" aria-label="Lists">${all.map(([id,n])=>`<button class="fchip${(ui.filter||null)===id?' on':''}" data-act="filter" data-f="${id||''}"${drag&&id&&id!==STAR?` data-lid="${id}"`:''}>${id===SHARED?I.people:id===STAR?'<span aria-hidden="true">★</span>':''}${esc(n)}</button>`).join('')}</div>`;
 }
 
 function row(t,o){
@@ -1264,7 +1281,7 @@ function openEditor(id,defaults){
 const fLists=document.getElementById('f-lists'),newlist=document.getElementById('newlist'),nlIn=document.getElementById('nl-in'),
   fCl=document.getElementById('f-cl'),clIn=document.getElementById('cl-in');
 function paintLists(){
-  const opts=[[null,'None']].concat(state.lists.map(l=>[l.id,l.name]),(SHARING?[[SHARED,'Shared']]:[]));
+  const opts=[[null,'None']].concat(listOrder());
   fLists.innerHTML=opts.map(([id,n])=>`<button class="opt${(draft.list||null)===id?' on':''}" data-list="${id||''}">${esc(n)}</button>`).join('')+`<button class="opt" data-newlist="1">+ New list</button>`;
 }
 function paintCl(){
@@ -1406,8 +1423,8 @@ document.getElementById('calbtn').addEventListener('click',()=>{
 });
 /* ---------- hold & drag to reorder ---------- */
 let pend=null,dragging=null;
-function scroller(el){for(let p=el.parentElement;p&&p!==document.body;p=p.parentElement){const o=getComputedStyle(p).overflowY;if((o==='auto'||o==='scroll')&&p.scrollHeight>p.clientHeight)return p;}return null;}
-const scTop=sc=>sc?sc.scrollTop:window.scrollY;
+function scroller(el,x){for(let p=el.parentElement;p&&p!==document.body;p=p.parentElement){const o=getComputedStyle(p)[x?'overflowX':'overflowY'];if((o==='auto'||o==='scroll')&&(x?p.scrollWidth>p.clientWidth:p.scrollHeight>p.clientHeight))return p;}return null;}
+const scTop=(sc,x)=>x?(sc?sc.scrollLeft:window.scrollX):(sc?sc.scrollTop:window.scrollY);
 function dragSort(root,sel,o){
   root.addEventListener('pointerdown',e=>{
     if(pend||dragging||(e.pointerType==='mouse'&&e.button!==0))return;
@@ -1415,7 +1432,7 @@ function dragSort(root,sel,o){
     if(o.handle){const h=e.target.closest(o.handle);if(!h)return;el=h.closest(sel);}
     else{if(e.target.closest('input,textarea'))return;el=e.target.closest(sel);}
     if(!el||!root.contains(el))return;
-    const s={el,sel,o,pid:e.pointerId,x:e.clientX,y:e.clientY,cy:e.clientY,on:false};pend=s;
+    const X=o.axis==='x',s={el,sel,o,X,pid:e.pointerId,x:e.clientX,y:e.clientY,p0:X?e.clientX:e.clientY,cy:X?e.clientX:e.clientY,on:false};pend=s;
     if(o.handle){e.preventDefault();begin(s);}else s.timer=setTimeout(()=>begin(s),300);
   });
 }
@@ -1427,9 +1444,9 @@ function begin(s){
   if(lo===hi){pend=null;return;}
   s.on=true;dragging=s;
   if(sw&&!sw.on)sw=null;
-  s.sc=scroller(s.el);s.st0=scTop(s.sc);
-  const R=list.map(x=>x.getBoundingClientRect());
-  Object.assign(s,{list,from,to:from,lo,hi,tops:R.map(r=>r.top+s.st0),hs:R.map(r=>r.height),gap:list.length>1?Math.max(0,R[1].top-R[0].bottom):0});
+  const X=s.X;s.sc=scroller(s.el,X);s.st0=scTop(s.sc,X);
+  const R=list.map(x=>x.getBoundingClientRect()),a=X?'left':'top',b=X?'right':'bottom';
+  Object.assign(s,{list,from,to:from,lo,hi,tops:R.map(r=>r[a]+s.st0),hs:R.map(r=>X?r.width:r.height),gap:list.length>1?Math.max(0,R[1][a]-R[0][b]):0});
   list.forEach(x=>{if(x!==s.el)x.classList.add('drag-shift');});
   s.el.classList.add('dragging');document.body.classList.add('is-dragging');
   if(navigator.vibrate)try{navigator.vibrate(12);}catch(e){}
@@ -1437,22 +1454,23 @@ function begin(s){
 }
 function layoutDrag(s){
   const {tops,hs,from,lo,hi}=s;
-  let dy=(s.cy+scTop(s.sc))-(s.y+s.st0);
-  dy=Math.max(tops[lo]-tops[from],Math.min(tops[hi]+hs[hi]-tops[from]-hs[from],dy));
-  s.el.style.transform=`translateY(${dy}px)`;
+  let dy=(s.cy+scTop(s.sc,s.X))-(s.p0+s.st0);const T=s.X?'translateX':'translateY';
   const c=tops[from]+hs[from]/2+dy;let to=from;
+  dy=Math.max(tops[lo]-tops[from],Math.min(tops[hi]+hs[hi]-tops[from]-hs[from],dy));
+  s.el.style.transform=`${T}(${dy}px)`;
   while(to<hi&&c>tops[to+1]+hs[to+1]/2)to++;
   while(to>lo&&c<tops[to-1]+hs[to-1]/2)to--;
   s.to=to;const step=hs[from]+s.gap;
-  s.list.forEach((x,i)=>{if(x===s.el)return;const t=(from<i&&i<=to)?-step:(to<=i&&i<from)?step:0;x.style.transform=t?`translateY(${t}px)`:'';});
+  s.list.forEach((x,i)=>{if(x===s.el)return;const t=(from<i&&i<=to)?-step:(to<=i&&i<from)?step:0;x.style.transform=t?`${T}(${t}px)`:'';});
 }
 function autoScroll(){
   const s=dragging;if(!s)return;
   if(!s.el.isConnected){endDrag(s,false);return;}
-  const r=s.sc?s.sc.getBoundingClientRect():{top:0,bottom:window.innerHeight-70},edge=70;let v=0;
-  if(s.cy<r.top+edge)v=-Math.min(1,(r.top+edge-s.cy)/edge)*14;
-  else if(s.cy>r.bottom-edge)v=Math.min(1,(s.cy-(r.bottom-edge))/edge)*14;
-  if(v){if(s.sc)s.sc.scrollTop+=v;else window.scrollBy(0,v);layoutDrag(s);}
+  const R=s.sc?s.sc.getBoundingClientRect():{top:0,bottom:window.innerHeight-70,left:0,right:window.innerWidth};
+  const lo=s.X?R.left:R.top,hi=s.X?R.right:R.bottom,edge=s.X?44:70;let v=0;
+  if(s.cy<lo+edge)v=-Math.min(1,(lo+edge-s.cy)/edge)*(s.X?8:14);
+  else if(s.cy>hi-edge)v=Math.min(1,(s.cy-(hi-edge))/edge)*(s.X?8:14);
+  if(v){if(s.sc){if(s.X)s.sc.scrollLeft+=v;else s.sc.scrollTop+=v;}else window.scrollBy(s.X?v:0,s.X?0:v);layoutDrag(s);}
   requestAnimationFrame(autoScroll);
 }
 function endDrag(s,commit){
@@ -1461,14 +1479,14 @@ function endDrag(s,commit){
   const eat=ev=>{ev.stopPropagation();ev.preventDefault();};
   window.addEventListener('click',eat,true);setTimeout(()=>window.removeEventListener('click',eat,true),350);
   const {tops,hs,from,to}=s,fin=to>from?tops[to]+hs[to]-tops[from]-hs[from]:tops[to]-tops[from];
-  s.el.classList.add('settle');s.el.style.transform=`translateY(${fin}px)`;
+  s.el.classList.add('settle');s.el.style.transform=`${s.X?'translateX':'translateY'}(${fin}px)`;
   setTimeout(()=>{
     s.list.forEach(x=>{x.classList.remove('drag-shift','dragging','settle');x.style.transform='';});
     if(commit&&to!==from&&s.el.isConnected)s.o.drop(from,to,s.el);
   },170);
 }
 window.addEventListener('pointermove',e=>{
-  const s=pend;if(!s||e.pointerId!==s.pid)return;s.cy=e.clientY;
+  const s=pend;if(!s||e.pointerId!==s.pid)return;s.cy=s.X?e.clientX:e.clientY;
   if(!s.on){if(Math.hypot(e.clientX-s.x,e.clientY-s.y)>8){clearTimeout(s.timer);pend=null;}return;}
   e.preventDefault();layoutDrag(s);
 },{passive:false});
@@ -1479,7 +1497,9 @@ document.addEventListener('contextmenu',e=>{if(pend||dragging)e.preventDefault()
 document.addEventListener('selectstart',e=>{if(pend||dragging)e.preventDefault();});
 dragSort(view,'.task[data-drag]',{group:el=>el.dataset.g,drop:dropJob});
 dragSort(fCl,'li',{handle:'.grip',drop:(from,to)=>{const cl=draft.checklist||[];const [x]=cl.splice(from,1);cl.splice(to,0,x);paintCl();}});
-dragSort(document.getElementById('s-lists'),'.lrow[data-lid]',{handle:'.grip',drop:(from,to)=>{const L=state.lists;const [x]=L.splice(from,1);L.splice(to,0,x);save();paintSLists();render();}});
+function dropList(from,to){const ids=listOrder().map(x=>x[0]);const [x]=ids.splice(from,1);ids.splice(to,0,x);applyOrder(ids);paintSLists();render();}
+dragSort(document.getElementById('s-lists'),'.lrow[data-lid]',{handle:'.grip',drop:dropList});
+dragSort(view,'.fchip[data-lid]',{axis:'x',drop:dropList});
 /* swipe a job left to delete */
 let swipedAt=0,sw=null;
 view.addEventListener('touchstart',e=>{
@@ -1508,7 +1528,7 @@ view.addEventListener('touchend',()=>{
   }
 },{passive:true});
 let sx=null,sy=0,st0=0;
-view.addEventListener('touchstart',e=>{if(e.touches.length!==1||e.target.closest('.task')||(ui.searching||(ui.tab!=='today'&&ui.tab!=='month'&&ui.tab!=='week'))){sx=null;return;}
+view.addEventListener('touchstart',e=>{if(e.touches.length!==1||e.target.closest('.task,.filters')||(ui.searching||(ui.tab!=='today'&&ui.tab!=='month'&&ui.tab!=='week'))){sx=null;return;}
   sx=e.touches[0].clientX;sy=e.touches[0].clientY;st0=Date.now();},{passive:true});
 view.addEventListener('touchend',e=>{
   if(sx===null)return;const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;sx=null;
@@ -1564,8 +1584,8 @@ function renderOpts(){
 }
 document.getElementById('s-fonts').innerHTML=FONTS.map(f=>`<button class="font" data-font="${f.id}"><span class="aa" style="font-family:${(f.head||f.body).replace(/"/g,'&quot;')};font-size:${Math.round(26*f.hs)}px">Aa</span><span class="nm" style="font-family:${f.body.replace(/"/g,'&quot;')}">${f.name}<small>${f.desc}</small></span></button>`).join('');
 function paintSLists(){
-  document.getElementById('s-lists').innerHTML=state.lists.map((l,i,a)=>`<div class="lrow" data-lid="${l.id}">${a.length>1?`<span class="grip" aria-hidden="true">${GRIP}</span>`:''}<span>${esc(l.name)}</span><button data-dellist="${l.id}">Delete</button></div>`).join('')
-    +(SHARING?`<div class="lrow"><span>Shared</span><span class="fixed">Built in</span></div>`:'');
+  const L=listOrder();
+  document.getElementById('s-lists').innerHTML=L.map(([id,n])=>`<div class="lrow" data-lid="${id}">${L.length>1?`<span class="grip" aria-hidden="true">${GRIP}</span>`:''}<span>${esc(n)}</span>${id===SHARED?'<span class="fixed">Built in</span>':`<button data-dellist="${id}">Delete</button>`}</div>`).join('');
 }
 const slIn=document.getElementById('sl-in');
 document.getElementById('sl-add').addEventListener('click',()=>{addList(slIn);paintSLists();render();});
