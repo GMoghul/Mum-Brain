@@ -303,6 +303,47 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .lrow button{font-size:14px;color:var(--warn);font-weight:600}
 .lrow .fixed{font-size:13px;color:var(--muted)}
 
+/* undo bar */
+.snack{position:fixed;left:12px;right:12px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:30;max-width:520px;margin:0 auto;
+  background:#24262B;color:#fff;border-radius:14px;padding:6px 6px 6px 16px;display:flex;align-items:center;gap:10px;min-height:48px;
+  box-shadow:0 10px 30px rgba(0,0,0,.2);transform:translateY(20px);opacity:0;pointer-events:none;transition:transform .25s ease,opacity .25s ease}
+.snack.show{transform:none;opacity:1;pointer-events:auto}
+.snack span{flex:1;font-size:15px;font-weight:500}
+.snack button{height:36px;padding:0 14px;border-radius:10px;font-weight:700;font-size:15px;color:#C9B8FF}
+:root[data-theme="dark"] .snack{background:#ECEEF1;color:#1B1E23}
+:root[data-theme="dark"] .snack button{color:var(--accent-base)}
+/* swipe to delete */
+.list{position:relative}
+.task.swiping{background:var(--solid);z-index:1;transition:none}
+.task.snap{transition:transform .2s ease}
+.task.gone{transition:transform .2s ease,opacity .2s ease;opacity:0}
+.swipe-bg{position:absolute;left:0;right:0;background:var(--warn);color:#fff;display:flex;align-items:center;justify-content:flex-end;padding-right:22px;font-weight:600;font-size:15px;gap:6px;z-index:0}
+/* celebration */
+.cele{position:fixed;inset:0;z-index:60;display:grid;place-items:center;background:color-mix(in srgb,var(--bg) 55%,transparent);opacity:0;pointer-events:none;transition:opacity .3s}
+.cele.show{opacity:1;pointer-events:auto}
+.cele .stage{position:relative;width:min(92vw,420px);height:340px}
+.cele .splash{position:absolute;border-radius:50%;filter:blur(18px);opacity:0;transform:scale(.4);transition:transform .9s cubic-bezier(.2,.8,.2,1),opacity .9s}
+.cele.show .splash{opacity:.75;transform:none}
+.cele .msg{position:absolute;left:0;right:0;bottom:6px;text-align:center}
+.cele .msg b{display:block;font-family:var(--font-head);font-size:calc(28px * var(--hs));letter-spacing:var(--hls);color:var(--ink)}
+.cele .msg span{font-size:15px;color:var(--muted)}
+.cele .ground{position:absolute;left:8%;right:8%;bottom:84px;height:2px}
+.critter{position:absolute;left:50%;bottom:84px;width:130px;margin-left:-65px}
+.critter svg{display:block;width:100%;height:auto;overflow:visible}
+.cele.show .hopper{animation:travel 3.2s ease-in-out both}
+.cele.show .hopper .bod{animation:hop .8s ease-in-out 4 both;transform-origin:50% 100%}
+@keyframes travel{0%{transform:translateX(-120px)}100%{transform:translateX(120px)}}
+@keyframes hop{0%{transform:translateY(0) scale(1.04,.94)}15%{transform:translateY(-8px) scale(.96,1.05) rotate(-6deg)}50%{transform:translateY(-78px) scale(1) rotate(-2deg)}85%{transform:translateY(-6px) rotate(6deg)}100%{transform:translateY(0) scale(1.05,.93)}}
+.cele.show .flyer{animation:fly 3.2s ease-in-out both}
+.cele.show .flyer .wing{animation:flap .22s ease-in-out infinite alternate;transform-origin:62px 46px}
+@keyframes fly{0%{transform:translate(-140px,40px) rotate(-8deg)}30%{transform:translate(-40px,-60px) rotate(4deg)}60%{transform:translate(40px,-20px) rotate(-4deg)}100%{transform:translate(140px,-110px) rotate(-10deg)}}
+@keyframes flap{from{transform:rotate(18deg)}to{transform:rotate(-30deg)}}
+.spark{position:absolute;left:50%;top:44%;width:18px;height:18px;margin:-9px;opacity:0}
+.cele.show .spark{animation:burst 1.8s cubic-bezier(.15,.7,.3,1) both}
+@keyframes burst{0%{opacity:0;transform:translate(0,0) scale(.3) rotate(0)}15%{opacity:1}100%{opacity:0;transform:translate(var(--x),var(--y)) scale(1) rotate(var(--r))}}
+.cele .tap{position:absolute;top:10px;right:10px;font-size:13px;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){.cele.show .hopper,.cele.show .flyer,.cele.show .bod,.cele.show .wing,.cele.show .spark{animation:none!important}.spark{opacity:1}}
+
 @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .shake{animation:shake .25s 2}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -459,6 +500,9 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
   <button class="no" id="toast-no">Dismiss</button><button class="ok" id="toast-ok">Done</button>
 </div>
 
+<div class="snack" id="snack" role="status" aria-live="polite"><span id="snack-t"></span><button id="snack-undo">Undo</button></div>
+<div class="cele" id="cele" aria-live="polite"><div class="stage" id="cele-stage"></div></div>
+
 <div id="settings" aria-hidden="true">
   <div class="scrim" data-sact="close"></div>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st-h">
@@ -483,6 +527,14 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
     <div class="field"><span class="lbl">Backup</span>
       <div class="row"><button class="opt" id="bk-save">Save a backup</button><label class="opt" style="display:inline-flex;align-items:center;cursor:pointer">Restore a backup<input type="file" id="bk-load" accept=".json,application/json" hidden></label></div>
       <div class="rep-hint" id="bk-hint">Your jobs are saved on this device. A backup file keeps them safe if you change phone.</div>
+    </div>
+    <div class="field"><span class="lbl">Tidy away finished jobs</span>
+      <div class="seg" id="s-tidy" style="grid-template-columns:repeat(4,1fr)"><button data-tidy="off">Never</button><button data-tidy="3">3 days</button><button data-tidy="7">1 week</button><button data-tidy="30">1 month</button></div>
+      <div class="rep-hint">Ticked-off jobs are cleared this long after you finish them.</div>
+    </div>
+    <div class="field"><span class="lbl">Celebration</span>
+      <div class="seg" id="s-cele" style="grid-template-columns:repeat(4,1fr)"><button data-cel="rabbit">Rabbit</button><button data-cel="bird">Bird</button><button data-cel="stars">Stars</button><button data-cel="off">Off</button></div>
+      <div class="rep-hint">Plays when you tick off the last job of the day, or empty your brain dump. <button class="more" id="cel-try" style="margin:0;display:inline">Preview</button></div>
     </div>
     <div class="field"><span class="lbl">Appearance</span>
       <div class="seg seg3" id="s-mode"><button data-mode="light">Light</button><button data-mode="auto">Match phone</button><button data-mode="dark">Dark</button></div>
@@ -550,7 +602,7 @@ const FONTS=[
 if(!state.prefs)state.prefs={palette:'sky',font:'clean',mode:'light'};
 function fixPrefs(P){if(!P.style)P.style=P.palette==='plain'?'none':'wash';if(!P.palette||P.palette==='plain')P.palette='sky';if(!P.sharp)P.sharp='blue';return P;}
 fixPrefs(state.prefs);
-if(!state.prefs.ts)state.prefs.ts='m';if(!state.prefs.sp)state.prefs.sp='std';
+if(!state.prefs.ts)state.prefs.ts='m';if(!state.prefs.tidy)state.prefs.tidy='off';if(!state.prefs.cel)state.prefs.cel='rabbit';if(!state.prefs.sp)state.prefs.sp='std';
 if(!Array.isArray(state.lists))state.lists=[{id:'home',name:'Home'},{id:'work',name:'Work'},{id:'family',name:'Family'}];
 const SHARED='shared';
 const SHARING=false; // family sharing arrives with the online database step
@@ -655,10 +707,102 @@ function occurs(t,s){
 const isDone=(t,s)=>isRep(t)?!!(t.completions&&t.completions[s]):!!t.done;
 function toggle(id,s){
   const t=find(id);if(!t)return;
+  const before=JSON.stringify(t);
   if(isRep(t)){t.completions=t.completions||{};if(t.completions[s])delete t.completions[s];else t.completions[s]=true;}
   else{t.done=!t.done;t.doneAt=t.done?Date.now():null;}
+  const nowDone=isDone(t,s);
   save();render();
+  if(nowDone){
+    snack('Done ✓',()=>{const i=state.tasks.findIndex(x=>x.id===id);if(i>=0){state.tasks[i]=JSON.parse(before);save();render();}});
+    checkCelebrate();
+  }
 }
+/* undo bar */
+let snackTimer=null,snackUndo=null;
+function snack(text,undo){
+  const el=document.getElementById('snack');document.getElementById('snack-t').textContent=text;
+  snackUndo=undo||null;document.getElementById('snack-undo').hidden=!undo;
+  el.classList.add('show');clearTimeout(snackTimer);snackTimer=setTimeout(()=>{el.classList.remove('show');snackUndo=null;},5000);
+}
+function undoable(label,fn){
+  const before=JSON.stringify(state.tasks);
+  const n=fn();if(n===0)return;
+  save();render();
+  snack(typeof label==='function'?label(n):label,()=>{state.tasks=JSON.parse(before);save();render();});
+}
+/* tidy away finished jobs */
+function tidy(){
+  const d=Number(state.prefs&&state.prefs.tidy);if(!d)return;
+  const cut=Date.now()-d*86400000,n0=state.tasks.length;
+  state.tasks=state.tasks.filter(t=>isRep(t)||!t.done||!t.doneAt||t.doneAt>cut);
+  const oldDay=addDays(today(),-Math.max(d,31));
+  state.tasks.forEach(t=>{if(isRep(t)&&t.completions)for(const k in t.completions)if(k<oldDay)delete t.completions[k];});
+  if(state.tasks.length!==n0)save();
+}
+/* celebrations */
+function allDoneToday(){
+  const t0=today();
+  const todays=state.tasks.filter(t=>occurs(t,t0));
+  const overdue=state.tasks.filter(t=>!isRep(t)&&t.date&&t.date<t0&&!t.done);
+  return todays.length>0&&!overdue.length&&todays.every(t=>isDone(t,t0));
+}
+function dumpEmpty(){
+  const open=state.tasks.filter(t=>!isRep(t)&&!t.done);
+  return state.tasks.some(t=>!isRep(t))&&open.length===0;
+}
+function checkCelebrate(){
+  if((state.prefs.cel||'rabbit')==='off')return;
+  let seen={};try{seen=JSON.parse(localStorage.getItem(KEY+'-cel')||'{}');}catch(e){}
+  const t0=today();let why=null;
+  if(dumpEmpty()&&seen.dump!==t0){why='dump';seen.dump=t0;seen.day=t0;}
+  else if(allDoneToday()&&seen.day!==t0){why='day';seen.day=t0;}
+  if(!why)return;
+  try{localStorage.setItem(KEY+'-cel',JSON.stringify(seen));}catch(e){}
+  setTimeout(()=>celebrate(why),350);
+}
+const INKC='#2F2A3E';
+const RABBIT=`<svg viewBox="0 0 130 100" aria-hidden="true"><defs><filter id="wcf" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".06" numOctaves="2" seed="3"/><feDisplacementMap in="SourceGraphic" scale="5"/><feGaussianBlur stdDeviation="1.1"/></filter></defs>
+<g class="bod">
+<g filter="url(#wcf)" opacity=".8">
+<path d="M32 72 C30 54 46 44 64 46 C82 48 92 60 90 72 C88 82 72 86 58 85 C44 84 33 82 32 72 Z" fill="#E6D6CC" transform="translate(2 2)"/>
+<path d="M78 52 C74 42 80 32 90 33 C100 34 103 44 99 52 C96 58 84 59 78 52 Z" fill="#E6D6CC" transform="translate(2 2)"/>
+<path d="M86 35 C83 22 83 12 86 10 C90 12 91 22 89 34 Z" fill="#F0C3DC"/><path d="M93 35 C94 22 98 14 101 15 C103 18 100 27 95 36 Z" fill="#F0C3DC"/>
+<circle cx="31" cy="68" r="7" fill="var(--w1,#C9B8EE)"/><circle cx="97" cy="51" r="3" fill="#F0B3C8"/>
+</g>
+<g fill="none" stroke="${INKC}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M34 72 C31 55 46 45 64 46 C80 47 90 58 89 70"/><path d="M86 76 C82 84 70 86 58 85 C46 84 36 82 34 73"/>
+<path d="M78 52 C73 41 80 31 90 32 C99 33 103 43 99 51 C96 57 85 58 79 53"/>
+<path d="M85 34 C80 19 81 8 85 7 C90 8 91 20 89 33"/><path d="M93 34 C94 19 98 11 102 12 C105 15 100 27 95 35"/>
+<path d="M30 66 C24 63 23 73 30 74"/><path d="M79 60 C80 68 81 74 85 78 L92 78"/><path d="M46 84 C42 88 46 90 54 90 L66 90"/>
+<path d="M100 47 l2.5 .8"/>
+</g><circle cx="92" cy="43" r="1.8" fill="${INKC}"/></g></svg>`;
+const BIRD=`<svg viewBox="0 0 130 100" aria-hidden="true"><defs><filter id="wcb" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".06" numOctaves="2" seed="5"/><feDisplacementMap in="SourceGraphic" scale="5"/><feGaussianBlur stdDeviation="1.1"/></filter></defs>
+<g filter="url(#wcb)" opacity=".85"><path d="M30 56 C34 40 56 34 74 40 C88 44 96 52 98 60 C90 68 70 72 52 70 C40 68 32 64 30 56 Z" fill="var(--w2,#B9CEF3)" transform="translate(2 2)"/><path d="M84 44 C88 38 96 38 100 44" fill="#F5D6A6"/></g>
+<g fill="none" stroke="${INKC}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<path d="M30 56 C34 40 56 34 74 40 C88 44 96 52 98 60 C90 68 70 72 52 70 C40 68 32 64 30 56"/>
+<path d="M98 60 L108 58 L99 64"/><path d="M30 56 L14 48 L20 58 L12 64 L30 60"/></g>
+<g class="wing"><path d="M62 46 C56 30 60 16 72 12 C76 26 74 40 64 48 Z" fill="var(--w1,#C9B8EE)" opacity=".7"/><path d="M62 46 C56 30 60 16 72 12 C76 26 74 40 64 48" fill="none" stroke="${INKC}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></g>
+<circle cx="88" cy="50" r="1.8" fill="${INKC}"/></svg>`;
+const STAR_SVG=c=>`<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2.5 L12 21.5 M2.5 12 L21.5 12 M5.5 5.5 L18.5 18.5 M18.5 5.5 L5.5 18.5" stroke="${c}" stroke-width="2" stroke-linecap="round"/></svg>`;
+let celeTimer=null;
+function celebrate(why){
+  const kind=state.prefs.cel==='off'?'rabbit':(state.prefs.cel||'rabbit');
+  const el=document.getElementById('cele'),st=document.getElementById('cele-stage');
+  const msg=why==='dump'?['Brain dump cleared!','Every job ticked off. Enjoy the quiet.']:why==='preview'?['All done for today!','This is how your celebration looks.']:['All done for today!','Everything ticked off. Well done, you.'];
+  let h=`<div class="splash" style="width:220px;height:180px;left:12%;top:8%;background:var(--w1)"></div><div class="splash" style="width:200px;height:170px;right:10%;top:18%;background:var(--w2);transition-delay:.1s"></div><div class="splash" style="width:170px;height:140px;left:30%;top:36%;background:var(--w3);transition-delay:.2s"></div>`;
+  if(kind==='rabbit')h+=`<div class="critter hopper">${RABBIT}</div>`;
+  else if(kind==='bird')h+=`<div class="critter flyer" style="bottom:120px">${BIRD}</div>`;
+  const nS=kind==='stars'?18:8;
+  for(let i=0;i<nS;i++){const a=Math.random()*Math.PI*2,d=(kind==='stars'?90:60)+Math.random()*(kind==='stars'?110:70);
+    const c=i%3===0?INKC:['var(--w1)','var(--w2)','var(--w3)','var(--accent)'][i%4];
+    h+=`<div class="spark" style="--x:${Math.cos(a)*d}px;--y:${Math.sin(a)*d-20}px;--r:${Math.random()*180}deg;animation-delay:${(kind==='stars'?0:1.2)+Math.random()*.5}s">${i%3===0?STAR_SVG(c):`<svg viewBox="0 0 20 20" width="14" height="14"><circle cx="10" cy="10" r="7" fill="${c}" opacity=".7"/></svg>`}</div>`;}
+  h+=`<div class="msg"><b>${msg[0]}</b><span>${msg[1]}</span></div>`;
+  st.innerHTML=h;el.classList.remove('show');void el.offsetWidth;el.classList.add('show');
+  if(navigator.vibrate)try{navigator.vibrate(30);}catch(e){}
+  clearTimeout(celeTimer);celeTimer=setTimeout(()=>el.classList.remove('show'),4200);
+}
+document.getElementById('cele').addEventListener('click',()=>{clearTimeout(celeTimer);document.getElementById('cele').classList.remove('show');});
+document.getElementById('snack-undo').addEventListener('click',()=>{const u=snackUndo;snackUndo=null;document.getElementById('snack').classList.remove('show');if(u)u();});
 function dayLabel(s){
   const t=today();
   if(s===t)return'Today';if(s===addDays(t,1))return'Tomorrow';if(s===addDays(t,-1))return'Yesterday';
@@ -923,7 +1067,7 @@ document.getElementById('f-save').addEventListener('click',commit);
 fStar.addEventListener('click',()=>{draft.starred=!draft.starred;paint();});
 fDel.addEventListener('click',()=>{
   if(!fDel.classList.contains('arm')){fDel.classList.add('arm');fDel.textContent='Tap again to delete';return;}
-  state.tasks=state.tasks.filter(t=>t.id!==draft.id);save();closeEditor();render();
+  const did=draft.id;closeEditor();undoable('Job deleted',()=>{const n0=state.tasks.length;state.tasks=state.tasks.filter(t=>t.id!==did);return n0-state.tasks.length;});
 });
 ed.addEventListener('click',e=>{
   const cb=e.target.closest('[data-cli],[data-cld]');
@@ -963,11 +1107,12 @@ view.addEventListener('click',e=>{
   const a=e.target.closest('[data-act]');
   if(a){
     const act=a.dataset.act;
+    if(Date.now()-swipedAt<400)return;
     if(act==='toggle'){toggle(a.dataset.id,a.dataset.date||today());return;}
     if(act==='star'){const t=find(a.dataset.id);if(t){t.starred=!t.starred;save();render();}return;}
     if(act==='quick'){quickAdd();return;}
     if(act==='showdone'){ui.showDone=!ui.showDone;render();return;}
-    if(act==='cleardone'){state.tasks=state.tasks.filter(t=>isRep(t)||!t.done||!vis(t));save();render();return;}
+    if(act==='cleardone'){undoable(n=>`Cleared ${n} finished job${n>1?'s':''}`,()=>{const n0=state.tasks.length;state.tasks=state.tasks.filter(t=>isRep(t)||!t.done||!vis(t));return n0-state.tasks.length;});return;}
     if(act==='pick'){ui.sel=a.dataset.date;render();return;}
     if(act==='prev'||act==='next'){shiftMonth(act==='prev'?-1:1);return;}
     if(act==='thismonth'){ui.month=null;ui.sel=today();ui.mpick=false;render();return;}
@@ -980,15 +1125,14 @@ view.addEventListener('click',e=>{
     if(act==='dtoday'){const f=ui.day>today();ui.day=today();render();anim(f?'in-r':'in-l');return;}
     if(act==='openday'){ui.day=a.dataset.date||ui.sel;ui.tab='today';window.scrollTo(0,0);render();return;}
     if(act==='filter'){ui.filter=a.dataset.f||null;try{localStorage.setItem(KEY+'-filter',ui.filter||'');}catch(err){}render();return;}
-    if(act==='roll'){const t0=today(),tm=addDays(t0,1);let n=0;
-      state.tasks.forEach(t=>{if(vis(t)&&!isRep(t)&&!t.done&&t.date&&t.date<=t0){t.date=tm;n++;}});
-      if(n){save();render();}return;}
+    if(act==='roll'){const t0=today(),tm=addDays(t0,1);
+      undoable(n=>`Moved ${n} to tomorrow`,()=>{let n=0;state.tasks.forEach(t=>{if(vis(t)&&!isRep(t)&&!t.done&&t.date&&t.date<=t0){t.date=tm;n++;}});return n;});return;}
     if(act==='wprev'||act==='wnext'){shiftWeek(act==='wnext'?1:-1);return;}
     if(act==='wtoday'){const f=ui.week>mondayOf(today());ui.week=mondayOf(today());render();anim(f?'in-r':'in-l');return;}
     if(act==='addto'){openEditor(null,Object.assign({date:a.dataset.date},newDefaults()));return;}
     if(act==='sclose'){ui.searching=false;ui.q='';window.scrollTo(0,0);render();return;}
   }
-  const r=e.target.closest('[data-open]');if(r)openEditor(r.dataset.open);
+  const r=e.target.closest('[data-open]');if(r&&Date.now()-swipedAt>400)openEditor(r.dataset.open);
 });
 
 /* ---------- day + month navigation ---------- */
@@ -1003,8 +1147,35 @@ document.getElementById('calbtn').addEventListener('click',()=>{
   ui.searching=false;ui.sel=ui.tab==='today'?ui.day:today();const d=parse(ui.sel);ui.month=new Date(d.getFullYear(),d.getMonth(),1);
   ui.tab='month';window.scrollTo(0,0);render();
 });
+/* swipe a job left to delete */
+let swipedAt=0,sw=null;
+view.addEventListener('touchstart',e=>{
+  const li=e.target.closest('.task');if(!li||e.touches.length!==1){sw=null;return;}
+  sw={li,x:e.touches[0].clientX,y:e.touches[0].clientY,dx:0,on:false,bg:null};
+},{passive:true});
+view.addEventListener('touchmove',e=>{
+  if(!sw)return;const t=e.touches[0],dx=t.clientX-sw.x,dy=t.clientY-sw.y;
+  if(!sw.on){if(Math.abs(dy)>10&&Math.abs(dy)>Math.abs(dx)){sw=null;return;}
+    if(dx<-12&&Math.abs(dx)>Math.abs(dy)*1.2){sw.on=true;sw.li.classList.add('swiping');
+      const bg=document.createElement('div');bg.className='swipe-bg';bg.innerHTML='Delete';
+      bg.style.top=sw.li.offsetTop+'px';bg.style.height=sw.li.offsetHeight+'px';sw.li.parentElement.appendChild(bg);sw.bg=bg;}
+    else return;}
+  e.preventDefault();sw.dx=Math.min(0,dx);sw.li.style.transform=`translateX(${sw.dx}px)`;
+},{passive:false});
+view.addEventListener('touchend',()=>{
+  if(!sw||!sw.on){sw=null;return;}
+  const s=sw;sw=null;swipedAt=Date.now();
+  const w=s.li.offsetWidth,id=s.li.dataset.open;
+  if(s.dx<-Math.max(90,w*.35)){
+    s.li.classList.add('gone');s.li.style.transform=`translateX(${-w}px)`;
+    setTimeout(()=>{undoable('Job deleted',()=>{const n0=state.tasks.length;state.tasks=state.tasks.filter(t=>t.id!==id);return n0-state.tasks.length;});},200);
+  }else{
+    s.li.classList.add('snap');s.li.style.transform='';
+    setTimeout(()=>{s.li.classList.remove('snap','swiping');if(s.bg)s.bg.remove();},220);
+  }
+},{passive:true});
 let sx=null,sy=0,st0=0;
-view.addEventListener('touchstart',e=>{if(e.touches.length!==1||(ui.searching||(ui.tab!=='today'&&ui.tab!=='month'&&ui.tab!=='week'))){sx=null;return;}
+view.addEventListener('touchstart',e=>{if(e.touches.length!==1||e.target.closest('.task')||(ui.searching||(ui.tab!=='today'&&ui.tab!=='month'&&ui.tab!=='week'))){sx=null;return;}
   sx=e.touches[0].clientX;sy=e.touches[0].clientY;st0=Date.now();},{passive:true});
 view.addEventListener('touchend',e=>{
   if(sx===null)return;const t=e.changedTouches[0],dx=t.clientX-sx,dy=t.clientY-sy;sx=null;
@@ -1082,12 +1253,15 @@ function paintSettings(){
   document.querySelectorAll('[data-font]').forEach(b=>b.classList.toggle('on',b.dataset.font===P.font));
   document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('on',b.dataset.mode===P.mode));
   document.querySelectorAll('[data-ts]').forEach(b=>b.classList.toggle('on',b.dataset.ts===(P.ts||'m')));
+  document.querySelectorAll('[data-tidy]').forEach(b=>b.classList.toggle('on',b.dataset.tidy===(P.tidy||'off')));
+  document.querySelectorAll('[data-cel]').forEach(b=>b.classList.toggle('on',b.dataset.cel===(P.cel||'rabbit')));
   document.querySelectorAll('[data-spc]').forEach(b=>b.classList.toggle('on',b.dataset.spc===(P.sp||'std')));
 }
+document.getElementById('cel-try').addEventListener('click',()=>{closeSettings();setTimeout(()=>celebrate('preview'),250);});
 document.getElementById('gear').addEventListener('click',()=>{paintSettings();st.classList.add('open');st.setAttribute('aria-hidden','false');});
 function closeSettings(){st.classList.remove('open');st.setAttribute('aria-hidden','true');}
 st.addEventListener('click',e=>{
-  const b=e.target.closest('[data-sact],button[data-pal],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc]');if(!b)return;
+  const b=e.target.closest('[data-sact],button[data-pal],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel]');if(!b)return;
   if(b.dataset.sact){closeSettings();return;}
   if(b.dataset.pal)state.prefs.palette=b.dataset.pal;
   if(b.dataset.sharp)state.prefs.sharp=b.dataset.sharp;
@@ -1096,15 +1270,18 @@ st.addEventListener('click',e=>{
   if(b.dataset.mode)state.prefs.mode=b.dataset.mode;
   if(b.dataset.ts)state.prefs.ts=b.dataset.ts;
   if(b.dataset.spc)state.prefs.sp=b.dataset.spc;
+  if(b.dataset.tidy){state.prefs.tidy=b.dataset.tidy;tidy();render();}
+  if(b.dataset.cel){state.prefs.cel=b.dataset.cel;if(b.dataset.cel!=='off'){closeSettings();setTimeout(()=>celebrate('preview'),250);}}
   applyPrefs();paintSettings();save();
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&st.classList.contains('open'))closeSettings();});
 
 /* keep "today" fresh if the app stays open past midnight */
 let lastDay=today();
-setInterval(()=>{if(today()!==lastDay){lastDay=today();if(!draft)render();}},60000);
+setInterval(()=>{if(today()!==lastDay){lastDay=today();tidy();if(!draft)render();}},60000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&today()!==lastDay){lastDay=today();if(!draft)render();}});
 
+tidy();
 render();
 document.getElementById('bk-save').addEventListener('click',()=>{
   const blob=new Blob([JSON.stringify({app:'todo',version:1,savedAt:new Date().toISOString(),state},null,1)],{type:'application/json'});
