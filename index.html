@@ -344,6 +344,17 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .cele .tap{position:absolute;top:10px;right:10px;font-size:13px;color:var(--muted)}
 @media (prefers-reduced-motion:reduce){.cele.show .hopper,.cele.show .flyer,.cele.show .bod,.cele.show .wing,.cele.show .spark{animation:none!important}.spark{opacity:1}}
 
+/* family */
+.fam-p{font-size:14.5px;color:var(--muted);margin:0 0 12px}
+.fam-code{font-family:ui-monospace,Menlo,monospace;font-size:26px;font-weight:700;letter-spacing:.08em;text-align:center;background:var(--accent-soft);color:var(--accent);border-radius:14px;padding:16px 10px;margin-bottom:10px;user-select:all;-webkit-user-select:all}
+.fam-join{display:flex;gap:8px;margin-top:10px}
+.fam-join input{flex:1;min-width:0;text-transform:uppercase;font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em}
+.fam-status{font-size:13.5px;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:6px}
+.fam-status i{width:8px;height:8px;border-radius:50%;background:#9AA1AB}
+.fam-status.ok i{background:#3FA46A}
+.fam-status.err{color:var(--warn)}
+.fam-status.err i{background:var(--warn)}
+
 @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .shake{animation:shake .25s 2}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
@@ -513,6 +524,7 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
       <div id="s-opts" style="margin-top:12px"></div>
     </div>
     <div class="field"><span class="lbl">Font</span><div class="fonts" id="s-fonts"></div></div>
+    <div class="field"><span class="lbl">Family sharing</span><div id="s-family"></div></div>
     <div class="field"><span class="lbl">Lists</span>
       <div id="s-lists"></div>
       <div class="newlist"><input class="f-date" id="sl-in" placeholder="New list name" autocomplete="off" enterkeyhint="done" aria-label="New list name"><button class="opt on" id="sl-add">Add list</button></div>
@@ -605,7 +617,9 @@ fixPrefs(state.prefs);
 if(!state.prefs.ts)state.prefs.ts='m';if(!state.prefs.tidy)state.prefs.tidy='off';if(!state.prefs.cel)state.prefs.cel='rabbit';if(!state.prefs.sp)state.prefs.sp='std';
 if(!Array.isArray(state.lists))state.lists=[{id:'home',name:'Home'},{id:'work',name:'Work'},{id:'family',name:'Family'}];
 const SHARED='shared';
-const SHARING=false; // family sharing arrives with the online database step
+const FIREBASE={apiKey:"AIzaSyDrj319EEjlsAJbc1rfG2C6yRl_aCbDGq4",authDomain:"mum-brain-sorted.firebaseapp.com",projectId:"mum-brain-sorted",storageBucket:"mum-brain-sorted.firebasestorage.app",messagingSenderId:"615453157978",appId:"1:615453157978:web:d2a7920cf6f9f344c3c663"};
+let family=null;try{family=JSON.parse(localStorage.getItem(KEY+'-family')||'null');}catch(e){}
+let SHARING=!!(family&&family.code);
 const listName=id=>id===SHARED?'Shared':((state.lists.find(l=>l.id===id)||{}).name||'');
 function applyPrefs(){
   const P=state.prefs,r=document.documentElement;
@@ -662,6 +676,105 @@ function syncShared(){
     if(sharedSeen[t.id]!==j){sharedSeen[t.id]=j;sharedCol.doc(t.id).set({json:j,updatedAt:Date.now()}).catch(()=>{});}}
   for(const id in sharedSeen)if(!ids.has(id)){delete sharedSeen[id];sharedCol.doc(id).delete().catch(()=>{});}
 }
+/* ---------- family sharing (Firebase) ---------- */
+const FB='https://www.gstatic.com/firebasejs/10.12.2/';
+let fb=null,famUnsub=null,famStatus='off';
+async function fbLoad(){
+  if(fb)return fb;
+  const [appM,fsM]=await Promise.all([import(FB+'firebase-app.js'),import(FB+'firebase-firestore.js')]);
+  const app=appM.initializeApp(FIREBASE);
+  fb={fs:fsM,db:fsM.getFirestore(app)};return fb;
+}
+const CODE_AB='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function newCode(){let c='';const r=new Uint32Array(12);crypto.getRandomValues(r);for(const x of r)c+=CODE_AB[x%CODE_AB.length];return c;}
+const fmtCode=c=>c.replace(/(.{4})(?=.)/g,'$1-');
+const cleanCode=v=>(v||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+function setFamStatus(st,msg){famStatus=st;const el=document.getElementById('fam-status');if(el){el.className='fam-status'+(st==='ok'?' ok':st==='err'?' err':'');el.innerHTML='<i></i>'+esc(msg);}}
+async function connectFamily(){
+  if(famUnsub){try{famUnsub();}catch(e){}famUnsub=null;}
+  sharedCol=null;sharedSeen={};
+  if(!family||!family.code)return;
+  setFamStatus('wait','Connecting…');
+  try{
+    const {fs,db}=await fbLoad();
+    const code=family.code;
+    const colRef=fs.collection(db,'families',code,'tasks');
+    const adapter={doc:id=>({set:v=>fs.setDoc(fs.doc(db,'families',code,'tasks',id),v),delete:()=>fs.deleteDoc(fs.doc(db,'families',code,'tasks',id))})};
+    let first=true;
+    famUnsub=fs.onSnapshot(colRef,{includeMetadataChanges:false},qs=>{
+      if(!family||family.code!==code)return;
+      if(qs.metadata.hasPendingWrites&&!first)return;
+      const rem=[];const seen={};
+      qs.docs.forEach(x=>{const v=x.data();if(!v||typeof v.json!=='string')return;try{const t=JSON.parse(v.json);t.list=SHARED;rem.push(t);seen[t.id]=JSON.stringify(t);}catch(e){}});
+      // jobs added to Shared before we connected get sent up rather than lost
+      const since=family.lastSync||Infinity;
+      const localOnly=first?state.tasks.filter(t=>t.list===SHARED&&!seen[t.id]&&t.ts&&t.ts>since):[];
+      sharedSeen=seen;sharedCol=adapter;first=false;
+      family.lastSync=Date.now();saveFamily();
+      state.tasks=state.tasks.filter(t=>t.list!==SHARED).concat(rem,localOnly);cache();
+      if(localOnly.length)syncShared();
+      setFamStatus('ok','Connected. Changes appear for everyone straight away.');
+      if(!draft)render();
+    },err=>{setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');});
+  }catch(e){setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');}
+}
+function saveFamily(){try{localStorage.setItem(KEY+'-family',JSON.stringify(family));}catch(e){}SHARING=!!(family&&family.code);}
+async function createFamily(){
+  const code=newCode();
+  setFamStatus('wait','Creating your family…');
+  try{const {fs,db}=await fbLoad();await fs.setDoc(fs.doc(db,'families',code,'meta','info'),{created:Date.now()});}
+  catch(e){setFamStatus('err','Couldn\'t create a family. Check your internet connection and try again.');return;}
+  family={code};saveFamily();paintFamily();render();connectFamily();
+}
+async function joinFamily(raw){
+  const code=cleanCode(raw);
+  if(code.length!==12){setFamStatus('err','Family codes are 12 letters and numbers, like ABCD-EFGH-JKLM.');return;}
+  setFamStatus('wait','Checking the code…');
+  try{const {fs,db}=await fbLoad();const snap=await fs.getDoc(fs.doc(db,'families',code,'meta','info'));
+    if(!snap.exists()){setFamStatus('err','That code wasn\'t found. Check it with whoever sent it.');return;}}
+  catch(e){setFamStatus('err','Couldn\'t check the code. Check your internet connection and try again.');return;}
+  state.tasks=state.tasks.filter(t=>t.list!==SHARED);cache();
+  family={code};saveFamily();paintFamily();render();connectFamily();
+}
+function leaveFamily(){
+  if(famUnsub){try{famUnsub();}catch(e){}famUnsub=null;}
+  sharedCol=null;sharedSeen={};
+  state.tasks=state.tasks.filter(t=>t.list!==SHARED);
+  if(ui.filter===SHARED)ui.filter=null;
+  family=null;saveFamily();cache();paintFamily();render();
+}
+function paintFamily(){
+  const el=document.getElementById('s-family');if(!el)return;
+  if(family&&family.code){
+    el.innerHTML=`<p class="fam-p">Anything in the <b>Shared</b> list is shared with everyone who joins using this code.</p>
+      <div class="fam-code">${fmtCode(family.code)}</div>
+      <div class="row"><button class="opt on" data-fam="share">Send code</button><button class="opt" data-fam="leave">Leave family</button></div>
+      <div class="fam-status" id="fam-status"><i></i>Connecting…</div>`;
+    if(famStatus==='ok')setFamStatus('ok','Connected. Changes appear for everyone straight away.');
+    else if(famStatus==='err')setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');
+  }else{
+    el.innerHTML=`<p class="fam-p">Share a list with your family. Everyone sees the same jobs, and ticks show up for all.</p>
+      <div class="row"><button class="opt on" data-fam="create">Create a family</button></div>
+      <div class="fam-join"><input class="f-date" id="fam-in" placeholder="Or enter a family code" autocomplete="off" autocapitalize="characters" enterkeyhint="go" aria-label="Family code"><button class="opt" data-fam="join">Join</button></div>
+      <div class="fam-status" id="fam-status" hidden><i></i></div>`;
+    const inp=el.querySelector('#fam-in');inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();joinFamily(inp.value);}});
+  }
+}
+document.getElementById('s-family').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-fam]');if(!b)return;const a=b.dataset.fam;
+  const showSt=()=>{const st=document.getElementById('fam-status');if(st)st.hidden=false;};
+  if(a==='create'){showSt();createFamily();}
+  else if(a==='join'){showSt();joinFamily(document.getElementById('fam-in').value);}
+  else if(a==='share'){
+    const text=`Join our family list in Mum Brain, Sorted. Open ${location.origin+location.pathname}, add it to your home screen, then go to the gear menu, Family sharing, and enter this code: ${fmtCode(family.code)}`;
+    try{if(navigator.share){await navigator.share({title:'Mum Brain, Sorted',text});return;}}catch(err){return;}
+    try{await navigator.clipboard.writeText(text);b.textContent='Copied';setTimeout(()=>b.textContent='Send code',1500);}catch(err){}
+  }
+  else if(a==='leave'){
+    if(!b.classList.contains('arm')){b.classList.add('arm');b.style.color='var(--warn)';b.textContent='Tap again to leave';return;}
+    leaveFamily();
+  }
+});
 async function connect(){
   if(!window.claude||typeof window.claude.use!=='function')return;
   try{
@@ -1245,6 +1358,7 @@ document.getElementById('s-lists').addEventListener('click',e=>{
   save();paintSLists();render();
 });
 function paintSettings(){
+  paintFamily();
   const P=state.prefs;paintSLists();
   document.querySelectorAll('[data-sty]').forEach(b=>b.classList.toggle('on',b.dataset.sty===P.style));
   renderOpts();
@@ -1304,6 +1418,8 @@ document.getElementById('bk-load').addEventListener('change',e=>{
 });
 if('serviceWorker' in navigator&&location.protocol==='https:'){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
 connect();
+if(family&&family.code)connectFamily();
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&family&&family.code&&famStatus==='err')connectFamily();});
 })();
 </script>
 </body>
