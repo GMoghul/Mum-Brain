@@ -813,7 +813,14 @@ function adopt(snap){
     applyPrefs();paintSettings();render();
   }
 }
-let sharedCol=null,sharedSeen={},sharedLast=null;
+let sharedCol=null,sharedSeen={};
+/* The last version of the shared list this phone knows the family has (kept between app opens),
+   so changes made while disconnected can still be spotted and queued. */
+function saveSeen(){try{localStorage.setItem(KEY+'-seen',JSON.stringify({code:family&&family.code,seen:sharedSeen}));}catch(e){}}
+try{const x=JSON.parse(localStorage.getItem(KEY+'-seen')||'null');
+  if(x&&family&&x.code===family.code&&x.seen)sharedSeen=x.seen;
+  else if(family&&family.code){for(const t of state.tasks)if(t.list===SHARED)sharedSeen[t.id]=JSON.stringify(t);}
+}catch(e){}
 let offlineWarned=0,sharedReady=false;
 /* Every shared change waits here until the family list confirms it, even across app restarts. */
 let shPend={};try{shPend=JSON.parse(localStorage.getItem(KEY+'-pend')||'{}')||{};}catch(e){}
@@ -821,15 +828,16 @@ const inflight=new Set();
 function savePend(){try{localStorage.setItem(KEY+'-pend',JSON.stringify(shPend));}catch(e){}}
 function clearPend(){shPend={};inflight.clear();savePend();}
 function syncShared(){
-  if(!sharedReady){
-    // a shared job changed while the family list isn't connected
-    if(SHARING){const j=JSON.stringify(state.tasks.filter(t=>t.list===SHARED));if(sharedLast!==null&&j!==sharedLast&&Date.now()-offlineWarned>30000){offlineWarned=Date.now();warn('Your family list isn\'t connected right now, so this change may not reach everyone. Check your internet.');}}
-    return;}
-  const ids=new Set();
+  if(!SHARING&&!sharedCol)return;
+  // every shared add, edit or delete is queued, connected or not
+  const ids=new Set();let changed=false;
   for(const t of state.tasks){if(t.list!==SHARED)continue;ids.add(t.id);const j=JSON.stringify(t);
-    if(sharedSeen[t.id]!==j){sharedSeen[t.id]=j;shPend[t.id]={op:'set',j,title:t.title};}}
-  for(const id in sharedSeen)if(!ids.has(id)){let title='';try{title=JSON.parse(sharedSeen[id]).title;}catch(e){}delete sharedSeen[id];shPend[id]={op:'del',title};}
-  savePend();flushPending();
+    if(sharedSeen[t.id]!==j){sharedSeen[t.id]=j;shPend[t.id]={op:'set',j,title:t.title};changed=true;}}
+  for(const id in sharedSeen)if(!ids.has(id)){let title='';try{title=JSON.parse(sharedSeen[id]).title;}catch(e){}delete sharedSeen[id];shPend[id]={op:'del',title};changed=true;}
+  if(!changed)return;
+  savePend();saveSeen();
+  if(sharedCol)flushPending();
+  else if(Date.now()-offlineWarned>30000){offlineWarned=Date.now();warn('Your family list isn\'t connected right now. This change is saved on your phone and will be shared as soon as you\'re back online.','share');}
 }
 function flushPending(){
   if(!sharedCol)return;
@@ -901,7 +909,7 @@ async function migrateLegacy(fs,db,code,fid,key){
 }
 async function connectFamily(){
   if(famUnsub){try{famUnsub();}catch(e){}famUnsub=null;}
-  sharedCol=null;sharedReady=false;sharedSeen={};
+  sharedCol=null;sharedReady=false;
   if(!family||!family.code)return;
   setFamStatus('wait','Connecting…');
   const code=family.code;
@@ -926,15 +934,15 @@ async function connectFamily(){
       // jobs added to Shared before we connected get sent up rather than lost
       const since=family.lastSync||Infinity;
       const localOnly=first?state.tasks.filter(t=>t.list===SHARED&&!seen[t.id]&&t.ts&&t.ts>since):[];
-      sharedSeen=seen;sharedCol=adapter;sharedReady=true;first=false;sharedLast=null;
+      sharedSeen=seen;saveSeen();sharedCol=adapter;sharedReady=true;first=false;
       family.lastSync=Date.now();saveFamily();
       state.tasks=state.tasks.filter(t=>t.list!==SHARED).concat(rem,localOnly);cache();
       if(localOnly.length)syncShared();
       flushPending();
       setFamStatus('ok','Connected. Shared jobs are scrambled before they leave your phone.');
       if(!draft)render();
-    },err=>{sharedCol=null;sharedReady=false;sharedLast=JSON.stringify(state.tasks.filter(t=>t.list===SHARED));setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');});
-  }catch(e){sharedLast=JSON.stringify(state.tasks.filter(t=>t.list===SHARED));setFamStatus('err',e&&e.message==='nocrypto'?'This browser can\'t scramble shared jobs. Open the app from your home screen.':'Can\'t reach the family list right now. Check your internet connection.');}
+    },err=>{sharedCol=null;sharedReady=false;setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');});
+  }catch(e){setFamStatus('err',e&&e.message==='nocrypto'?'This browser can\'t scramble shared jobs. Open the app from your home screen.':'Can\'t reach the family list right now. Check your internet connection.');}
 }
 function saveFamily(){try{localStorage.setItem(KEY+'-family',JSON.stringify(family));}catch(e){}SHARING=!!(family&&family.code);}
 async function createFamily(){
@@ -942,7 +950,8 @@ async function createFamily(){
   setFamStatus('wait','Creating your family…');
   try{const [{fs,db},{fid}]=await Promise.all([fbLoad(),famKeys(code)]);await fs.setDoc(fs.doc(db,'families',fid,'meta','info'),{v:2,created:Date.now()});}
   catch(e){setFamStatus('err','Couldn\'t create a family. Check your internet connection and try again.');return;}
-  family={code};saveFamily();paintFamily();render();connectFamily();
+  family={code};saveFamily();clearPend();sharedSeen={};saveSeen();syncShared();// your existing shared jobs go up to the new family
+  paintFamily();render();connectFamily();
 }
 async function joinFamily(raw){
   const code=cleanCode(raw);
@@ -954,7 +963,7 @@ async function joinFamily(raw){
     if(!ok){setFamStatus('err','That code wasn\'t found. Check it with whoever sent it.');return;}}
   catch(e){setFamStatus('err','Couldn\'t check the code. Check your internet connection and try again.');return;}
   state.tasks=state.tasks.filter(t=>t.list!==SHARED);cache();clearPend();
-  family={code};saveFamily();paintFamily();render();connectFamily();
+  family={code};saveFamily();sharedSeen={};saveSeen();paintFamily();render();connectFamily();
 }
 function leaveFamily(){
   if(famUnsub){try{famUnsub();}catch(e){}famUnsub=null;}
