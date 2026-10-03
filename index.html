@@ -200,6 +200,12 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .seg{display:grid;grid-template-columns:repeat(5,1fr);background:var(--bg);border-radius:12px;padding:3px;gap:2px}
 .seg button{height:34px;border-radius:9px;font-size:13.5px;font-weight:500;color:var(--muted)}
 .seg button.on{background:var(--solid);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.seg-rep{grid-template-columns:repeat(4,1fr)}
+.seg-rep button{font-size:13px}
+.wdays{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:10px}
+.wdays button{height:40px;border-radius:12px;background:var(--bg);font-weight:600;font-size:14.5px;color:var(--muted)}
+.wdays button.on{background:var(--accent);color:#fff}
+:root[data-style="sharp"] .wdays button{border-radius:6px}
 .rep-hint{font-size:13.5px;color:var(--muted);margin-top:8px;min-height:1em}
 .swatches{display:flex;flex-wrap:wrap;gap:10px}
 .sw{width:34px;height:34px;border-radius:50%;background:var(--c);display:grid;place-items:center;color:#fff}
@@ -335,6 +341,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
   background:#24262B;color:#fff;border-radius:14px;padding:6px 6px 6px 16px;display:flex;align-items:center;gap:10px;min-height:48px;
   box-shadow:0 10px 30px rgba(0,0,0,.2);transform:translateY(20px);opacity:0;pointer-events:none;transition:transform .25s ease,opacity .25s ease}
 .snack.show{transform:none;opacity:1;pointer-events:auto}
+.snack.warn{background:#B23A35;color:#fff}
+.snack.warn span{font-size:14.5px;line-height:1.35;padding:6px 0}
 .snack span{flex:1;font-size:15px;font-weight:500}
 .snack button{height:36px;padding:0 14px;border-radius:10px;font-weight:700;font-size:15px;color:#C9B8FF}
 :root[data-theme="dark"] .snack{background:#ECEEF1;color:#1B1E23}
@@ -409,6 +417,12 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 
 /* family */
 .fam-p{font-size:14.5px;color:var(--muted);margin:0 0 12px}
+.bk-confirm{margin-top:12px;padding:14px;border-radius:14px;background:var(--bg);border:1.5px solid color-mix(in srgb,var(--warn) 45%,transparent)}
+.bk-confirm>b{display:block;font-size:15.5px}
+.bk-confirm>span{font-size:14px;color:var(--muted)}
+.bk-confirm p{font-size:14.5px;margin:8px 0 12px}
+.bk-confirm .opt{background:var(--solid);box-shadow:var(--shadow)}
+.bk-confirm .bk-go{background:var(--warn);color:#fff;font-weight:600}
 .fam-code{font-family:ui-monospace,Menlo,monospace;font-size:26px;font-weight:700;letter-spacing:.08em;text-align:center;background:var(--accent-soft);color:var(--accent);border-radius:14px;padding:16px 10px;margin-bottom:10px;user-select:all;-webkit-user-select:all}
 .fam-join{display:flex;gap:8px;margin-top:10px}
 .fam-join input{flex:1;min-width:0;text-transform:uppercase;font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em}
@@ -448,7 +462,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .fb-q{font-size:15px;margin:0 0 8px}
 .fb-name{width:100%;margin-top:10px;height:42px;font-size:16px;padding:0 14px;border-radius:12px}
 .fb-send{margin-top:12px;width:100%;height:42px}
-#fb-change,#fb-add{margin-top:10px;min-height:64px}
+#fb-stuck,#fb-change,#fb-add{margin-top:10px;min-height:64px}
 .fam-status i{width:8px;height:8px;border-radius:50%;background:#9AA1AB}
 .fam-status.ok i{background:#3FA46A}
 .fam-status.err{color:var(--warn)}
@@ -567,12 +581,17 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 
     <div class="field">
       <span class="lbl">Repeat</span>
-      <div class="seg" id="f-rep">
+      <div class="seg seg-rep" id="f-rep">
         <button data-rep="none">Never</button>
         <button data-rep="daily">Daily</button>
         <button data-rep="weekly">Weekly</button>
+        <button data-rep="fortnightly">Fortnightly</button>
         <button data-rep="monthly">Monthly</button>
         <button data-rep="yearly">Yearly</button>
+        <button data-rep="days">Pick days</button>
+      </div>
+      <div class="wdays" id="f-days" hidden role="group" aria-label="Repeat on these days">
+        <button data-wd="1" aria-label="Monday">M</button><button data-wd="2" aria-label="Tuesday">T</button><button data-wd="3" aria-label="Wednesday">W</button><button data-wd="4" aria-label="Thursday">T</button><button data-wd="5" aria-label="Friday">F</button><button data-wd="6" aria-label="Saturday">S</button><button data-wd="0" aria-label="Sunday">S</button>
       </div>
       <div class="rep-hint" id="rep-hint"></div>
     </div>
@@ -593,7 +612,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="field">
       <button class="starbtn" id="f-star">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2l2.6 5.5 6 .7-4.4 4.1 1.2 5.9L12 16.5l-5.4 2.9 1.2-5.9L3.4 9.4l6-.7z"/></svg>
-        <span id="f-star-txt">Star as urgent</span>
+        <span id="f-star-txt">Mark as important</span>
       </button>
     </div>
 
@@ -622,6 +641,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <p class="fam-p">You're one of the first mums trying Mum Brain. Tell me what's working and what isn't.</p>
       <div class="fb-q">Would you recommend Mum Brain to another mum?</div>
       <div class="seg seg3" id="fb-rec"><button data-rec="yes">Yes</button><button data-rec="maybe">Maybe</button><button data-rec="no">No</button></div>
+      <textarea class="f-note" id="fb-stuck" placeholder="Was there anything you couldn't work out how to do?"></textarea>
       <textarea class="f-note" id="fb-change" placeholder="What would you change?"></textarea>
       <textarea class="f-note" id="fb-add" placeholder="What would you add?"></textarea>
       <input class="f-date fb-name" id="fb-name" placeholder="Your name (optional)" autocomplete="off" aria-label="Your name (optional)">
@@ -649,6 +669,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="field"><span class="lbl">Backup</span>
       <div class="row"><button class="opt" id="bk-save">Save a backup</button><label class="opt" style="display:inline-flex;align-items:center;cursor:pointer">Restore a backup<input type="file" id="bk-load" accept=".json,application/json" hidden></label></div>
       <div class="rep-hint" id="bk-hint">Your jobs are saved on this device. A backup file keeps them safe if you change phone.</div>
+      <div class="bk-confirm" id="bk-confirm" hidden></div>
     </div>
     <div class="field"><span class="lbl">Morning sort</span>
       <div class="seg" id="s-nudge" style="grid-template-columns:repeat(2,1fr)"><button data-nudge="on">On</button><button data-nudge="off">Off</button></div>
@@ -766,11 +787,11 @@ try{const f=localStorage.getItem(KEY+'-filter');if(f)ui.filter=f;}catch(e){}
 let remote=null,timer=null;
 function save(){
   state.updatedAt=Date.now();
-  try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}
+  try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){warn('Couldn\'t save on this phone – its storage may be full. Save a backup in Settings to keep your jobs safe.');}
   if(remote){clearTimeout(timer);timer=setTimeout(()=>push(true),500);}
   syncShared();
 }
-function cache(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+function cache(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){warn('Couldn\'t save on this phone – its storage may be full. Save a backup in Settings to keep your jobs safe.');}}
 function push(retry){
   if(!remote)return;
   remote.set({payload:JSON.stringify(state.tasks.filter(t=>t.list!==SHARED)),prefs:JSON.stringify(state.prefs||{}),lists:JSON.stringify(state.lists||[]),updatedAt:state.updatedAt}).catch(e=>{
@@ -789,14 +810,25 @@ function adopt(snap){
     applyPrefs();paintSettings();render();
   }
 }
-let sharedCol=null,sharedSeen={};
+let sharedCol=null,sharedSeen={},sharedLast=null;
+let offlineWarned=0;
+function shareFailed(t){warn(`Couldn't share “${t.title||'a job'}” with your family. Check your internet – it will try again with your next change.`);}
+function watchShare(p,t,isDel){
+  let done=false;
+  p.then(()=>{done=true;},()=>{done=true;if(t&&!isDel){delete sharedSeen[t.id];shareFailed(t);}else warn('Couldn\'t update the family list. Check your internet and try again.');});
+  setTimeout(()=>{if(!done&&Date.now()-offlineWarned>30000){offlineWarned=Date.now();warn('You seem to be offline. Shared changes will reach your family when you\'re back online.');}},8000);
+}
 function syncShared(){
-  if(!sharedCol)return;
+  if(!sharedCol){
+    // a shared job changed while the family list isn't connected
+    if(SHARING){const j=JSON.stringify(state.tasks.filter(t=>t.list===SHARED));if(sharedLast!==null&&j!==sharedLast&&Date.now()-offlineWarned>30000){offlineWarned=Date.now();warn('Your family list isn\'t connected right now, so this change may not reach everyone. Check your internet.');}}
+    return;}
   const ids=new Set();
   for(const t of state.tasks){if(t.list!==SHARED)continue;ids.add(t.id);const j=JSON.stringify(t);
-    if(sharedSeen[t.id]!==j){sharedSeen[t.id]=j;sharedCol.doc(t.id).set(j).catch(()=>{});}}
-  for(const id in sharedSeen)if(!ids.has(id)){delete sharedSeen[id];sharedCol.doc(id).delete().catch(()=>{});}
+    if(sharedSeen[t.id]!==j){sharedSeen[t.id]=j;let p;try{p=sharedCol.doc(t.id).set(j);}catch(e){p=Promise.reject(e);}watchShare(Promise.resolve(p),t,false);}}
+  for(const id in sharedSeen)if(!ids.has(id)){delete sharedSeen[id];let p;try{p=sharedCol.doc(id).delete();}catch(e){p=Promise.reject(e);}watchShare(Promise.resolve(p),null,true);}
 }
+window.addEventListener('online',()=>syncShared());
 /* ---------- family sharing (Firebase) ---------- */
 const FB='https://www.gstatic.com/firebasejs/10.12.2/';
 let fb=null,famUnsub=null,famStatus='off';
@@ -874,14 +906,14 @@ async function connectFamily(){
       // jobs added to Shared before we connected get sent up rather than lost
       const since=family.lastSync||Infinity;
       const localOnly=first?state.tasks.filter(t=>t.list===SHARED&&!seen[t.id]&&t.ts&&t.ts>since):[];
-      sharedSeen=seen;sharedCol=adapter;first=false;
+      sharedSeen=seen;sharedCol=adapter;first=false;sharedLast=null;
       family.lastSync=Date.now();saveFamily();
       state.tasks=state.tasks.filter(t=>t.list!==SHARED).concat(rem,localOnly);cache();
       if(localOnly.length)syncShared();
       setFamStatus('ok','Connected. Shared jobs are scrambled before they leave your phone.');
       if(!draft)render();
-    },err=>{setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');});
-  }catch(e){setFamStatus('err',e&&e.message==='nocrypto'?'This browser can\'t scramble shared jobs. Open the app from your home screen.':'Can\'t reach the family list right now. Check your internet connection.');}
+    },err=>{sharedCol=null;sharedLast=JSON.stringify(state.tasks.filter(t=>t.list===SHARED));setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');});
+  }catch(e){sharedLast=JSON.stringify(state.tasks.filter(t=>t.list===SHARED));setFamStatus('err',e&&e.message==='nocrypto'?'This browser can\'t scramble shared jobs. Open the app from your home screen.':'Can\'t reach the family list right now. Check your internet connection.');}
 }
 function saveFamily(){try{localStorage.setItem(KEY+'-family',JSON.stringify(family));}catch(e){}SHARING=!!(family&&family.code);}
 async function createFamily(){
@@ -979,6 +1011,8 @@ function occurs(t,s){
   switch(t.repeat){
     case'daily':return true;
     case'weekly':return D.getDay()===S.getDay();
+    case'fortnightly':return D.getDay()===S.getDay()&&Math.round((D-S)/864e5)%14===0;
+    case'days':return (t.days&&t.days.length?t.days:[S.getDay()]).includes(D.getDay());
     case'monthly':return D.getDate()===Math.min(S.getDate(),dim(D.getFullYear(),D.getMonth()));
     case'yearly':return D.getMonth()===S.getMonth()&&D.getDate()===Math.min(S.getDate(),dim(D.getFullYear(),D.getMonth()));
   }
@@ -999,8 +1033,13 @@ function toggle(id,s){
 }
 /* undo bar */
 let snackTimer=null,snackUndo=null;
-function snack(text,undo){
+function warn(text){
   const el=document.getElementById('snack');document.getElementById('snack-t').textContent=text;
+  snackUndo=null;document.getElementById('snack-undo').hidden=true;el.classList.add('warn');el.setAttribute('role','alert');
+  el.classList.add('show');clearTimeout(snackTimer);snackTimer=setTimeout(()=>{el.classList.remove('show');},8000);
+}
+function snack(text,undo){
+  const el=document.getElementById('snack');el.classList.remove('warn');el.setAttribute('role','status');document.getElementById('snack-t').textContent=text;
   snackUndo=undo||null;document.getElementById('snack-undo').hidden=!undo;
   el.classList.add('show');clearTimeout(snackTimer);snackTimer=setTimeout(()=>{el.classList.remove('show');snackUndo=null;},5000);
 }
@@ -1094,7 +1133,10 @@ function dayLabel(s){
 }
 function repLabel(t,start){
   const S=parse(start||startOf(t)||today());
-  return{daily:'Every day',weekly:'Every '+DAYS[S.getDay()],monthly:'Monthly on the '+ord(S.getDate()),yearly:'Every year on '+S.getDate()+' '+MONTHS[S.getMonth()]}[t.repeat]||'';
+  if(t.repeat==='days'){const ds=(t.days&&t.days.length?t.days:[S.getDay()]).slice().sort((a,b)=>((a+6)%7)-((b+6)%7));const k=ds.join();
+    if(k==='1,2,3,4,5')return'Every weekday';if(k==='6,0')return'Every weekend';if(ds.length===7)return'Every day';
+    return'Every '+ds.map(d=>DAYS[d].slice(0,3)).join(', ');}
+  return{daily:'Every day',weekly:'Every '+DAYS[S.getDay()],fortnightly:'Every other '+DAYS[S.getDay()],monthly:'Monthly on the '+ord(S.getDate()),yearly:'Every year on '+S.getDate()+' '+MONTHS[S.getMonth()]}[t.repeat]||'';
 }
 const ko=t=>t.ord!=null?t.ord:(t.ts||0);
 const byStar=(a,b)=>(!!b.starred-!!a.starred)||(ko(a)-ko(b));
@@ -1142,7 +1184,7 @@ function row(t,o){
   if(isRep(t))chips+=`<span class="chip c-ico" title="${esc(repLabel(t))}">${I.rep}<span class="ct">${esc(repLabel(t))}</span></span>`;
   if(t.checklist&&t.checklist.length)chips+=`<span class="chip">${I.checks}<span class="ct">${t.checklist.filter(x=>x.done).length}/${t.checklist.length}</span></span>`;
   if((!ui.filter||ui.filter===STAR)&&t.list&&listName(t.list))chips+=`<span class="chip c-list">${t.list===SHARED?I.people:I.list}<span class="ct">${esc(listName(t.list))}</span></span>`;
-  const tail=`<button class="star${t.starred?' on':''}" data-act="star" data-id="${t.id}" aria-label="${t.starred?'Remove star':'Star as urgent'}">${I.star}</button>`;
+  const tail=`<button class="star${t.starred?' on':''}" data-act="star" data-id="${t.id}" aria-label="${t.starred?'Unmark as important':'Mark as important'}">${I.star}</button>`;
   return `<li class="task${done?' done':''}" data-open="${t.id}"${o.drag?` data-drag="${t.id}" data-g="${o.dg?o.dg(t):(t.starred?1:0)}"`:''}>
     ${check}
     <div class="body"><div class="title">${esc(t.title)}</div>${t.note?`<div class="note">${esc(t.note.split('\n')[0])}</div>`:''}<div class="chips">${chips}</div></div>
@@ -1256,7 +1298,7 @@ function renderToday(){
   if(list.length)h+=`<button class="addslot" data-act="addto" data-date="${dayS}"><span>Add something for ${isT?'today':'this day'}</span><i>${I.plus}</i></button>`;
   const left=isT?overdue.length+list.filter(t=>!isRep(t)&&!t.done).length:0;
   if(left)h+=`<button class="roll" data-act="roll">${I.right}Move ${left} unfinished to tomorrow</button>`;
-  else h+=`<div class="empty"><strong>Nothing planned${isT?' for today':''}</strong>Tap + to add a job${isT?', or give a day to something in your brain dump':' to this day'}.</div>`;
+  else if(!list.length&&!overdue.length)h+=`<div class="empty"><strong>Nothing planned${isT?' for today':''}</strong>Tap + to add a job${isT?', or give a day to something in your brain dump':' to this day'}.</div>`;
   view.innerHTML=h;
 }
 
@@ -1392,6 +1434,8 @@ function paint(){
   document.querySelector('[data-day="none"]').style.display=isRep(draft)?'none':'';
   document.getElementById('day-lbl').textContent=isRep(draft)?'Starts':'Day';
   document.querySelectorAll('[data-rep]').forEach(b=>b.classList.toggle('on',b.dataset.rep===(draft.repeat||'none')));
+  const fd=document.getElementById('f-days');fd.hidden=draft.repeat!=='days';
+  fd.querySelectorAll('[data-wd]').forEach(b=>{const on=(draft.days||[]).includes(Number(b.dataset.wd));b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
   document.getElementById('rep-hint').textContent=isRep(draft)?repLabel(draft,draft.date||t0):'';
   const known=COLORS.some(c=>c[0]===draft.color)||MORE.includes(draft.color);
   document.querySelectorAll('#f-colors .sw,#f-more .sw[data-color]').forEach(b=>b.classList.toggle('on',b.dataset.color===draft.color));
@@ -1401,9 +1445,9 @@ function paint(){
   fTime.value=draft.time||'';
   document.querySelector('[data-time="none"]').classList.toggle('on',!draft.time);
   document.querySelectorAll('[data-alarm]').forEach(b=>{b.disabled=!draft.time;b.classList.toggle('on',!!draft.time&&b.dataset.alarm===(draft.alarm||'none'));});
-  document.getElementById('alarm-hint').textContent=!draft.time?'Set a time to add an alarm.':hasAlarm(draft)?'You\'ll get an alert while the app is open.':'';
+  document.getElementById('alarm-hint').textContent=(!draft.time?'Set a time to add an alarm. ':'')+'Alarms only sound while Mum Brain is open on your screen.';
   fStar.classList.toggle('on',!!draft.starred);
-  document.getElementById('f-star-txt').textContent=draft.starred?'Starred as urgent':'Star as urgent';
+  document.getElementById('f-star-txt').textContent=draft.starred?'Marked as important':'Mark as important';
 }
 function closeEditor(){ed.classList.remove('open');ed.setAttribute('aria-hidden','true');draft=null;}
 function commit(){
@@ -1430,11 +1474,14 @@ ed.addEventListener('click',e=>{
     paintCl();return;}
   const lb=e.target.closest('button[data-list],button[data-newlist]');
   if(lb){if(lb.dataset.newlist){newlist.hidden=!newlist.hidden;if(!newlist.hidden)nlIn.focus();}else{draft.list=lb.dataset.list||null;paintLists();}return;}
+  const wd=e.target.closest('[data-wd]');
+  if(wd){const d=Number(wd.dataset.wd),ds=draft.days||[];draft.days=ds.includes(d)?(ds.length>1?ds.filter(x=>x!==d):ds):ds.concat(d);paint();return;}
   const b=e.target.closest('[data-day],[data-rep],button[data-color],[data-time],[data-alarm],[data-act="close"]');if(!b||b.disabled)return;
   if(b.dataset.act==='close'){closeEditor();return;}
   const t0=today();
   if(b.dataset.day){const k=b.dataset.day;draft.date=k==='today'?t0:k==='tomorrow'?addDays(t0,1):null;}
-  if(b.dataset.rep){draft.repeat=b.dataset.rep;if(isRep(draft)&&!draft.date)draft.date=t0;}
+  if(b.dataset.rep){draft.repeat=b.dataset.rep;if(isRep(draft)&&!draft.date)draft.date=t0;
+    if(draft.repeat==='days'&&!(draft.days&&draft.days.length))draft.days=[parse(draft.date).getDay()];}
   if(b.dataset.color)draft.color=b.dataset.color;
   if(b.dataset.time){draft.time=null;draft.alarm='none';}
   if(b.dataset.alarm)draft.alarm=b.dataset.alarm;
@@ -1709,12 +1756,12 @@ function openFeedback(){paintSettings();st.classList.add('open');st.setAttribute
 document.getElementById('fb-rec').addEventListener('click',e=>{const b=e.target.closest('[data-rec]');if(!b)return;fbRec=fbRec===b.dataset.rec?'':b.dataset.rec;
   document.querySelectorAll('[data-rec]').forEach(x=>x.classList.toggle('on',x.dataset.rec===fbRec));});
 document.getElementById('fb-send').addEventListener('click',async()=>{
-  const ch=document.getElementById('fb-change'),ad=document.getElementById('fb-add'),nm=document.getElementById('fb-name'),btn=document.getElementById('fb-send');
-  const data={recommend:fbRec,change:ch.value.trim().slice(0,2000),add:ad.value.trim().slice(0,2000),name:nm.value.trim().slice(0,60),at:Date.now(),v:APPV};
-  if(!data.recommend&&!data.change&&!data.add){fbStatus('err','Pick an answer or write something first.');return;}
+  const sk=document.getElementById('fb-stuck'),ch=document.getElementById('fb-change'),ad=document.getElementById('fb-add'),nm=document.getElementById('fb-name'),btn=document.getElementById('fb-send');
+  const data={recommend:fbRec,stuck:sk.value.trim().slice(0,2000),change:ch.value.trim().slice(0,2000),add:ad.value.trim().slice(0,2000),name:nm.value.trim().slice(0,60),at:Date.now(),v:APPV};
+  if(!data.recommend&&!data.stuck&&!data.change&&!data.add){fbStatus('err','Pick an answer or write something first.');return;}
   btn.disabled=true;fbStatus('wait','Sending…');
   try{const {fs,db}=await fbLoad();await fs.addDoc(fs.collection(db,'feedback'),data);
-    fbRec='';ch.value='';ad.value='';document.querySelectorAll('[data-rec]').forEach(x=>x.classList.remove('on'));
+    fbRec='';sk.value='';ch.value='';ad.value='';document.querySelectorAll('[data-rec]').forEach(x=>x.classList.remove('on'));
     fbMark('sent');fbStatus('ok','Thank you! Your feedback has been sent.');render();}
   catch(e){fbStatus('err','Couldn\'t send right now. Check your internet connection and try again.');}
   btn.disabled=false;
@@ -1750,18 +1797,31 @@ document.getElementById('bk-save').addEventListener('click',()=>{
   document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
   document.getElementById('bk-hint').textContent='Backup saved. On iPhone or iPad it goes to your Files app, in Downloads.';
 });
+let pendingBk=null;
+function fmtStamp(iso){const d=new Date(iso);if(isNaN(d))return'an unknown date';const h=d.getHours(),m=d.getMinutes();
+  return DAYS[d.getDay()].slice(0,3)+' '+d.getDate()+' '+MONTHS[d.getMonth()].slice(0,3)+' '+d.getFullYear()+', '+((h%12)||12)+(m?':'+pad(m):'')+(h>=12?'pm':'am');}
+const jobs=n=>n+' job'+(n===1?'':'s');
 document.getElementById('bk-load').addEventListener('change',e=>{
   const f=e.target.files&&e.target.files[0];if(!f)return;
   const r=new FileReader();
-  r.onload=()=>{try{const d=JSON.parse(r.result);const st=d&&d.state;
-      if(!st||!Array.isArray(st.tasks))throw 0;
-      state=st;fixPrefs(state.prefs=state.prefs||{palette:'linen',font:'clean',mode:'light'});
-      if(!Array.isArray(state.lists))state.lists=[];
-      save();applyPrefs();paintSettings();render();
-      document.getElementById('bk-hint').textContent='Backup restored: '+st.tasks.length+' jobs.';
-    }catch(err){document.getElementById('bk-hint').textContent='That file isn\'t a backup from this app. Choose a file named todo-backup-….json.';}
-    e.target.value='';};
+  r.onload=()=>{e.target.value='';const box=document.getElementById('bk-confirm');
+    try{const d=JSON.parse(r.result);const st=d&&d.state;if(!st||!Array.isArray(st.tasks))throw 0;pendingBk=st;
+      box.innerHTML=`<b>Backup from ${fmtStamp(d.savedAt)}</b><span>${jobs(st.tasks.length)} in this backup.</span>
+        <p>Restoring <b>replaces everything</b> on this phone – your current ${jobs(state.tasks.length)}, lists and settings. You might want to save your current list first.</p>
+        <div class="row"><button class="opt" data-bk="save">Save current list first</button><button class="opt bk-go" data-bk="go">Restore backup</button><button class="opt" data-bk="cancel">Cancel</button></div>`;
+      box.hidden=false;box.scrollIntoView({block:'nearest',behavior:'smooth'});
+    }catch(err){pendingBk=null;box.hidden=true;document.getElementById('bk-hint').textContent='That file isn\'t a backup from this app. Choose a file named todo-backup-….json.';}};
   r.readAsText(f);
+});
+document.getElementById('bk-confirm').addEventListener('click',e=>{
+  const b=e.target.closest('[data-bk]');if(!b)return;const box=document.getElementById('bk-confirm');
+  if(b.dataset.bk==='save'){document.getElementById('bk-save').click();b.textContent='Current list saved ✓';b.disabled=true;return;}
+  if(b.dataset.bk==='cancel'||!pendingBk){pendingBk=null;box.hidden=true;return;}
+  const st=pendingBk;pendingBk=null;box.hidden=true;
+  state=st;fixPrefs(state.prefs=state.prefs||{palette:'linen',font:'clean',mode:'light'});
+  if(!Array.isArray(state.lists))state.lists=[];
+  save();applyPrefs();paintSettings();render();
+  document.getElementById('bk-hint').textContent='Backup restored: '+jobs(st.tasks.length)+'.';
 });
 if('serviceWorker' in navigator&&location.protocol==='https:'){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
 connect();
