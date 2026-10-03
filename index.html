@@ -202,8 +202,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .seg button.on{background:var(--solid);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .seg-rep{grid-template-columns:repeat(4,1fr)}
 .seg-rep button{font-size:13px}
-.wdays{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:10px}
-.wdays button{height:40px;border-radius:12px;background:var(--bg);font-weight:600;font-size:14.5px;color:var(--muted)}
+.wdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-top:10px}
+.wdays button{height:40px;border-radius:12px;background:var(--bg);font-weight:600;font-size:13.5px;color:var(--muted);padding:0}
 .wdays button.on{background:var(--accent);color:#fff}
 :root[data-style="sharp"] .wdays button{border-radius:6px}
 .rep-hint{font-size:13.5px;color:var(--muted);margin-top:8px;min-height:1em}
@@ -341,8 +341,10 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
   background:#24262B;color:#fff;border-radius:14px;padding:6px 6px 6px 16px;display:flex;align-items:center;gap:10px;min-height:48px;
   box-shadow:0 10px 30px rgba(0,0,0,.2);transform:translateY(20px);opacity:0;pointer-events:none;transition:transform .25s ease,opacity .25s ease}
 .snack.show{transform:none;opacity:1;pointer-events:auto}
-.snack.warn{background:#B23A35;color:#fff}
-.snack.warn span{font-size:14.5px;line-height:1.35;padding:6px 0}
+.warnbar{position:fixed;left:12px;right:12px;bottom:calc(150px + env(safe-area-inset-bottom,0px));z-index:45;max-width:520px;margin:0 auto;background:#B23A35;color:#fff;border-radius:16px;padding:12px 8px 12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);transform:translateY(20px);opacity:0;transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .3s}
+.warnbar.show{transform:none;opacity:1}
+.warnbar span{flex:1;font-size:14.5px;line-height:1.35}
+.warnbar button{flex:none;height:36px;padding:0 14px;border-radius:10px;background:rgba(255,255,255,.18);color:#fff;font-weight:700;font-size:14px}
 .snack span{flex:1;font-size:15px;font-weight:500}
 .snack button{height:36px;padding:0 14px;border-radius:10px;font-weight:700;font-size:15px;color:#C9B8FF}
 :root[data-theme="dark"] .snack{background:#ECEEF1;color:#1B1E23}
@@ -591,7 +593,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
         <button data-rep="days">Pick days</button>
       </div>
       <div class="wdays" id="f-days" hidden role="group" aria-label="Repeat on these days">
-        <button data-wd="1" aria-label="Monday">M</button><button data-wd="2" aria-label="Tuesday">T</button><button data-wd="3" aria-label="Wednesday">W</button><button data-wd="4" aria-label="Thursday">T</button><button data-wd="5" aria-label="Friday">F</button><button data-wd="6" aria-label="Saturday">S</button><button data-wd="0" aria-label="Sunday">S</button>
+        <button data-wd="1" aria-label="Monday">Mon</button><button data-wd="2" aria-label="Tuesday">Tue</button><button data-wd="3" aria-label="Wednesday">Wed</button><button data-wd="4" aria-label="Thursday">Thu</button><button data-wd="5" aria-label="Friday">Fri</button><button data-wd="6" aria-label="Saturday">Sat</button><button data-wd="0" aria-label="Sunday">Sun</button>
       </div>
       <div class="rep-hint" id="rep-hint"></div>
     </div>
@@ -629,6 +631,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
   <button class="no" id="toast-no">Dismiss</button><button class="ok" id="toast-ok">Done</button>
 </div>
 
+<div class="warnbar" id="warnbar" role="alert" hidden><span id="warn-t"></span><button id="warn-x">OK</button></div>
 <div class="snack" id="snack" role="status" aria-live="polite"><span id="snack-t"></span><button id="snack-undo">Undo</button></div>
 <div class="cele" id="cele" aria-live="polite"><div class="stage" id="cele-stage"></div></div>
 
@@ -811,24 +814,38 @@ function adopt(snap){
   }
 }
 let sharedCol=null,sharedSeen={},sharedLast=null;
-let offlineWarned=0;
-function shareFailed(t){warn(`Couldn't share “${t.title||'a job'}” with your family. Check your internet – it will try again with your next change.`);}
-function watchShare(p,t,isDel){
-  let done=false;
-  p.then(()=>{done=true;},()=>{done=true;if(t&&!isDel){delete sharedSeen[t.id];shareFailed(t);}else warn('Couldn\'t update the family list. Check your internet and try again.');});
-  setTimeout(()=>{if(!done&&Date.now()-offlineWarned>30000){offlineWarned=Date.now();warn('You seem to be offline. Shared changes will reach your family when you\'re back online.');}},8000);
-}
+let offlineWarned=0,sharedReady=false;
+/* Every shared change waits here until the family list confirms it, even across app restarts. */
+let shPend={};try{shPend=JSON.parse(localStorage.getItem(KEY+'-pend')||'{}')||{};}catch(e){}
+const inflight=new Set();
+function savePend(){try{localStorage.setItem(KEY+'-pend',JSON.stringify(shPend));}catch(e){}}
+function clearPend(){shPend={};inflight.clear();savePend();}
 function syncShared(){
-  if(!sharedCol){
+  if(!sharedReady){
     // a shared job changed while the family list isn't connected
     if(SHARING){const j=JSON.stringify(state.tasks.filter(t=>t.list===SHARED));if(sharedLast!==null&&j!==sharedLast&&Date.now()-offlineWarned>30000){offlineWarned=Date.now();warn('Your family list isn\'t connected right now, so this change may not reach everyone. Check your internet.');}}
     return;}
   const ids=new Set();
   for(const t of state.tasks){if(t.list!==SHARED)continue;ids.add(t.id);const j=JSON.stringify(t);
-    if(sharedSeen[t.id]!==j){sharedSeen[t.id]=j;let p;try{p=sharedCol.doc(t.id).set(j);}catch(e){p=Promise.reject(e);}watchShare(Promise.resolve(p),t,false);}}
-  for(const id in sharedSeen)if(!ids.has(id)){delete sharedSeen[id];let p;try{p=sharedCol.doc(id).delete();}catch(e){p=Promise.reject(e);}watchShare(Promise.resolve(p),null,true);}
+    if(sharedSeen[t.id]!==j){sharedSeen[t.id]=j;shPend[t.id]={op:'set',j,title:t.title};}}
+  for(const id in sharedSeen)if(!ids.has(id)){let title='';try{title=JSON.parse(sharedSeen[id]).title;}catch(e){}delete sharedSeen[id];shPend[id]={op:'del',title};}
+  savePend();flushPending();
 }
-window.addEventListener('online',()=>syncShared());
+function flushPending(){
+  if(!sharedCol)return;
+  for(const id in shPend){
+    if(inflight.has(id))continue;
+    const job=shPend[id];inflight.add(id);let done=false,p;
+    try{p=job.op==='del'?sharedCol.doc(id).delete():sharedCol.doc(id).set(job.j);}catch(e){p=Promise.reject(e);}
+    Promise.resolve(p).then(()=>{done=true;inflight.delete(id);if(shPend[id]===job){delete shPend[id];savePend();}else if(shPend[id])flushPending();
+        if(warnKind==='share'&&!Object.keys(shPend).length){hideWarn();snack('All shared changes sent ✓');}},
+      ()=>{done=true;inflight.delete(id);
+        warn(job.op==='del'?`Couldn't remove “${job.title||'a job'}” from the family list. It will keep trying.`:`Couldn't share “${job.title||'a job'}” with your family. It will keep trying – check your internet.`,'share');
+        setTimeout(flushPending,15000);});
+    setTimeout(()=>{if(!done&&Date.now()-offlineWarned>30000){offlineWarned=Date.now();warn('You seem to be offline. Shared changes will reach your family when you\'re back online.','share');}},8000);
+  }
+}
+window.addEventListener('online',()=>flushPending());
 /* ---------- family sharing (Firebase) ---------- */
 const FB='https://www.gstatic.com/firebasejs/10.12.2/';
 let fb=null,famUnsub=null,famStatus='off';
@@ -884,7 +901,7 @@ async function migrateLegacy(fs,db,code,fid,key){
 }
 async function connectFamily(){
   if(famUnsub){try{famUnsub();}catch(e){}famUnsub=null;}
-  sharedCol=null;sharedSeen={};
+  sharedCol=null;sharedReady=false;sharedSeen={};
   if(!family||!family.code)return;
   setFamStatus('wait','Connecting…');
   const code=family.code;
@@ -901,18 +918,22 @@ async function connectFamily(){
       const my=++seq;
       const docs=await Promise.all(qs.docs.map(async x=>{const t=await unlockJob(key,x.id,x.data());return t&&t.id===x.id?t:null;}));
       if(my!==seq||!family||family.code!==code)return;
-      const rem=[];const seen={};
+      let rem=[];const seen={};
       for(const t of docs){if(!t)continue;t.list=SHARED;rem.push(t);seen[t.id]=JSON.stringify(t);}
+      // changes from this phone that the family list hasn't confirmed yet win over what it sent
+      for(const id in shPend){const job=shPend[id];rem=rem.filter(t=>t.id!==id);
+        if(job.op==='del')delete seen[id];else{try{rem.push(JSON.parse(job.j));seen[id]=job.j;}catch(e){delete shPend[id];}}}
       // jobs added to Shared before we connected get sent up rather than lost
       const since=family.lastSync||Infinity;
       const localOnly=first?state.tasks.filter(t=>t.list===SHARED&&!seen[t.id]&&t.ts&&t.ts>since):[];
-      sharedSeen=seen;sharedCol=adapter;first=false;sharedLast=null;
+      sharedSeen=seen;sharedCol=adapter;sharedReady=true;first=false;sharedLast=null;
       family.lastSync=Date.now();saveFamily();
       state.tasks=state.tasks.filter(t=>t.list!==SHARED).concat(rem,localOnly);cache();
       if(localOnly.length)syncShared();
+      flushPending();
       setFamStatus('ok','Connected. Shared jobs are scrambled before they leave your phone.');
       if(!draft)render();
-    },err=>{sharedCol=null;sharedLast=JSON.stringify(state.tasks.filter(t=>t.list===SHARED));setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');});
+    },err=>{sharedCol=null;sharedReady=false;sharedLast=JSON.stringify(state.tasks.filter(t=>t.list===SHARED));setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');});
   }catch(e){sharedLast=JSON.stringify(state.tasks.filter(t=>t.list===SHARED));setFamStatus('err',e&&e.message==='nocrypto'?'This browser can\'t scramble shared jobs. Open the app from your home screen.':'Can\'t reach the family list right now. Check your internet connection.');}
 }
 function saveFamily(){try{localStorage.setItem(KEY+'-family',JSON.stringify(family));}catch(e){}SHARING=!!(family&&family.code);}
@@ -932,12 +953,12 @@ async function joinFamily(raw){
     if(!ok)ok=(await fs.getDoc(fs.doc(db,'families',code,'meta','info'))).exists();
     if(!ok){setFamStatus('err','That code wasn\'t found. Check it with whoever sent it.');return;}}
   catch(e){setFamStatus('err','Couldn\'t check the code. Check your internet connection and try again.');return;}
-  state.tasks=state.tasks.filter(t=>t.list!==SHARED);cache();
+  state.tasks=state.tasks.filter(t=>t.list!==SHARED);cache();clearPend();
   family={code};saveFamily();paintFamily();render();connectFamily();
 }
 function leaveFamily(){
   if(famUnsub){try{famUnsub();}catch(e){}famUnsub=null;}
-  sharedCol=null;sharedSeen={};
+  sharedCol=null;sharedReady=false;sharedSeen={};clearPend();
   state.tasks=state.tasks.filter(t=>t.list!==SHARED);
   if(ui.filter===SHARED)ui.filter=null;
   family=null;saveFamily();cache();paintFamily();render();
@@ -993,7 +1014,7 @@ async function connect(){
       if(qs.metadata&&qs.metadata.hasPendingWrites&&sharedCol)return;
       const rem=[];sharedSeen={};
       qs.docs.forEach(x=>{const v=x.data();if(!v||typeof v.json!=='string')return;try{const t=JSON.parse(v.json);t.list=SHARED;rem.push(t);sharedSeen[t.id]=JSON.stringify(t);}catch(e){}});
-      sharedCol=col;
+      sharedCol=col;sharedReady=true;
       state.tasks=state.tasks.filter(t=>t.list!==SHARED).concat(rem);cache();
       if(!draft)render();
     },()=>{});
@@ -1033,13 +1054,15 @@ function toggle(id,s){
 }
 /* undo bar */
 let snackTimer=null,snackUndo=null;
-function warn(text){
-  const el=document.getElementById('snack');document.getElementById('snack-t').textContent=text;
-  snackUndo=null;document.getElementById('snack-undo').hidden=true;el.classList.add('warn');el.setAttribute('role','alert');
-  el.classList.add('show');clearTimeout(snackTimer);snackTimer=setTimeout(()=>{el.classList.remove('show');},8000);
+let warnKind='';
+function hideWarn(){const el=document.getElementById('warnbar');warnKind='';el.classList.remove('show');setTimeout(()=>{if(!el.classList.contains('show'))el.hidden=true;},300);}
+function warn(text,kind){
+  const el=document.getElementById('warnbar');document.getElementById('warn-t').textContent=text;warnKind=kind||'';
+  el.hidden=false;requestAnimationFrame(()=>el.classList.add('show'));
 }
+document.getElementById('warn-x').addEventListener('click',hideWarn);
 function snack(text,undo){
-  const el=document.getElementById('snack');el.classList.remove('warn');el.setAttribute('role','status');document.getElementById('snack-t').textContent=text;
+  const el=document.getElementById('snack');document.getElementById('snack-t').textContent=text;
   snackUndo=undo||null;document.getElementById('snack-undo').hidden=!undo;
   el.classList.add('show');clearTimeout(snackTimer);snackTimer=setTimeout(()=>{el.classList.remove('show');snackUndo=null;},5000);
 }
@@ -1806,9 +1829,14 @@ document.getElementById('bk-load').addEventListener('change',e=>{
   const r=new FileReader();
   r.onload=()=>{e.target.value='';const box=document.getElementById('bk-confirm');
     try{const d=JSON.parse(r.result);const st=d&&d.state;if(!st||!Array.isArray(st.tasks))throw 0;pendingBk=st;
-      box.innerHTML=`<b>Backup from ${fmtStamp(d.savedAt)}</b><span>${jobs(st.tasks.length)} in this backup.</span>
-        <p>Restoring <b>replaces everything</b> on this phone – your current ${jobs(state.tasks.length)}, lists and settings. You might want to save your current list first.</p>
-        <div class="row"><button class="opt" data-bk="save">Save current list first</button><button class="opt bk-go" data-bk="go">Restore backup</button><button class="opt" data-bk="cancel">Cancel</button></div>`;
+      const own=x=>x.filter(t=>t.list!==SHARED).length;
+      box.innerHTML=SHARING
+        ?`<b>Backup from ${fmtStamp(d.savedAt)}</b><span>${jobs(own(st.tasks))} of your own in this backup.</span>
+        <p>Restoring <b>replaces your own jobs</b>, lists and settings on this phone (you have ${jobs(own(state.tasks))} now). <b>Your family's shared list won't be touched</b> – it stays exactly as everyone sees it. You might want to save your current list first.</p>`
+        :`<b>Backup from ${fmtStamp(d.savedAt)}</b><span>${jobs(st.tasks.length)} in this backup.</span>
+        <p>Restoring <b>replaces everything</b> on this phone – your current ${jobs(state.tasks.length)}, lists and settings. You might want to save your current list first.</p>`;
+      box.innerHTML+=`
+<div class="row"><button class="opt" data-bk="save">Save current list first</button><button class="opt bk-go" data-bk="go">Restore backup</button><button class="opt" data-bk="cancel">Cancel</button></div>`;
       box.hidden=false;box.scrollIntoView({block:'nearest',behavior:'smooth'});
     }catch(err){pendingBk=null;box.hidden=true;document.getElementById('bk-hint').textContent='That file isn\'t a backup from this app. Choose a file named todo-backup-….json.';}};
   r.readAsText(f);
@@ -1818,10 +1846,12 @@ document.getElementById('bk-confirm').addEventListener('click',e=>{
   if(b.dataset.bk==='save'){document.getElementById('bk-save').click();b.textContent='Current list saved ✓';b.disabled=true;return;}
   if(b.dataset.bk==='cancel'||!pendingBk){pendingBk=null;box.hidden=true;return;}
   const st=pendingBk;pendingBk=null;box.hidden=true;
+  // keep the live family list exactly as it is; only your own jobs come from the backup
+  if(SHARING)st.tasks=st.tasks.filter(t=>t.list!==SHARED).concat(state.tasks.filter(t=>t.list===SHARED));
   state=st;fixPrefs(state.prefs=state.prefs||{palette:'linen',font:'clean',mode:'light'});
   if(!Array.isArray(state.lists))state.lists=[];
   save();applyPrefs();paintSettings();render();
-  document.getElementById('bk-hint').textContent='Backup restored: '+jobs(st.tasks.length)+'.';
+  document.getElementById('bk-hint').textContent='Backup restored: '+jobs(SHARING?st.tasks.filter(t=>t.list!==SHARED).length:st.tasks.length)+(SHARING?'. Your family list was left as it is.':'.');
 });
 if('serviceWorker' in navigator&&location.protocol==='https:'){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
 connect();
