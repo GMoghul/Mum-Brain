@@ -431,6 +431,13 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .nudge-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
 .nudge-h b{font-family:var(--font-head);letter-spacing:var(--hls);font-size:calc(17px * var(--hs, 1));font-weight:600}
 .nudge-h button{flex:none;font-size:14px;color:var(--muted)}
+.nudge-btns{flex:none;display:flex;gap:14px}
+.nudge-h .nh-hide{color:var(--accent);font-weight:600}
+.nudge.mini{padding:0;margin:-8px 0 20px}
+.nudge-line{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;text-align:left}
+.nudge-line b{flex:1;min-width:0;font-family:var(--font-head);letter-spacing:var(--hls);font-size:calc(16px * var(--hs, 1));font-weight:600}
+.nudge-line span{flex:none;font-size:14px;font-weight:600;color:var(--accent)}
+.nudge .x{flex:none;width:32px;height:32px;margin-left:auto;border-radius:9px;color:var(--muted);font-size:20px;line-height:1}
 .nudge p{margin:3px 0 8px;font-size:14px;color:var(--muted)}
 .nudge ul{list-style:none;margin:0;padding:0}
 .nudge li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:10px 0 11px;border-top:1px solid color-mix(in srgb,var(--accent) 15%,transparent)}
@@ -1165,10 +1172,16 @@ function nudgeCard(){
   const n=nudgeState();if(!n||n.closed)return'';
   const left=n.ids.map(find).filter(undatedJob);if(!left.length)return'';
   const k=left.length;
-  return `<section class="nudge" aria-label="Morning sort"><div class="nudge-h"><b>${k===1?'1 thing':k+' things'} from your brain dump</b><button data-act="nudgeclose">Not today</button></div>
-    <p>Give ${k===1?'it':'each one'} a day, or tap a job to choose.</p>
-    <ul>${left.map(t=>`<li><button class="t" data-act="nudgeopen" data-id="${t.id}">${t.starred?'★ ':''}${esc(t.title)}</button><button class="d" data-act="nudge" data-when="0" data-id="${t.id}">Today</button><button class="d" data-act="nudge" data-when="1" data-id="${t.id}">Tomorrow</button></li>`).join('')}</ul></section>`;
+  const title=`${k===1?'1 thing':k+' things'} from your brain dump`;
+  // folded to one line by default, so the list and the add bar come first
+  if(!ui.nudgeOpen)return `<section class="nudge mini" aria-label="Morning sort"><button class="nudge-line" data-act="nudgetog" aria-expanded="false"><b>${title}</b><span>Show</span></button></section>`;
+  return `<section class="nudge" aria-label="Morning sort"><div class="nudge-h"><b>${title}</b><span class="nudge-btns"><button data-act="nudgeclose">Not today</button><button class="nh-hide" data-act="nudgetog" aria-expanded="true">Hide</button></span></div>
+    <p>Give ${k===1?'it':'each one'} a day, tap a job to choose, or × to skip it today.</p>
+    <ul>${left.map(t=>`<li><button class="t" data-act="nudgeopen" data-id="${t.id}">${t.starred?'★ ':''}${esc(t.title)}</button><button class="d" data-act="nudge" data-when="0" data-id="${t.id}">Today</button><button class="d" data-act="nudge" data-when="1" data-id="${t.id}">Tomorrow</button><button class="x" data-act="nudgeskip" data-id="${t.id}" aria-label="Skip ${esc(t.title)} for today">×</button></li>`).join('')}</ul></section>`;
 }
+function skipNudge(id){const n=nudgeState();if(!n)return;n.ids=n.ids.filter(x=>x!==id);
+  if(!n.ids.map(find).some(undatedJob)){n.closed=true;snack('All sorted for today');}
+  try{localStorage.setItem(KEY+'-nudge',JSON.stringify(n));}catch(e){}render();}
 function closeNudge(){const n=nudgeState();if(!n)return;n.closed=true;try{localStorage.setItem(KEY+'-nudge',JSON.stringify(n));}catch(e){}render();}
 /* after a week of use, ask once how it's going (and again a week after "Not now") */
 let since=0;try{since=Number(localStorage.getItem(KEY+'-since'))||0;if(!since){since=Date.now();localStorage.setItem(KEY+'-since',String(since));}}catch(e){}
@@ -1186,8 +1199,8 @@ function renderDump(){
   const sched=T.filter(t=>!isRep(t)&&t.date&&!t.done).sort((a,b)=>a.date.localeCompare(b.date)||byStar(a,b));
   const reps=T.filter(isRep).sort(byStar);
   const done=T.filter(t=>!isRep(t)&&t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
-  let h=`<header class="head"><h1>Brain dump</h1><p class="sub">Out of your head. Into your day.</p></header>${nudgeCard()}${filterBar()}
-  <div class="quick"><input id="quick" placeholder="Add a job…" autocomplete="off" enterkeyhint="done" aria-label="Add a job"><button data-act="quick" aria-label="Add">${I.plus}</button></div>`;
+  let h=`<header class="head"><h1>Brain dump</h1><p class="sub">Out of your head. Into your day.</p></header>${filterBar()}
+  <div class="quick"><input id="quick" placeholder="Add a job…" autocomplete="off" enterkeyhint="done" aria-label="Add a job"><button data-act="quick" aria-label="Add">${I.plus}</button></div>${nudgeCard()}`;
   if(!undated.length&&!sched.length&&!reps.length&&!done.length){
     h+=`<div class="empty"><strong>Nothing here yet${ui.filter===STAR?' starred':ui.filter?' in '+esc(listName(ui.filter)):''}</strong>Type anything on your mind above. You can give it a day, a colour or a repeat whenever you like.</div>`;
   }
@@ -1455,6 +1468,8 @@ view.addEventListener('click',e=>{
       undoable(()=>{const n=nudgeState();return n&&!n.ids.map(find).some(undatedJob)?'All sorted for today':a.dataset.when==='0'?'Moved to today':'Moved to tomorrow';},()=>{t.date=d;return 1;});return;}
     if(act==='nudgeopen'){openEditor(a.dataset.id);return;}
     if(act==='nudgeclose'){closeNudge();return;}
+    if(act==='nudgetog'){ui.nudgeOpen=!ui.nudgeOpen;render();return;}
+    if(act==='nudgeskip'){skipNudge(a.dataset.id);return;}
     if(act==='fblater'){fbMark('later');render();return;}
     if(act==='fbopen'){openFeedback();return;}
     if(act==='showdone'){ui.showDone=!ui.showDone;render();return;}
