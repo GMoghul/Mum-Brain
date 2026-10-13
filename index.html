@@ -684,7 +684,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ps-h">
     <div class="grab"></div>
     <div class="sheet-top"><h2 id="ps-h">New project</h2><button class="x" data-pact="close">Cancel</button></div>
-    <input class="f-title" id="p-name" placeholder="Project name, e.g. Christmas" autocomplete="off" enterkeyhint="done" aria-label="Project name">
+    <input class="f-title" id="p-name" placeholder="Project name, e.g. Camping trip" autocomplete="off" enterkeyhint="done" aria-label="Project name">
     <div class="rep-hint" id="p-copyhint" hidden></div>
     <div class="field">
       <span class="lbl">Colour</span>
@@ -759,7 +759,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     </div>
     <div class="field"><span class="lbl">Projects</span>
       <div class="seg" id="s-proj" style="grid-template-columns:repeat(2,1fr)"><button data-projs="on">On</button><button data-projs="off">Off</button></div>
-      <div class="rep-hint">Adds a Projects tag to your brain dump for bigger things with lots of jobs, like Christmas or a camping trip. Turning it off hides the tag but keeps your projects safe. Move the tag in Lists above.</div>
+      <div class="rep-hint">Adds a Projects tag to your brain dump for bigger things with lots of jobs, like a camping trip or moving house. Turning it off hides the tag but keeps your projects safe. Move the tag in Lists above.</div>
     </div>
     <div class="field"><span class="lbl">Tidy away finished jobs</span>
       <div class="seg" id="s-tidy" style="grid-template-columns:repeat(4,1fr)"><button data-tidy="off">Never</button><button data-tidy="3">3 days</button><button data-tidy="7">1 week</button><button data-tidy="30">1 month</button></div>
@@ -1418,7 +1418,7 @@ function renderProjects(){
   const L=liveProjs(),A=(state.projects||[]).filter(p=>p.archived).sort((a,b)=>(b.archivedAt||0)-(a.archivedAt||0));
   let h=`<header class="head"><h1>Brain dump</h1><p class="sub">Out of your head. Into your day.</p></header>${filterBar()}`;
   if(L.length)h+=`<section class="sec"><div class="sec-h"><h2>Projects</h2><span class="count">${L.length}</span></div><ul class="pcards">${L.map(projCard).join('')}<li><button class="pnew" data-act="pnew">${I.plus}New project</button></li></ul></section>`;
-  else h+=`<div class="empty"><strong>${A.length?'No projects on the go':'No projects yet'}</strong>Group the jobs for something bigger, like Christmas, a party or a camping trip. Give each job a day when you're ready.<div style="margin-top:16px"><button class="pill" data-act="pnew">New project</button></div></div>`;
+  else h+=`<div class="empty"><strong>${A.length?'No projects on the go':'No projects yet'}</strong>Group the jobs for something bigger, like a camping trip, moving house or baby prep. Give each job a day when you're ready.<div style="margin-top:16px"><button class="pill" data-act="pnew">New project</button></div></div>`;
   if(A.length){
     h+=`<button class="parch-btn" data-act="parch" aria-expanded="${!!ui.showArch}">${ui.showArch?'Hide':'Show'} archived (${A.length})</button>`;
     if(ui.showArch)h+=`<ul class="pcards parch">${A.map(p=>`<li class="pcard" style="--pc:${hex(p.color)}"><div class="pc-top"><i class="pc-dot"></i><span class="pc-name">${esc(p.name)}</span><span class="pc-n">${nJobs(projJobs(p.id).length)}</span></div><div class="row"><button class="opt" data-act="pagain" data-id="${p.id}">Use again</button><button class="opt" data-act="prestore" data-id="${p.id}">Restore</button><button class="opt warnopt" data-act="pdel" data-id="${p.id}">Delete</button></div></li>`).join('')}</ul>`;
