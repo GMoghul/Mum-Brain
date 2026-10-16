@@ -1721,6 +1721,7 @@ function openEditor(id,defaults){
   fDel.style.display=isNew?'none':'';
   const c=draft.color||'';setMore(!!c&&c[0]==='#');newlist.hidden=true;clIn.value='';paintCl();fDel.classList.remove('arm');fDel.textContent='Delete';
   paint();
+  ed.querySelector('.sheet').scrollTop=0; // always open at the top, not where the last job was left
   ed.classList.add('open');ed.setAttribute('aria-hidden','false');
   if(isNew)setTimeout(()=>fTitle.focus(),60);
 }
