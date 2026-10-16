@@ -119,6 +119,7 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .earlier-line span{flex:none;font-size:14px;font-weight:600;color:var(--accent)}
 :root[data-style="sharp"] .earlier-line{box-shadow:none;border:1.5px solid var(--line);border-radius:8px}
 .bk-empty{color:var(--warn)}
+.fb-more{margin-top:10px;font-size:14px;font-weight:600;color:var(--accent)}
 .rep-hint.bk-last{margin-top:10px;color:var(--ink)}
 .rep-hint.bk-last.due{color:var(--warn)}
 .bk-last+.rep-hint{margin-top:4px}
@@ -741,9 +742,11 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="grab"></div>
     <div class="sheet-top"><h2 id="st-h">Settings</h2><button class="x" data-sact="close">Done</button></div>
     <div class="field" id="fb-field"><span class="lbl">Feedback</span>
-      <p class="fam-p">You're one of the first mums trying Mum Brain. Tell me what's working and what isn't.</p>
       <div class="fb-q">Would you recommend Mum Brain to another mum?</div>
       <div class="seg seg3" id="fb-rec"><button data-rec="yes">Yes</button><button data-rec="maybe">Maybe</button><button data-rec="no">No</button></div>
+      <button class="fb-more" id="fb-more" aria-expanded="false" aria-controls="fb-rest">Show more questions</button>
+      <div id="fb-rest" hidden>
+      <p class="fam-p">You're one of the first mums trying Mum Brain. Tell me what's working and what isn't.</p>
       <textarea class="f-note" id="fb-stuck" placeholder="Was there anything you couldn't work out how to do?"></textarea>
       <textarea class="f-note" id="fb-change" placeholder="What would you change?"></textarea>
       <textarea class="f-note" id="fb-add" placeholder="What would you add?"></textarea>
@@ -751,6 +754,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <button class="opt on fb-send" id="fb-send">Send feedback</button>
       <div class="fam-status" id="fb-status" hidden><i></i></div>
       <div class="rep-hint">Your answers go only to the person who made the app. Leave your name off to stay anonymous.</div>
+      </div>
     </div>
     <div class="field"><span class="lbl">Theme</span>
       <div class="seg seg3" id="s-style"><button data-sty="wash">Watercolour</button><button data-sty="sharp">Sharp</button><button data-sty="none">No theme</button></div>
@@ -2209,12 +2213,14 @@ function paintSettings(){
   document.querySelectorAll('[data-spc]').forEach(b=>b.classList.toggle('on',b.dataset.spc===(P.sp||'std')));
 }
 document.getElementById('cel-try').addEventListener('click',()=>{closeSettings();setTimeout(()=>celebrate('preview'),250);});
-document.getElementById('gear').addEventListener('click',()=>{paintSettings();st.classList.add('open');st.setAttribute('aria-hidden','false');});
+document.getElementById('gear').addEventListener('click',()=>{if(!fbRec&&!['fb-stuck','fb-change','fb-add'].some(id=>document.getElementById(id).value.trim()))fbOpen(false);paintSettings();st.classList.add('open');st.setAttribute('aria-hidden','false');});
 let fbRec='';
 function fbStatus(st,msg){const el=document.getElementById('fb-status');el.hidden=false;el.className='fam-status'+(st==='ok'?' ok':st==='err'?' err':'');el.innerHTML='<i></i>'+esc(msg);}
-function openFeedback(){paintSettings();st.classList.add('open');st.setAttribute('aria-hidden','false');setTimeout(()=>document.getElementById('fb-field').scrollIntoView({block:'start',behavior:'smooth'}),250);}
+function fbOpen(on){document.getElementById('fb-rest').hidden=!on;const b=document.getElementById('fb-more');b.hidden=on;b.setAttribute('aria-expanded',on);}
+document.getElementById('fb-more').addEventListener('click',()=>fbOpen(true));
+function openFeedback(){fbOpen(true);paintSettings();st.classList.add('open');st.setAttribute('aria-hidden','false');setTimeout(()=>document.getElementById('fb-field').scrollIntoView({block:'start',behavior:'smooth'}),250);}
 document.getElementById('fb-rec').addEventListener('click',e=>{const b=e.target.closest('[data-rec]');if(!b)return;fbRec=fbRec===b.dataset.rec?'':b.dataset.rec;
-  document.querySelectorAll('[data-rec]').forEach(x=>x.classList.toggle('on',x.dataset.rec===fbRec));});
+  document.querySelectorAll('[data-rec]').forEach(x=>x.classList.toggle('on',x.dataset.rec===fbRec));if(fbRec)fbOpen(true);});
 document.getElementById('fb-send').addEventListener('click',async()=>{
   const sk=document.getElementById('fb-stuck'),ch=document.getElementById('fb-change'),ad=document.getElementById('fb-add'),nm=document.getElementById('fb-name'),btn=document.getElementById('fb-send');
   const data={recommend:fbRec,stuck:sk.value.trim().slice(0,2000),change:ch.value.trim().slice(0,2000),add:ad.value.trim().slice(0,2000),name:nm.value.trim().slice(0,60),at:Date.now(),v:APPV};
