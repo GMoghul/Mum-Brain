@@ -772,7 +772,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="field"><span class="lbl">Backup</span>
       <div class="row"><button class="opt" id="bk-save">Save a backup</button><label class="opt" style="display:inline-flex;align-items:center;cursor:pointer">Restore a backup<input type="file" id="bk-load" accept=".json,application/json" hidden></label></div>
       <div class="rep-hint bk-last" id="bk-last"></div>
-      <div class="rep-hint" id="bk-hint">Your jobs are saved on this device. A backup file keeps them safe if you change phone.</div>
+      <div class="rep-hint" id="bk-hint">Your jobs are saved on this device. A backup file keeps them safe. On iPhone, choose Save to Files when the share sheet opens.</div>
       <div class="bk-confirm" id="bk-confirm" hidden></div>
     </div>
     <div class="field"><span class="lbl">Morning sort</span>
@@ -2255,14 +2255,23 @@ returnOld();
 render();
 /* ask the phone to keep this app's saved jobs rather than clearing them to free space */
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(()=>{});}catch(e){}
-document.getElementById('bk-save').addEventListener('click',()=>{
-  const blob=new Blob([JSON.stringify({app:'todo',version:1,savedAt:new Date().toISOString(),state},null,1)],{type:'application/json'});
-  const n=state.tasks.filter(t=>t.list!==SHARED).length;
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Mum-Brain-backup-'+today()+'-'+n+'-job'+(n===1?'':'s')+'.json';
+document.getElementById('bk-save').addEventListener('click',async()=>{
+  const json=JSON.stringify({app:'todo',version:1,savedAt:new Date().toISOString(),state},null,1);
+  const n=state.tasks.filter(t=>t.list!==SHARED).length,name='Mum-Brain-backup-'+today()+'-'+n+'-job'+(n===1?'':'s')+'.json';
+  const hint=document.getElementById('bk-hint');
+  const done=msg=>{try{localStorage.setItem(KEY+'-lastbk',JSON.stringify({at:new Date().toISOString(),n}));}catch(err){}paintBk();hint.textContent=msg;};
+  // phones: open the share sheet so "Save to Files" lets you pick the folder (a Home Screen app can't save straight to Downloads)
+  if(IOS||/Android/i.test(navigator.userAgent)){
+    try{const f=new File([json],name,{type:'application/json'});
+      if(navigator.canShare&&navigator.canShare({files:[f]})){
+        try{await navigator.share({files:[f],title:'Mum Brain backup'});done('Backup saved. Keep it somewhere you\'ll find it, like a Mum Brain folder in Files.');}
+        catch(err){hint.textContent=err&&err.name==='AbortError'?'Backup not saved. Tap Save a backup, then choose Save to Files.':'Couldn\'t open the share sheet. Try again.';}
+        return;}
+    }catch(err){}
+  }
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));a.download=name;
   document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
-  try{localStorage.setItem(KEY+'-lastbk',JSON.stringify({at:new Date().toISOString(),n}));}catch(err){}
-  paintBk();
-  document.getElementById('bk-hint').textContent='Backup saved. On iPhone or iPad it goes to your Files app, in Downloads.';
+  done('Backup saved to your Downloads.');
 });
 /* when the last backup was saved on this phone (Safari, Chrome and the Home Screen app each keep their own) */
 function paintBk(){
