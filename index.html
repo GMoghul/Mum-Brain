@@ -119,7 +119,9 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .earlier-line span{flex:none;font-size:14px;font-weight:600;color:var(--accent)}
 :root[data-style="sharp"] .earlier-line{box-shadow:none;border:1.5px solid var(--line);border-radius:8px}
 .bk-empty{color:var(--warn)}
-.fb-more{margin-top:10px;font-size:14px;font-weight:600;color:var(--accent)}
+.fb-row{display:flex;gap:10px;margin-top:12px}
+.fb-row .opt{flex:1;white-space:nowrap;padding-left:8px;padding-right:8px}
+#fb-quick:disabled{opacity:.45}
 .rep-hint.bk-last{margin-top:10px;color:var(--ink)}
 .rep-hint.bk-last.due{color:var(--warn)}
 .bk-last+.rep-hint{margin-top:4px}
@@ -744,7 +746,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="field" id="fb-field"><span class="lbl">Feedback</span>
       <div class="fb-q">Would you recommend Mum Brain to another mum?</div>
       <div class="seg seg3" id="fb-rec"><button data-rec="yes">Yes</button><button data-rec="maybe">Maybe</button><button data-rec="no">No</button></div>
-      <button class="fb-more" id="fb-more" aria-expanded="false" aria-controls="fb-rest">Show more questions</button>
+      <div class="fb-row" id="fb-row"><button class="opt" id="fb-more" aria-expanded="false" aria-controls="fb-rest">More questions</button><button class="opt on" id="fb-quick" disabled>Send feedback</button></div>
       <div id="fb-rest" hidden>
       <p class="fam-p">You're one of the first mums trying Mum Brain. Tell me what's working and what isn't.</p>
       <textarea class="f-note" id="fb-stuck" placeholder="Was there anything you couldn't work out how to do?"></textarea>
@@ -752,9 +754,9 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <textarea class="f-note" id="fb-add" placeholder="What would you add?"></textarea>
       <input class="f-date fb-name" id="fb-name" placeholder="Your name (optional)" autocomplete="off" aria-label="Your name (optional)">
       <button class="opt on fb-send" id="fb-send">Send feedback</button>
-      <div class="fam-status" id="fb-status" hidden><i></i></div>
       <div class="rep-hint">Your answers go only to the person who made the app. Leave your name off to stay anonymous.</div>
       </div>
+      <div class="fam-status" id="fb-status" hidden><i></i></div>
     </div>
     <div class="field"><span class="lbl">Theme</span>
       <div class="seg seg3" id="s-style"><button data-sty="wash">Watercolour</button><button data-sty="sharp">Sharp</button><button data-sty="none">No theme</button></div>
@@ -2216,18 +2218,20 @@ document.getElementById('cel-try').addEventListener('click',()=>{closeSettings()
 document.getElementById('gear').addEventListener('click',()=>{if(!fbRec&&!['fb-stuck','fb-change','fb-add'].some(id=>document.getElementById(id).value.trim()))fbOpen(false);paintSettings();st.classList.add('open');st.setAttribute('aria-hidden','false');});
 let fbRec='';
 function fbStatus(st,msg){const el=document.getElementById('fb-status');el.hidden=false;el.className='fam-status'+(st==='ok'?' ok':st==='err'?' err':'');el.innerHTML='<i></i>'+esc(msg);}
-function fbOpen(on){document.getElementById('fb-rest').hidden=!on;const b=document.getElementById('fb-more');b.hidden=on;b.setAttribute('aria-expanded',on);}
+function fbOpen(on){document.getElementById('fb-rest').hidden=!on;document.getElementById('fb-row').hidden=on;document.getElementById('fb-more').setAttribute('aria-expanded',on);}
+const fbQuick=()=>{document.getElementById('fb-quick').disabled=!fbRec;};
+document.getElementById('fb-quick').addEventListener('click',()=>document.getElementById('fb-send').click());
 document.getElementById('fb-more').addEventListener('click',()=>fbOpen(true));
 function openFeedback(){fbOpen(true);paintSettings();st.classList.add('open');st.setAttribute('aria-hidden','false');setTimeout(()=>document.getElementById('fb-field').scrollIntoView({block:'start',behavior:'smooth'}),250);}
 document.getElementById('fb-rec').addEventListener('click',e=>{const b=e.target.closest('[data-rec]');if(!b)return;fbRec=fbRec===b.dataset.rec?'':b.dataset.rec;
-  document.querySelectorAll('[data-rec]').forEach(x=>x.classList.toggle('on',x.dataset.rec===fbRec));if(fbRec)fbOpen(true);});
+  document.querySelectorAll('[data-rec]').forEach(x=>x.classList.toggle('on',x.dataset.rec===fbRec));fbQuick();document.getElementById('fb-status').hidden=true;});
 document.getElementById('fb-send').addEventListener('click',async()=>{
   const sk=document.getElementById('fb-stuck'),ch=document.getElementById('fb-change'),ad=document.getElementById('fb-add'),nm=document.getElementById('fb-name'),btn=document.getElementById('fb-send');
   const data={recommend:fbRec,stuck:sk.value.trim().slice(0,2000),change:ch.value.trim().slice(0,2000),add:ad.value.trim().slice(0,2000),name:nm.value.trim().slice(0,60),at:Date.now(),v:APPV};
   if(!data.recommend&&!data.stuck&&!data.change&&!data.add){fbStatus('err','Pick an answer or write something first.');return;}
   btn.disabled=true;fbStatus('wait','Sending…');
   try{const {fs,db}=await fbLoad();await fs.addDoc(fs.collection(db,'feedback'),data);
-    fbRec='';sk.value='';ch.value='';ad.value='';document.querySelectorAll('[data-rec]').forEach(x=>x.classList.remove('on'));
+    fbRec='';fbQuick();sk.value='';ch.value='';ad.value='';document.querySelectorAll('[data-rec]').forEach(x=>x.classList.remove('on'));
     fbMark('sent');fbStatus('ok','Thank you! Your feedback has been sent.');render();}
   catch(e){fbStatus('err','Couldn\'t send right now. Check your internet connection and try again.');}
   btn.disabled=false;
