@@ -319,7 +319,16 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 /* roll over + week */
 .roll{width:100%;height:46px;border-radius:14px;background:var(--surface);box-shadow:var(--shadow);font-weight:600;color:var(--accent);font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:24px}
 :root[data-style="sharp"] .roll{box-shadow:none;border:1.5px solid var(--accent);border-radius:8px}
-.wday{margin-bottom:calc(14px * var(--sp))}
+.wday{margin-bottom:calc(14px * var(--sp));border-radius:18px;transition:background .15s,box-shadow .15s}
+.wday.wover{background:var(--accent-soft);box-shadow:0 0 0 6px var(--accent-soft)}
+.wday.wover .sec-h h2{color:var(--accent)}
+.whint{margin:-4px 0 12px;font-size:13px;color:var(--muted)}
+.list.wghost{position:fixed;left:0;top:0;z-index:60;pointer-events:none;box-shadow:0 14px 34px rgba(0,0,0,.22);scale:1.03;opacity:.97;border-radius:14px}
+.task.wsrc{opacity:.3}
+.wedge{position:fixed;top:0;bottom:0;width:30px;z-index:55;display:flex;align-items:center;justify-content:center;color:var(--accent);pointer-events:none;background:linear-gradient(to right,color-mix(in srgb,var(--accent) 16%,transparent),transparent);transition:background .15s}
+.wedge.r{right:0;background:linear-gradient(to left,color-mix(in srgb,var(--accent) 16%,transparent),transparent)}
+.wedge.l{left:0}
+.wedge.hot{background:color-mix(in srgb,var(--accent) 28%,transparent)}
 .wempty{padding:calc(10px * var(--sp)) 14px!important}
 :root[data-sp="compact"] .note{display:none}
 .wday .sec-h h2{display:flex;align-items:center;gap:8px}
@@ -1348,7 +1357,7 @@ function row(t,o){
   if(t.proj&&!o.inProj){const p=projOf(t.proj);if(p)chips+=`<span class="chip c-proj" style="--pc:${hex(p.color)}"><i class="pdot"></i><span class="ct">${esc(p.name)}</span></span>`;}
   if((!ui.filter||ui.filter===STAR)&&t.list&&listName(t.list))chips+=`<span class="chip c-list">${t.list===SHARED?I.people:I.list}<span class="ct">${esc(listName(t.list))}</span></span>`;
   const tail=`<button class="star${t.starred?' on':''}" data-act="star" data-id="${t.id}" aria-label="${t.starred?'Unmark as important':'Mark as important'}">${I.star}</button>`;
-  return `<li class="task${done?' done':''}" data-open="${t.id}"${o.drag?` data-drag="${t.id}" data-g="${o.dg?o.dg(t):(t.starred?1:0)}"`:''}>
+  return `<li class="task${done?' done':''}" data-open="${t.id}"${o.wdrag?` data-wdrag="${t.id}"`:''}${o.drag?` data-drag="${t.id}" data-g="${o.dg?o.dg(t):(t.starred?1:0)}"`:''}>
     ${check}
     <div class="body"><div class="title">${esc(t.title)}</div>${t.note?`<div class="note">${esc(t.note.split('\n')[0])}</div>`:''}<div class="chips">${chips}${o.back?`<button class="todump" data-act="todump" data-id="${t.id}">Back to brain dump</button>`:''}</div></div>
     ${tail}
@@ -1360,7 +1369,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.4';
+const APPV='1.5';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -1649,12 +1658,13 @@ function renderWeek(){
     ${thisW?'':`<button class="pill sm" data-act="wtoday">This week</button>`}
     <button class="navbtn" data-act="wprev" aria-label="Previous week">${I.left}</button>
     <button class="navbtn" data-act="wnext" aria-label="Next week">${I.right}</button></div></header>${filterBar()}`;
+  if(state.tasks.some(t=>vis(t)&&!isRep(t)&&t.date&&t.date>=w0&&t.date<=w6))h+=`<p class="whint">Hold a job to move it to another day</p>`;
   for(let i=0;i<7;i++){
     const s=addDays(w0,i),d=parse(s),isT=s===t0;
     const list=state.tasks.filter(t=>vis(t)&&occurs(t,s)).sort((x,y)=>(isDone(x,s)-isDone(y,s))||byTime(x,y));
     const title=`${isT?'<i class="dot-today"></i>':''}${DAYS[d.getDay()]} ${d.getDate()}`;
-    h+=`<section class="sec wday${isT?' is-today':''}"><div class="sec-h"><h2>${title}</h2><button class="open-day" data-act="openday" data-date="${s}">Open</button></div>`
-      +(list.length?`<ul class="list">${list.map(t=>row(t,{ctx:s})).join('')}</ul>`:`<div class="wempty">Nothing planned<button data-act="addto" data-date="${s}">Add</button></div>`)+`</section>`;
+    h+=`<section class="sec wday${isT?' is-today':''}" data-wdate="${s}"><div class="sec-h"><h2>${title}</h2><button class="open-day" data-act="openday" data-date="${s}">Open</button></div>`
+      +(list.length?`<ul class="list">${list.map(t=>row(t,{ctx:s,wdrag:!isRep(t)})).join('')}</ul>`:`<div class="wempty">Nothing planned<button data-act="addto" data-date="${s}">Add</button></div>`)+`</section>`;
   }
   view.innerHTML=h;
 }
@@ -2020,6 +2030,70 @@ dragSort(fCl,'li',{handle:'.grip',drop:(from,to)=>{const cl=draft.checklist||[];
 function dropList(from,to){const ids=listOrder().map(x=>x[0]);const [x]=ids.splice(from,1);ids.splice(to,0,x);applyOrder(ids);paintSLists();render();}
 dragSort(document.getElementById('s-lists'),'.lrow[data-lid]',{handle:'.grip',drop:dropList});
 dragSort(view,'.fchip[data-lid]',{axis:'x',drop:dropList});
+/* ---------- hold & drag a job to another day (Week tab) ----------
+   Hold for a moment, drag onto a day, let go. Hold at the screen's left or right edge to go to the previous or next week. */
+let wd=null;
+view.addEventListener('pointerdown',e=>{
+  if(ui.tab!=='week'||ui.searching||wd||pend||dragging||(e.pointerType==='mouse'&&e.button!==0))return;
+  const el=e.target.closest('.task[data-wdrag]');if(!el)return;
+  wd={el,id:el.dataset.wdrag,pid:e.pointerId,x:e.clientX,y:e.clientY,cx:e.clientX,cy:e.clientY,on:false,over:null};
+  wd.timer=setTimeout(wdBegin,300);
+});
+function wdBegin(){
+  const s=wd;if(!s||!s.el.isConnected){wd=null;return;}
+  s.on=true;if(sw&&!sw.on)sw=null;
+  const r=s.el.getBoundingClientRect();s.ox=s.x-r.left;s.oy=s.y-r.top;
+  const g=document.createElement('ul');g.className='list wghost';g.style.width=r.width+'px';g.appendChild(s.el.cloneNode(true));document.body.appendChild(g);s.g=g;
+  s.edges=['l','r'].map(k=>{const e=document.createElement('div');e.className='wedge '+k;e.innerHTML=k==='l'?I.left:I.right;document.body.appendChild(e);return e;});
+  s.el.classList.add('wsrc');document.body.classList.add('is-dragging');
+  if(navigator.vibrate)try{navigator.vibrate(12);}catch(e){}
+  wdMove();requestAnimationFrame(wdTick);
+}
+function wdMove(){
+  const s=wd;if(!s||!s.on)return;
+  s.g.style.transform=`translate(${s.cx-s.ox}px,${s.cy-s.oy}px)`;
+  const hit=document.elementFromPoint(Math.min(Math.max(s.cx,40),window.innerWidth-40),s.cy),sec=hit&&hit.closest('.wday[data-wdate]');
+  if(sec!==s.over){if(s.over)s.over.classList.remove('wover');s.over=sec||null;if(sec)sec.classList.add('wover');}
+}
+function wdTick(){
+  const s=wd;if(!s||!s.on)return;
+  const H=window.innerHeight,top=90,bot=H-120;let v=0;
+  if(s.cy<top)v=-Math.min(1,(top-s.cy)/70)*14;else if(s.cy>bot)v=Math.min(1,(s.cy-bot)/70)*14;
+  if(v){window.scrollBy(0,v);wdMove();}
+  const W=window.innerWidth,dir=s.cx<34?-1:s.cx>W-34?1:0;
+  s.edges.forEach((e,i)=>e.classList.toggle('hot',dir===(i?1:-1)));
+  if(dir){
+    if(s.edgeDir!==dir){s.edgeDir=dir;s.edgeAt=Date.now();}
+    else if(Date.now()-s.edgeAt>650){
+      s.edgeAt=Date.now()+300;
+      // keep the held job on the page (out of sight) so the phone keeps tracking the finger after the week changes
+      if(!s.held){s.el.style.cssText='position:fixed;left:-9999px;top:0;width:10px;height:10px;overflow:hidden';document.body.appendChild(s.el);s.held=true;}
+      ui.week=addDays(ui.week,7*dir);render();window.scrollTo(0,0);
+      const n=view.querySelector(`[data-wdrag="${s.id}"]`);if(n)n.classList.add('wsrc');
+      s.over=null;wdMove();if(navigator.vibrate)try{navigator.vibrate(12);}catch(e){}
+    }
+  }else s.edgeDir=0;
+  requestAnimationFrame(wdTick);
+}
+function wdEnd(commit){
+  const s=wd;if(!s)return;clearTimeout(s.timer);wd=null;if(!s.on)return;
+  s.g.remove();s.edges.forEach(e=>e.remove());if(s.held)s.el.remove();if(s.over)s.over.classList.remove('wover');
+  document.body.classList.remove('is-dragging');
+  const eat=ev=>{ev.stopPropagation();ev.preventDefault();};
+  window.addEventListener('click',eat,true);setTimeout(()=>window.removeEventListener('click',eat,true),350);
+  const d=commit&&s.over?s.over.dataset.wdate:null,t=find(s.id);
+  if(d&&t&&t.date!==d){undoable('Moved to '+dayLabel(d),()=>{t.date=d;return 1;});return;}
+  render();
+}
+window.addEventListener('pointermove',e=>{
+  const s=wd;if(!s||e.pointerId!==s.pid)return;s.cx=e.clientX;s.cy=e.clientY;
+  if(!s.on){if(Math.hypot(e.clientX-s.x,e.clientY-s.y)>8){clearTimeout(s.timer);wd=null;}return;}
+  e.preventDefault();wdMove();
+},{passive:false});
+window.addEventListener('pointerup',e=>{if(wd&&e.pointerId===wd.pid)wdEnd(true);});
+window.addEventListener('pointercancel',e=>{if(wd&&e.pointerId===wd.pid)wdEnd(wd.on);});
+document.addEventListener('touchmove',e=>{if(wd&&wd.on)e.preventDefault();},{passive:false});
+document.addEventListener('contextmenu',e=>{if(wd)e.preventDefault();});
 /* swipe a job left to delete */
 let swipedAt=0,sw=null;
 view.addEventListener('touchstart',e=>{
