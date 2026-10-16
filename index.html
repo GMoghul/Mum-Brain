@@ -109,7 +109,19 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:calc(6px * var(--sp))}
 .chips:empty{display:none}
 .chip{display:inline-flex;align-items:center;gap:4px;font-size:calc(12.5px * var(--ts));font-weight:500;color:var(--muted);background:var(--bg);border-radius:8px;padding:2px 8px}
-.chip.late{color:var(--warn)}
+.chip.late{color:#4C7DB3}
+:root[data-theme="dark"] .chip.late{color:#93B6DE}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .chip.late{color:#93B6DE}}
+.todump{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:8px;font-size:12.5px!important;background:var(--accent-soft);color:var(--accent);font-weight:600}
+.sec-h .earlier-btn{font-size:14px;font-weight:600;color:var(--accent)}
+.earlier-line{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;margin:-6px 0 20px;border-radius:14px;background:var(--surface);box-shadow:var(--shadow);text-align:left}
+.earlier-line b{flex:1;min-width:0;font-size:15.5px;font-weight:600}
+.earlier-line span{flex:none;font-size:14px;font-weight:600;color:var(--accent)}
+:root[data-style="sharp"] .earlier-line{box-shadow:none;border:1.5px solid var(--line);border-radius:8px}
+.bk-empty{color:var(--warn)}
+.rep-hint.bk-last{margin-top:10px;color:var(--ink)}
+.rep-hint.bk-last.due{color:var(--warn)}
+.bk-last+.rep-hint{margin-top:4px}
 .star{flex:none;width:32px;height:32px;margin:-4px -2px -4px 0;display:grid;place-items:center;color:var(--line)}
 .star.on{color:var(--star)}
 .empty{background:var(--surface);border-radius:18px;box-shadow:var(--shadow);padding:28px 22px;text-align:center;color:var(--muted);font-size:15px}
@@ -750,6 +762,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     </div>
     <div class="field"><span class="lbl">Backup</span>
       <div class="row"><button class="opt" id="bk-save">Save a backup</button><label class="opt" style="display:inline-flex;align-items:center;cursor:pointer">Restore a backup<input type="file" id="bk-load" accept=".json,application/json" hidden></label></div>
+      <div class="rep-hint bk-last" id="bk-last"></div>
       <div class="rep-hint" id="bk-hint">Your jobs are saved on this device. A backup file keeps them safe if you change phone.</div>
       <div class="bk-confirm" id="bk-confirm" hidden></div>
     </div>
@@ -1182,8 +1195,15 @@ function tidy(){
 function allDoneToday(){
   const t0=today();
   const todays=state.tasks.filter(t=>!archivedJob(t)&&occurs(t,t0));
-  const overdue=state.tasks.filter(t=>!archivedJob(t)&&!isRep(t)&&t.date&&t.date<t0&&!t.done);
-  return todays.length>0&&!overdue.length&&todays.every(t=>isDone(t,t0));
+  // old jobs from earlier days no longer hold back today's celebration
+  return todays.length>0&&todays.every(t=>isDone(t,t0));
+}
+/* jobs left undone for more than a few days go back to the brain dump (or their project) without a day */
+const LATE_DAYS=3;
+function returnOld(){
+  const cut=addDays(today(),-LATE_DAYS);let n=0;
+  state.tasks.forEach(t=>{if(!isRep(t)&&!t.done&&t.date&&t.date<cut&&t.list!==SHARED&&!archivedJob(t)){t.date=null;t.time=null;t.alarm='none';n++;}});
+  if(n){save();setTimeout(()=>snack(n===1?'1 old job went back to your brain dump':n+' old jobs went back to your brain dump'),600);}
 }
 function dumpEmpty(){
   const own=state.tasks.filter(t=>!isRep(t)&&!t.proj),open=own.filter(t=>!t.done);
@@ -1330,7 +1350,7 @@ function row(t,o){
   const tail=`<button class="star${t.starred?' on':''}" data-act="star" data-id="${t.id}" aria-label="${t.starred?'Unmark as important':'Mark as important'}">${I.star}</button>`;
   return `<li class="task${done?' done':''}" data-open="${t.id}"${o.drag?` data-drag="${t.id}" data-g="${o.dg?o.dg(t):(t.starred?1:0)}"`:''}>
     ${check}
-    <div class="body"><div class="title">${esc(t.title)}</div>${t.note?`<div class="note">${esc(t.note.split('\n')[0])}</div>`:''}<div class="chips">${chips}</div></div>
+    <div class="body"><div class="title">${esc(t.title)}</div>${t.note?`<div class="note">${esc(t.note.split('\n')[0])}</div>`:''}<div class="chips">${chips}${o.back?`<button class="todump" data-act="todump" data-id="${t.id}">Back to brain dump</button>`:''}</div></div>
     ${tail}
   </li>`;
 }
@@ -1340,7 +1360,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.3';
+const APPV='1.4';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -1377,6 +1397,28 @@ function fbCard(){
   return `<section class="nudge" aria-label="Feedback"><div class="nudge-h"><b>How are you finding Mum Brain?</b><button data-act="fblater">Not now</button></div>
     <p>A couple of quick answers would really help shape what comes next.</p><button class="go" data-act="fbopen">Share feedback</button></section>`;
 }
+/* iPhone/iPad in Safari: websites not opened for 7 days have their saved data cleared, Home Screen apps don't.
+   A Home Screen app also starts with its own empty storage, so a backup carries the jobs across. */
+const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const STANDALONE=navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
+function homeMark(){try{localStorage.setItem(KEY+'-home',String(Date.now()));}catch(e){}}
+function homeCard(){
+  if(!IOS)return'';
+  if(STANDALONE){
+    // first open from the Home Screen: nothing here yet, so point to the backup they just saved
+    let seen=null;try{seen=localStorage.getItem(KEY+'-home');}catch(e){}
+    if(seen||state.tasks.length)return'';
+    return `<section class="nudge" aria-label="Bring your jobs across"><div class="nudge-h"><b>Moving over from Safari?</b><button data-act="homehide">Not needed</button></div>
+    <p>The Home Screen app keeps its own list. If you saved a backup in Safari, restore it here to bring your jobs across.</p><button class="go" data-act="homerestore">Restore a backup</button></section>`;
+  }
+  let m=0;try{m=Number(localStorage.getItem(KEY+'-home'))||0;}catch(e){}
+  if(m&&Date.now()-m<3*864e5)return''; // "Later" hides it for 3 days
+  const n=state.tasks.length;
+  return `<section class="nudge" aria-label="Add to Home Screen"><div class="nudge-h"><b>Keep your jobs safe</b><button data-act="homehide">Later</button></div>
+    <p>iPhones clear websites that aren't opened for 7 days. Add Mum Brain to your Home Screen and it won't be cleared.</p>
+    <p>${n?`<b>1.</b> Save a backup first, as the Home Screen app starts with its own empty list.<br><b>2.</b> `:'<b>1.</b> '}Tap Share <span aria-hidden="true">⎙</span>, then <b>Add to Home Screen</b>.<br><b>${n?3:2}.</b> Open Mum Brain from its new icon${n?' and restore your backup':''}.</p>
+    ${n?'<button class="go" data-act="homesave">Save a backup</button>':''}</section>`;
+}
 function fbMark(k){let m={};try{m=JSON.parse(localStorage.getItem(KEY+'-fb')||'{}');}catch(e){}m[k]=Date.now();try{localStorage.setItem(KEY+'-fb',JSON.stringify(m));}catch(e){}}
 function renderDump(){
   if(ui.filter===PROJ){if(ui.proj&&projOf(ui.proj)&&!projOf(ui.proj).archived)return renderProject(projOf(ui.proj));ui.proj=null;return renderProjects();}
@@ -1387,7 +1429,7 @@ function renderDump(){
   const reps=T.filter(isRep).sort(byStar);
   const done=T.filter(t=>!isRep(t)&&t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   let h=`<header class="head"><h1>Brain dump</h1><p class="sub">Out of your head. Into your day.</p></header>${filterBar()}
-  <div class="quick"><input id="quick" placeholder="Add a job…" autocomplete="off" enterkeyhint="done" aria-label="Add a job"><button data-act="quick" aria-label="Add">${I.plus}</button></div>${nudgeCard()}`;
+  <div class="quick"><input id="quick" placeholder="Add a job… e.g. Dentist Fri 3pm" autocomplete="off" enterkeyhint="done" aria-label="Add a job"><button data-act="quick" aria-label="Add">${I.plus}</button></div>${homeCard()}${nudgeCard()}`;
   if(!undated.length&&!sched.length&&!reps.length&&!done.length){
     h+=`<div class="empty"><strong>Nothing here yet${ui.filter===STAR?' starred':ui.filter?' in '+esc(listName(ui.filter)):''}</strong>Type anything on your mind above. You can give it a day, a colour or a repeat whenever you like.</div>`;
   }
@@ -1477,10 +1519,64 @@ function dropJob(from,to,el){
   else{const G=L.filter(same),base=Math.min(...G.map(ko));G.forEach((x,i)=>x.ord=base+i);}
   save();render();
 }
+/* ---------- natural-language dates: "Dentist Fri 3pm", "Pay nursery on the 1st", "Call mum tomorrow at 6" ----------
+   Only words at the END of the job are read, so "Buy sat nav" or "Pack sun cream" stay as they are. */
+const NL_WD={sunday:0,sun:0,monday:1,mon:1,tuesday:2,tues:2,tue:2,wednesday:3,weds:3,wed:3,thursday:4,thurs:4,thur:4,thu:4,friday:5,fri:5,saturday:6,sat:6};
+const NL_MO={january:0,jan:0,february:1,feb:1,march:2,mar:2,april:3,apr:3,may:4,june:5,jun:5,july:6,jul:6,august:7,aug:7,september:8,sept:8,sep:8,october:9,oct:9,november:10,nov:10,december:11,dec:11};
+const NL_SHY=['sun','sat','wed']; // ordinary words too, so only read as days when capitalised or after "on", "this" or "next"
+const WDS=Object.keys(NL_WD).join('|'),MOS=Object.keys(NL_MO).join('|');
+function nlParse(text){
+  let s=' '+text.trim(),date=null,time=null,hit=false;
+  const t0=today(),now=new Date(),cut=(re)=>{const m=s.match(re);if(m){s=s.slice(0,m.index);hit=true;}return m;};
+  const fixDay=(y,mo,d)=>{if(mo<0||mo>11||d<1||d>dim(y,mo))return null;return ymd(new Date(y,mo,d));};
+  for(let pass=0;pass<3;pass++){
+    let m;
+    if(!time&&(m=cut(/(?:\s+(?:at|@))?\s+(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)$/i))){let h=Number(m[1])%12;if(m[3].toLowerCase()==='pm')h+=12;if(Number(m[1])>12||Number(m[2]||0)>59)return null;time=pad(h)+':'+pad(Number(m[2]||0));continue;}
+    if(!time&&(m=cut(/(?:\s+(?:at|@))?\s+(noon|midday)$/i))){time='12:00';continue;}
+    // 15:00, or "at 9.30" (a dot alone could be a price, like "Pay 12.50")
+    if(!time&&(m=cut(/(?:\s+(?:at|@))?\s+([01]?\d|2[0-3]):([0-5]\d)$/i)||cut(/\s+(?:at|@)\s+([01]?\d|2[0-3])\.([0-5]\d)$/i))){time=pad(Number(m[1]))+':'+m[2];continue;}
+    if(!time&&(m=cut(/\s+(?:at|@)\s+(\d{1,2})$/i))){let h=Number(m[1]);if(h<1||h>12)return null;if(h<8)h+=12;time=pad(h)+':00';continue;}
+    if(date)break;
+    if((m=cut(/(?:\s+(?:on|by|for|due))?\s+(today|tonight|tod)$/i))){date=t0;continue;}
+    if((m=cut(/(?:\s+(?:on|by|for|due))?\s+(tomorrow|tmrw|tmw|tomoz)$/i))){date=addDays(t0,1);continue;}
+    if((m=cut(/(?:\s+(?:by|for|due))?\s+next\s+week$/i))){date=addDays(mondayOf(t0),7);continue;}
+    if((m=cut(/\s+in\s+(\d{1,2}|a|one|two|three)\s+(day|days|week|weeks)$/i))){const k={a:1,one:1,two:2,three:3}[m[1].toLowerCase()]||Number(m[1]);date=addDays(t0,k*(/week/i.test(m[2])?7:1));continue;}
+    m=s.match(new RegExp('(\\s+(?:on|by|for|due|this|next))?\\s+('+WDS+')$','i'));
+    if(m){const w=m[2],lw=w.toLowerCase(),pre=(m[1]||'').trim().toLowerCase();
+      if(!NL_SHY.includes(lw)||pre||w[0]!==w[0].toLowerCase()){cut(new RegExp('(\\s+(?:on|by|for|due|this|next))?\\s+('+WDS+')$','i'));
+        const want=NL_WD[lw],cur=parse(t0).getDay();
+        if(pre==='next'){date=addDays(mondayOf(t0),7+((want+6)%7));}
+        else date=addDays(t0,(want-cur+7)%7);
+        continue;}
+    }
+    // 16 Oct, 16th October, 16th of Oct
+    if((m=cut(new RegExp('(?:\\s+(?:on|by|for|due))?(?:\\s+the)?\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:\\s+of)?\\s+('+MOS+')$','i')))){
+      const mo=NL_MO[m[2].toLowerCase()],y=now.getFullYear();let d=fixDay(y,mo,Number(m[1]));if(!d)return null;if(d<t0)d=fixDay(y+1,mo,Number(m[1]));date=d;continue;}
+    // Oct 16, October 16th
+    if((m=cut(new RegExp('(?:\\s+(?:on|by|for|due))?\\s+('+MOS+')\\s+(\\d{1,2})(?:st|nd|rd|th)?$','i')))){
+      const mo=NL_MO[m[1].toLowerCase()],y=now.getFullYear();let d=fixDay(y,mo,Number(m[2]));if(!d)return null;if(d<t0)d=fixDay(y+1,mo,Number(m[2]));date=d;continue;}
+    // 16/10 or 16/10/26 (day first, as in the UK)
+    if((m=cut(/(?:\s+(?:on|by|for|due))?\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{2}|\d{4}))?$/))){
+      let y=m[3]?Number(m[3].length===2?'20'+m[3]:m[3]):now.getFullYear();let d=fixDay(y,Number(m[2])-1,Number(m[1]));if(!d)return null;if(!m[3]&&d<t0)d=fixDay(y+1,Number(m[2])-1,Number(m[1]));date=d;continue;}
+    // the 1st, on the 16th (this month, or next month if it's gone)
+    if((m=cut(/(?:\s+(?:on|by|for|due))?(?:\s+the)?\s+(\d{1,2})(st|nd|rd|th)$/i))){
+      const n=Number(m[1]);let y=now.getFullYear(),mo=now.getMonth();if(n<now.getDate()){mo++;if(mo>11){mo=0;y++;}}
+      const d=fixDay(y,mo,Math.min(n,dim(y,mo)));if(!d||n<1||n>31)return null;date=d;continue;}
+    break;
+  }
+  const title=s.trim();
+  if(!hit||!title)return null;
+  if(time&&!date){const nowT=pad(now.getHours())+':'+pad(now.getMinutes());date=time>nowT?t0:addDays(t0,1);}
+  return {title,date,time};
+}
+const whenLabel=(d,t)=>dayLabel(d)+(t?', '+fmtTime(t):'');
 function quickAdd(){
   const q=document.getElementById('quick');const v=(q.value||'').trim();
   if(!v){q.focus();return;}
-  state.tasks.push(blank(Object.assign({title:v},newDefaults())));save();ui.refocus=true;render();
+  const p=nlParse(v);
+  const t=blank(Object.assign({title:v},newDefaults(),p?{title:p.title,date:p.date,time:p.time}:{}));
+  state.tasks.push(t);save();ui.refocus=true;render();
+  if(p)snack('Added for '+whenLabel(p.date,p.time),()=>{const x=find(t.id);if(!x)return;x.title=v;x.date=null;x.time=null;x.alarm='none';save();render();});
 }
 
 function renderToday(){
@@ -1497,7 +1593,9 @@ function renderToday(){
   ${list.length?`<div class="progress"><div class="bar"><i style="width:${pct}%"></i></div><span>${n} of ${list.length} done</span></div>`:''}</header>`;
   if(isT)h+=nudgeCard()+fbCard();
   h+=filterBar();
-  h+=section('Still to do from earlier',overdue,{showDay:true});
+  // more than 3 old jobs fold to one line, so today's jobs come first
+  if(overdue.length>3&&!ui.showEarlier)h+=`<button class="earlier-line" data-act="togearlier" aria-expanded="false"><b>${overdue.length} still to do from earlier</b><span>Show</span></button>`;
+  else h+=section('Still to do from earlier',overdue,{showDay:true,back:true},overdue.length>3?`<button class="earlier-btn" data-act="togearlier" aria-expanded="true">Hide</button>`:'');
   if(list.length)h+=section(isT?'Today':'Jobs',list,{ctx:dayS,drag:list.length>1,dg:t=>`${isDone(t,dayS)?1:0}${t.starred?1:0}${t.time||''}`},list.length>1?`<span class="count"><span class="hint">Hold a job to move it · </span>${list.length}</span>`:'');
   if(list.length)h+=`<button class="addslot" data-act="addto" data-date="${dayS}"><span>Add something for ${isT?'today':'this day'}</span><i>${I.plus}</i></button>`;
   const left=isT?overdue.length+list.filter(t=>!isRep(t)&&!t.done).length:0;
@@ -1668,7 +1766,11 @@ function closeEditor(){ed.classList.remove('open');ed.setAttribute('aria-hidden'
 function commit(){
   draft.title=fTitle.value.trim();draft.note=fNote.value.trim();if(clIn.value.trim())addCl();draft.checklist=(draft.checklist||[]).filter(x=>x.text.trim());draft.time=fTime.value||null;if(!draft.time)draft.alarm='none';
   if(!draft.title){fTitle.classList.add('bad','shake');setTimeout(()=>fTitle.classList.remove('shake'),520);fTitle.focus();return;}
+  // a new job typed as "Dentist Fri 3pm" with no day or time chosen picks them up from the words
+  let nl=null;const typed=draft.title;
+  if(isNew&&!draft.date&&!draft.time){nl=nlParse(draft.title);if(nl){draft.title=nl.title;draft.date=nl.date;draft.time=nl.time;}}
   if(isRep(draft)&&!draft.date)draft.date=today();
+  if(nl){const id=draft.id;setTimeout(()=>snack('Added for '+whenLabel(nl.date,nl.time),()=>{const x=find(id);if(!x)return;x.title=typed;x.date=isRep(x)?today():null;x.time=null;x.alarm='none';save();render();}),50);}
   if(isNew)state.tasks.push(draft);else{const i=state.tasks.findIndex(t=>t.id===draft.id);if(i>=0)state.tasks[i]=draft;}
   save();closeEditor();render();
 }
@@ -1782,6 +1884,11 @@ view.addEventListener('click',e=>{
     if(act==='nudgeopen'){openEditor(a.dataset.id);return;}
     if(act==='nudgeclose'){closeNudge();return;}
     if(act==='nudgetog'){ui.nudgeOpen=!ui.nudgeOpen;render();return;}
+    if(act==='togearlier'){ui.showEarlier=!ui.showEarlier;render();return;}
+    if(act==='todump'){const t=find(a.dataset.id);if(!t)return;undoable(t.proj?'Moved back to the project':'Moved back to your brain dump',()=>{t.date=null;t.time=null;t.alarm='none';return 1;});return;}
+    if(act==='homehide'){homeMark();render();return;}
+    if(act==='homesave'){document.getElementById('bk-save').click();a.textContent='Backup saved ✓';a.disabled=true;return;}
+    if(act==='homerestore'){document.getElementById('bk-load').click();return;}
     if(act==='nudgeskip'){skipNudge(a.dataset.id);return;}
     if(act==='fblater'){fbMark('later');render();return;}
     if(act==='fbopen'){openFeedback();return;}
@@ -2011,6 +2118,7 @@ document.getElementById('s-lists').addEventListener('click',e=>{
   save();paintSLists();render();
 });
 function paintSettings(){
+  paintBk();
   paintFamily();
   const P=state.prefs;paintSLists();
   document.querySelectorAll('[data-sty]').forEach(b=>b.classList.toggle('on',b.dataset.sty===P.style));
@@ -2065,17 +2173,32 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&st.classList.contai
 
 /* keep "today" fresh if the app stays open past midnight */
 let lastDay=today();
-setInterval(()=>{if(today()!==lastDay){lastDay=today();tidy();if(!draft)render();}},60000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&today()!==lastDay){lastDay=today();if(!draft)render();}});
+setInterval(()=>{if(today()!==lastDay){lastDay=today();tidy();returnOld();if(!draft)render();}},60000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&today()!==lastDay){lastDay=today();returnOld();if(!draft)render();}});
 
 tidy();
+returnOld();
 render();
+/* ask the phone to keep this app's saved jobs rather than clearing them to free space */
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(()=>{});}catch(e){}
 document.getElementById('bk-save').addEventListener('click',()=>{
   const blob=new Blob([JSON.stringify({app:'todo',version:1,savedAt:new Date().toISOString(),state},null,1)],{type:'application/json'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='todo-backup-'+today()+'.json';
+  const n=state.tasks.filter(t=>t.list!==SHARED).length;
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='Mum-Brain-backup-'+today()+'-'+n+'-job'+(n===1?'':'s')+'.json';
   document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},1000);
+  try{localStorage.setItem(KEY+'-lastbk',JSON.stringify({at:new Date().toISOString(),n}));}catch(err){}
+  paintBk();
   document.getElementById('bk-hint').textContent='Backup saved. On iPhone or iPad it goes to your Files app, in Downloads.';
 });
+/* when the last backup was saved on this phone (Safari, Chrome and the Home Screen app each keep their own) */
+function paintBk(){
+  const el=document.getElementById('bk-last');if(!el)return;
+  let L=null;try{L=JSON.parse(localStorage.getItem(KEY+'-lastbk')||'null');}catch(e){}
+  const n=state.tasks.filter(t=>t.list!==SHARED).length,old=!L||Date.now()-new Date(L.at)>7*864e5;
+  el.innerHTML=L?`<b>Last backup:</b> ${esc(fmtStamp(L.at))} · ${n1(L.n)}${old&&n?' – worth saving a new one.':''}`:(n?'<b>No backup saved yet</b> on this phone.':'');
+  el.classList.toggle('due',old&&!!n);
+}
+const n1=n=>n+' job'+(n===1?'':'s');
 let pendingBk=null;
 function fmtStamp(iso){const d=new Date(iso);if(isNaN(d))return'an unknown date';const h=d.getHours(),m=d.getMinutes();
   return DAYS[d.getDay()].slice(0,3)+' '+d.getDate()+' '+MONTHS[d.getMonth()].slice(0,3)+' '+d.getFullYear()+', '+((h%12)||12)+(m?':'+pad(m):'')+(h>=12?'pm':'am');}
@@ -2086,6 +2209,12 @@ document.getElementById('bk-load').addEventListener('change',e=>{
   r.onload=()=>{e.target.value='';const box=document.getElementById('bk-confirm');
     try{const d=JSON.parse(r.result);const st=d&&d.state;if(!st||!Array.isArray(st.tasks))throw 0;pendingBk=st;
       const own=x=>x.filter(t=>t.list!==SHARED).length;
+      // an empty backup would only wipe the list, so say so and don't offer to restore it
+      if(!(SHARING?own(st.tasks):st.tasks.length)){pendingBk=null;
+        box.innerHTML=`<b>Backup from ${fmtStamp(d.savedAt)}</b><span class="bk-empty">This backup is empty – it has no jobs in it.</span>
+        <p>It was probably saved before any jobs were added, so there's nothing to restore. Nothing on this phone has been changed. If you have a newer backup in your Files app, try that one.</p>
+<div class="row"><button class="opt" data-bk="pick">Choose another backup</button><button class="opt" data-bk="cancel">Close</button></div>`;
+        box.hidden=false;box.scrollIntoView({block:'nearest',behavior:'smooth'});return;}
       box.innerHTML=SHARING
         ?`<b>Backup from ${fmtStamp(d.savedAt)}</b><span>${jobs(own(st.tasks))} of your own in this backup.</span>
         <p>Restoring <b>replaces your own jobs</b>, lists and settings on this phone (you have ${jobs(own(state.tasks))} now). <b>Your family's shared list won't be touched</b> – it stays exactly as everyone sees it. You might want to save your current list first.</p>`
@@ -2094,12 +2223,13 @@ document.getElementById('bk-load').addEventListener('change',e=>{
       box.innerHTML+=`
 <div class="row"><button class="opt" data-bk="save">Save current list first</button><button class="opt bk-go" data-bk="go">Restore backup</button><button class="opt" data-bk="cancel">Cancel</button></div>`;
       box.hidden=false;box.scrollIntoView({block:'nearest',behavior:'smooth'});
-    }catch(err){pendingBk=null;box.hidden=true;document.getElementById('bk-hint').textContent='That file isn\'t a backup from this app. Choose a file named todo-backup-….json.';}};
+    }catch(err){pendingBk=null;box.hidden=true;document.getElementById('bk-hint').textContent='That file isn\'t a backup from this app. Choose a file named Mum-Brain-backup-….json (older ones are named todo-backup-….json).';}};
   r.readAsText(f);
 });
 document.getElementById('bk-confirm').addEventListener('click',e=>{
   const b=e.target.closest('[data-bk]');if(!b)return;const box=document.getElementById('bk-confirm');
   if(b.dataset.bk==='save'){document.getElementById('bk-save').click();b.textContent='Current list saved ✓';b.disabled=true;return;}
+  if(b.dataset.bk==='pick'){box.hidden=true;document.getElementById('bk-load').click();return;}
   if(b.dataset.bk==='cancel'||!pendingBk){pendingBk=null;box.hidden=true;return;}
   const st=pendingBk;pendingBk=null;box.hidden=true;
   // keep the live family list exactly as it is; only your own jobs come from the backup
