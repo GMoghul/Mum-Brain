@@ -819,9 +819,46 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 </div>
 
 <script>
+/* Phone app only: keep a second copy of everything in the app's own storage (iPhone's UserDefaults),
+   which iPhone never clears, unlike website storage. If the website storage is ever wiped,
+   the jobs are put back from this copy and the app reloads once. The web version skips all this. */
+(function(){
+  var C=window.Capacitor;if(!(C&&C.isNativePlatform&&C.isNativePlatform()))return;
+  var P=(C.Plugins&&C.Plugins.Preferences)||(C.registerPlugin&&C.registerPlugin('Preferences'));if(!P)return;
+  var PRE='todo-app-v1',ls=window.localStorage,ready=false,q={};
+  var mine=function(k){return typeof k==='string'&&k.indexOf(PRE)===0;};
+  var before=null;try{before=ls.getItem(PRE);}catch(e){}
+  var tasksIn=function(v){try{var x=JSON.parse(v);return x&&x.tasks?x.tasks.length:0;}catch(e){return 0;}};
+  var when=function(v){try{return JSON.parse(v).updatedAt||0;}catch(e){return 0;}};
+  var setI=Storage.prototype.setItem,remI=Storage.prototype.removeItem;
+  function flush(){if(!ready)return;var w=q;q={};Object.keys(w).forEach(function(k){(w[k]===null?P.remove({key:k}):P.set({key:k,value:w[k]})).catch(function(){});});}
+  Storage.prototype.setItem=function(k,v){setI.call(this,k,v);if(this===ls&&mine(k)){q[k]=String(v);flush();}};
+  Storage.prototype.removeItem=function(k){remI.call(this,k);if(this===ls&&mine(k)){q[k]=null;flush();}};
+  P.keys().then(function(r){
+    var keys=(r.keys||[]).filter(mine);
+    return Promise.all(keys.map(function(k){return P.get({key:k}).then(function(g){return [k,g.value];});}));
+  }).then(function(pairs){
+    var saved={};pairs.forEach(function(x){if(x[1]!=null)saved[x[0]]=x[1];});
+    var copy=saved[PRE];
+    var restore=copy&&(!before||(tasksIn(before)===0&&tasksIn(copy)>0)||when(copy)>when(before));
+    var tried=false;try{tried=sessionStorage.getItem('mb-restored')==='1';}catch(e){}
+    if(restore&&!tried){
+      Object.keys(saved).forEach(function(k){try{setI.call(ls,k,saved[k]);}catch(e){}});
+      try{sessionStorage.setItem('mb-restored','1');}catch(e){}
+      location.reload();return;
+    }
+    ready=true;
+    for(var i=0;i<ls.length;i++){var k=ls.key(i);if(mine(k))q[k]=ls.getItem(k);}
+    Object.keys(saved).forEach(function(k){if(ls.getItem(k)===null)q[k]=null;});
+    flush();
+  }).catch(function(){ready=true;flush();});
+})();
+</script>
+<script>
 const GRIP='<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="5.5" cy="3.5" r="1.4"/><circle cx="10.5" cy="3.5" r="1.4"/><circle cx="5.5" cy="8" r="1.4"/><circle cx="10.5" cy="8" r="1.4"/><circle cx="5.5" cy="12.5" r="1.4"/><circle cx="10.5" cy="12.5" r="1.4"/></svg>';
 (function(){
 const KEY='todo-app-v1';
+const NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()); // true only in the App Store version
 const COLORS=[['grey','#9AA1AB'],['coral','#EF6F63'],['apricot','#F29A4A'],['butter','#DDB43A'],['sage','#62B07D'],['teal','#3FA7A2'],['sky','#5B9FE0'],['lavender','#9483DB'],['rose','#E57FB0']];
 const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
@@ -1390,7 +1427,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.6.0';
+const APPV='1.6.1';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -1433,7 +1470,7 @@ const IOS=/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='M
 const STANDALONE=navigator.standalone===true||(window.matchMedia&&matchMedia('(display-mode: standalone)').matches);
 function homeMark(){try{localStorage.setItem(KEY+'-home',String(Date.now()));}catch(e){}}
 function homeCard(){
-  if(!IOS)return'';
+  if(!IOS||NATIVE)return''; // the phone app keeps its own copy, so no Home Screen advice needed
   if(STANDALONE){
     // first open from the Home Screen: nothing here yet, so point to the backup they just saved
     let seen=null;try{seen=localStorage.getItem(KEY+'-home');}catch(e){}
@@ -2190,7 +2227,6 @@ function checkAlarms(){
   for(const k in fired)if(now-fired[k]>3*86400000)delete fired[k];
   try{localStorage.setItem(KEY+'-fired',JSON.stringify(fired));}catch(e){}
 }
-var NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
 if(!NATIVE){setInterval(checkAlarms,20000);setTimeout(checkAlarms,1500);}
 
 /* ---------- phone app: alarms + morning summary that work when the app is closed ---------- */
