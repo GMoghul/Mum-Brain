@@ -6,7 +6,7 @@ The live web app on GitHub Pages (`main`) is not affected.
 ## How it works
 - `index.html` stays the single source of the app. `npm run web` copies it into `www/`, which the phone app is built from.
 - GitHub's Mac computers build the app (see `.github/workflows/ios-build.yml`), so no Mac is needed.
-- App ID: `com.gmoghul.mumbrain` (can still be changed until the first upload to Apple – after that it's permanent).
+- App ID: `com.gmoghul.mumbrainsorted` (can still be changed until the first upload to Apple – after that it's permanent).
 
 ## Stages
 1. **Done:** project set up and a test build on GitHub's Macs.
