@@ -211,7 +211,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .pick.unset>span{display:flex}
 .pick.unset>input{color:transparent}
 .pick.unset>input::-webkit-datetime-edit{color:transparent}
-#f-date{min-width:124px}#f-time{min-width:112px}
+#f-date{min-width:124px}#f-time-w{width:124px}
+#f-time-w>input{width:100%;-webkit-appearance:none;appearance:none}
 .f-note{width:100%;border:0;background:var(--bg);border-radius:12px;outline:none;font-size:16px;padding:12px 14px;margin-top:14px;resize:none;min-height:76px}
 .f-note::placeholder{color:var(--muted)}
 .field{margin-top:20px}
@@ -1385,7 +1386,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.5.3';
+const APPV='1.5.4';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2199,7 +2200,7 @@ function paintSLists(){
   const L=listOrder(true),on=projOn();
   const end=id=>id===PROJ?`<button class="pswitch${on?' on':''}" role="switch" aria-checked="${on}" aria-label="Show Projects tag" data-projs="${on?'off':'on'}"><i></i></button>`
     :isSpecial(id)?'<span class="fixed">Built in</span>':`<button data-dellist="${id}">Delete</button>`;
-  const hint={[PROJ]:'Lists with dates, progress and subtasks, for bigger jobs like trip prep.',[SHARED]:'Invite or manage family in Family sharing below.'};
+  const hint={[PROJ]:'Lists with dates, subtasks and progress bars. Ideal for bigger jobs, e.g. prepping for a trip or a renovation project.',[SHARED]:'Invite or manage family in Family sharing below.'};
   document.getElementById('s-lists').innerHTML=L.map(([id,n])=>`<div class="lrow${id===PROJ&&!on?' off':''}" data-lid="${id}">${L.length>1?`<span class="grip" aria-hidden="true">${GRIP}</span>`:''}<span>${esc(n)}${hint[id]?`<small class="lhint">${hint[id]}</small>`:''}</span>${end(id)}</div>`).join('');
 }
 const slIn=document.getElementById('sl-in');
