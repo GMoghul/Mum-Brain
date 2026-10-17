@@ -8,5 +8,15 @@
   },
   "android": {
     "backgroundColor": "#F9F8FC"
+  },
+  "plugins": {
+    "LocalNotifications": {
+      "presentationOptions": [
+        "badge",
+        "sound",
+        "banner",
+        "list"
+      ]
+    }
   }
 }

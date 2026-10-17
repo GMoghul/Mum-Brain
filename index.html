@@ -797,6 +797,10 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="seg" id="s-nudge" style="grid-template-columns:repeat(2,1fr)"><button data-nudge="on">On</button><button data-nudge="off">Off</button></div>
       <div class="rep-hint">A small card each day with 3 jobs from your brain dump that need a day.</div>
     </div>
+    <div class="field" id="morn-field" hidden><span class="lbl">Morning summary</span>
+      <div class="row" style="align-items:center;gap:8px"><div class="seg" id="s-morn" style="grid-template-columns:repeat(2,1fr);flex:1"><button data-morn="on">On</button><button data-morn="off">Off</button></div><input type="time" class="f-date" id="morn-at" aria-label="Morning summary time" style="width:124px"></div>
+      <div class="rep-hint" id="morn-hint"></div>
+    </div>
     <div class="field"><span class="lbl">Tidy away finished jobs</span>
       <div class="seg" id="s-tidy" style="grid-template-columns:repeat(4,1fr)"><button data-tidy="off">Never</button><button data-tidy="3">3 days</button><button data-tidy="7">1 week</button><button data-tidy="30">1 month</button></div>
       <div class="rep-hint">Ticked-off jobs are cleared this long after you finish them.</div>
@@ -1386,7 +1390,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.5.4';
+const APPV='1.6.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -1708,6 +1712,7 @@ function render(){
   document.getElementById('calbtn').hidden=ui.tab==='month';
   document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===ui.tab));
   if(ui.tab==='dump')renderDump();else if(ui.tab==='month')renderMonth();else if(ui.tab==='week')renderWeek();else renderToday();
+  queueNotifs();
 }
 
 /* ---------- editor ---------- */
@@ -1787,7 +1792,7 @@ function paint(){
   fDate.parentNode.classList.toggle('unset',!fDate.value);fTime.parentNode.classList.toggle('unset',!fTime.value);
   document.querySelector('[data-time="none"]').classList.toggle('on',!draft.time);
   document.querySelectorAll('[data-alarm]').forEach(b=>{b.disabled=!draft.time;b.classList.toggle('on',!!draft.time&&b.dataset.alarm===(draft.alarm||'none'));});
-  document.getElementById('alarm-hint').textContent=(!draft.time?'Set a time to add an alarm. ':'')+'Alarms only sound while Mum Brain is open on your screen.';
+  document.getElementById('alarm-hint').textContent=(!draft.time?'Set a time to add an alarm. ':'')+(NATIVE?'Alarms arrive as a notification, even when Mum Brain is closed. If your phone is on silent, it won\'t make a sound.':'Alarms only sound while Mum Brain is open on your screen.');
   fStar.classList.toggle('on',!!draft.starred);
   document.getElementById('f-star-txt').textContent=draft.starred?'Marked as important':'Mark as important';
 }
@@ -2185,7 +2190,90 @@ function checkAlarms(){
   for(const k in fired)if(now-fired[k]>3*86400000)delete fired[k];
   try{localStorage.setItem(KEY+'-fired',JSON.stringify(fired));}catch(e){}
 }
-setInterval(checkAlarms,20000);setTimeout(checkAlarms,1500);
+var NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform());
+if(!NATIVE){setInterval(checkAlarms,20000);setTimeout(checkAlarms,1500);}
+
+/* ---------- phone app: alarms + morning summary that work when the app is closed ---------- */
+// Only runs in the App Store version. Everything is scheduled on the phone itself (no server),
+// and re-planned every time the jobs change or the app is opened.
+// iPhone allows 64 waiting notifications per app, so: up to 10 morning summaries + the 50 soonest alarms.
+var LN=NATIVE?((window.Capacitor.Plugins&&window.Capacitor.Plugins.LocalNotifications)||(window.Capacitor.registerPlugin&&window.Capacitor.registerPlugin('LocalNotifications'))):null;
+var MORNING_ID=900000,MORNING_DAYS=10,MAX_ALARMS=50;
+var notifPerm=null,notifTimer=null,notifLast='';
+const morningOn=()=>(state.prefs&&state.prefs.morn)!=='off';
+const morningTime=()=>(state.prefs&&state.prefs.mornAt)||'09:00';
+function dueJobs(day){return state.tasks.filter(t=>!archivedJob(t)&&occurs(t,day)&&!isDone(t,day)).sort(byTime);}
+function morningText(day){
+  const L=dueJobs(day);
+  if(!L.length)return 'Nothing planned today. Fancy picking a job or two from your brain dump?';
+  const names=L.slice(0,3).map(t=>(t.time?fmtTime(t.time)+' ':'')+t.title).join(', ');
+  return (L.length===1?'1 job today: ':L.length+' jobs today: ')+names+(L.length>3?' and '+(L.length-3)+' more':'');
+}
+function planNotifs(){
+  const now=Date.now(),t0=today(),out=[];
+  if(morningOn()){
+    const[h,m]=morningTime().split(':').map(Number);
+    for(let i=0;i<MORNING_DAYS;i++){
+      const day=addDays(t0,i),at=parse(day);at.setHours(h,m,0,0);
+      if(at.getTime()<=now+30000)continue;
+      out.push({id:MORNING_ID+i,title:'Good morning',body:morningText(day),schedule:{at,allowWhileIdle:true},extra:{kind:'morning',day}});
+    }
+  }
+  const al=[];
+  for(const t of state.tasks){
+    if(!hasAlarm(t)||archivedJob(t))continue;
+    for(let i=-1;i<15;i++){
+      const day=addDays(t0,i);
+      if(!occurs(t,day)||isDone(t,day))continue;
+      const[h,m]=t.time.split(':').map(Number);const at=parse(day);at.setHours(h,m,0,0);
+      const fire=at.getTime()-Number(t.alarm)*60000;
+      if(fire<=now+5000)continue;
+      const when=day===t0?'today':day===addDays(t0,1)?'tomorrow':dayLabel(day);
+      al.push({fire,n:{title:t.title,body:t.alarm==='0'?'Now':'At '+fmtTime(t.time)+' '+when,actionTypeId:'job',extra:{kind:'alarm',id:t.id,day}}});
+    }
+  }
+  al.sort((a,b)=>a.fire-b.fire).slice(0,MAX_ALARMS).forEach((a,i)=>{a.n.id=i+1;a.n.schedule={at:new Date(a.fire),allowWhileIdle:true};out.push(a.n);});
+  return out;
+}
+async function notifAllowed(ask){
+  try{
+    let p=await LN.checkPermissions();
+    if(p.display==='prompt'||p.display==='prompt-with-rationale'){if(!ask)return false;p=await LN.requestPermissions();}
+    notifPerm=p.display;return p.display==='granted';
+  }catch(e){return false;}
+}
+async function syncNotifs(force){
+  if(!LN)return;
+  const want=planNotifs();
+  const sig=JSON.stringify(want.map(n=>[n.id,n.title,n.body,+n.schedule.at]));
+  if(sig===notifLast&&!force)return;
+  const ask=morningOn()||want.length>0;
+  if(!(await notifAllowed(ask))){paintNotifHint();return;}
+  try{
+    const p=await LN.getPending();
+    if(p&&p.notifications&&p.notifications.length)await LN.cancel({notifications:p.notifications.map(n=>({id:n.id}))});
+    if(want.length)await LN.schedule({notifications:want});
+    notifLast=sig;
+  }catch(e){notifLast='';}
+  paintNotifHint();
+}
+function queueNotifs(){if(!LN)return;clearTimeout(notifTimer);notifTimer=setTimeout(()=>syncNotifs(false),1200);}
+function paintNotifHint(){
+  const el=document.getElementById('morn-hint');if(!el)return;
+  el.textContent=notifPerm==='denied'
+    ?'Notifications are turned off for Mum Brain. To get alarms and your morning summary, go to iPhone Settings › Notifications › Mum Brain and turn on Allow Notifications.'
+    :'A notification each morning with the jobs planned for that day, even when Mum Brain is closed.';
+}
+if(LN){
+  try{LN.registerActionTypes({types:[{id:'job',actions:[{id:'done',title:'Done'}]}]});}catch(e){}
+  LN.addListener('localNotificationActionPerformed',r=>{
+    const x=(r&&r.notification&&r.notification.extra)||{};
+    if(r.actionId==='done'&&x.kind==='alarm'){const t=find(x.id);if(t&&!isDone(t,x.day))toggle(x.id,x.day);return;}
+    if(x.day){ui.searching=false;ui.tab='today';ui.day=x.day;render();}
+  });
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNotifs(true);});
+  setTimeout(()=>syncNotifs(true),2500);
+}
 
 /* ---------- settings ---------- */
 const st=document.getElementById('settings');
@@ -2228,7 +2316,10 @@ function paintSettings(){
   document.querySelectorAll('[data-cel]').forEach(b=>b.classList.toggle('on',b.dataset.cel===(P.cel||'rabbit')));
   document.querySelectorAll('[data-nudge]').forEach(b=>b.classList.toggle('on',b.dataset.nudge===(P.nudge||'on')));
   document.querySelectorAll('[data-spc]').forEach(b=>b.classList.toggle('on',b.dataset.spc===(P.sp||'std')));
+  document.getElementById('morn-field').hidden=!NATIVE;
+  if(NATIVE){document.querySelectorAll('[data-morn]').forEach(b=>b.classList.toggle('on',b.dataset.morn===(P.morn||'on')));const mt=document.getElementById('morn-at');mt.value=morningTime();mt.disabled=!morningOn();paintNotifHint();}
 }
+document.getElementById('morn-at').addEventListener('change',e=>{if(!e.target.value)return;state.prefs.mornAt=e.target.value;save();syncNotifs(true);});
 document.getElementById('cel-try').addEventListener('click',()=>{closeSettings();setTimeout(()=>celebrate('preview'),250);});
 document.getElementById('gear').addEventListener('click',()=>{if(!fbRec&&!['fb-stuck','fb-change','fb-add'].some(id=>document.getElementById(id).value.trim()))fbOpen(false);paintSettings();st.classList.add('open');st.setAttribute('aria-hidden','false');});
 let fbRec='';
@@ -2253,7 +2344,7 @@ document.getElementById('fb-send').addEventListener('click',async()=>{
 });
 function closeSettings(){st.classList.remove('open');st.setAttribute('aria-hidden','true');}
 st.addEventListener('click',e=>{
-  const b=e.target.closest('[data-sact],button[data-pal],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-projs]');if(!b)return;
+  const b=e.target.closest('[data-sact],button[data-pal],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-projs]');if(!b)return;
   if(b.dataset.sact){closeSettings();return;}
   if(b.dataset.pal)state.prefs.palette=b.dataset.pal;
   if(b.dataset.sharp)state.prefs.sharp=b.dataset.sharp;
@@ -2264,6 +2355,7 @@ st.addEventListener('click',e=>{
   if(b.dataset.spc)state.prefs.sp=b.dataset.spc;
   if(b.dataset.tidy){state.prefs.tidy=b.dataset.tidy;tidy();render();}
   if(b.dataset.nudge){state.prefs.nudge=b.dataset.nudge;render();}
+  if(b.dataset.morn){state.prefs.morn=b.dataset.morn;syncNotifs(true);}
   if(b.dataset.projs){state.prefs.proj=b.dataset.projs;if(b.dataset.projs==='off'&&ui.filter===PROJ){ui.filter=null;ui.proj=null;try{localStorage.setItem(KEY+'-filter','');}catch(err){}}render();}
   if(b.dataset.cel){state.prefs.cel=b.dataset.cel;if(b.dataset.cel!=='off'){closeSettings();setTimeout(()=>celebrate('preview'),250);}}
   applyPrefs();paintSettings();save();
