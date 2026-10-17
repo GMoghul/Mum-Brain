@@ -759,11 +759,11 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="grab"></div>
     <div class="sheet-top"><h2 id="st-h">Settings</h2><button class="x" data-sact="close">Done</button></div>
     <div class="field" id="fb-field"><span class="lbl">Feedback</span>
-      <div class="fb-q">Would you recommend Mum Brain to another mum?</div>
+      <div class="fb-q" id="fb-recommend">Would you recommend Mum Brain to another mum?</div>
       <div class="seg seg3" id="fb-rec"><button data-rec="yes">Yes</button><button data-rec="maybe">Maybe</button><button data-rec="no">No</button></div>
       <div class="fb-row" id="fb-row"><button class="opt" id="fb-more" aria-expanded="false" aria-controls="fb-rest">More questions</button><button class="opt on" id="fb-quick" disabled>Send feedback</button></div>
       <div id="fb-rest" hidden>
-      <p class="fam-p">You're one of the first mums trying Mum Brain. Tell me what's working and what isn't.</p>
+      <p class="fam-p" id="tester-note">You're one of the first mums trying Mum Brain. Tell me what's working and what isn't.</p>
       <textarea class="f-note" id="fb-stuck" placeholder="Was there anything you couldn't work out how to do?"></textarea>
       <textarea class="f-note" id="fb-change" placeholder="What would you change?"></textarea>
       <textarea class="f-note" id="fb-add" placeholder="What would you add?"></textarea>
@@ -855,9 +855,35 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 })();
 </script>
 <script>
+/* ---- Brand pack ----------------------------------------------------------
+   Everything that makes this "Mum Brain" rather than a general to-do app lives here:
+   the name, slogan, tester note, backup file name, example jobs and default theme.
+   To make a different edition, change only this block (plus manifest.json,
+   capacitor.config.json and the icons). Internal names that existing lists,
+   backups and family sharing depend on are deliberately NOT in here. */
+const BRAND={
+  name:'Mum Brain, Sorted',            // full name (page title, share messages)
+  short:'Mum Brain',                   // short name (home-screen icon, hints)
+  slogan:'Out of your head. Into your day.',
+  testerNote:"You're one of the first mums trying Mum Brain. Tell me what's working and what isn't.",
+  recommendQ:'Would you recommend Mum Brain to another mum?', // feedback question
+  backupPrefix:'Mum-Brain-backup-',    // start of backup file names
+  egJob:'Book dentist',                // New job box example
+  egQuick:'Dentist Fri 3pm',           // Quick-add box example
+  egProject:'Camping trip',            // New project name example
+  egProjects:'a camping trip, moving house or baby prep', // empty Projects screen
+  palette:'linen'                      // default theme for new users
+};
+document.title=BRAND.name;
 const GRIP='<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="5.5" cy="3.5" r="1.4"/><circle cx="10.5" cy="3.5" r="1.4"/><circle cx="5.5" cy="8" r="1.4"/><circle cx="10.5" cy="8" r="1.4"/><circle cx="5.5" cy="12.5" r="1.4"/><circle cx="10.5" cy="12.5" r="1.4"/></svg>';
 (function(){
 const KEY='todo-app-v1';
+{const set=(id,a,v)=>{const e=document.getElementById(id);if(e)e[a]=v;};
+ set('f-title','placeholder','Type your job here, e.g. '+BRAND.egJob);
+ set('p-name','placeholder','Project name, e.g. '+BRAND.egProject);
+ set('tester-note','textContent',BRAND.testerNote);
+ set('fb-recommend','textContent',BRAND.recommendQ);
+ const m=document.querySelector('meta[name="apple-mobile-web-app-title"]');if(m)m.content=BRAND.short;}
 const NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()); // true only in the App Store version
 const COLORS=[['grey','#9AA1AB'],['coral','#EF6F63'],['apricot','#F29A4A'],['butter','#DDB43A'],['sage','#62B07D'],['teal','#3FA7A2'],['sky','#5B9FE0'],['lavender','#9483DB'],['rose','#E57FB0']];
 const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -916,7 +942,7 @@ const FONTS=[
   {id:'elegant',name:'Elegant',desc:'Grand serif headings',body:'Figtree,system-ui,sans-serif',head:'"Playfair Display",Georgia,serif',hs:1.02,hls:'-.01em'},
   {id:'hand',name:'Handwritten',desc:'Script headings',body:'Nunito,system-ui,sans-serif',head:'Caveat,"Segoe Print",cursive',hs:1.3,hls:'0'}
 ];
-if(!state.prefs)state.prefs={palette:'linen',font:'clean',mode:'light'};
+if(!state.prefs)state.prefs={palette:BRAND.palette,font:'clean',mode:'light'};
 function fixPrefs(P){if(!P.style)P.style=P.palette==='plain'?'none':'wash';if(!P.palette||P.palette==='plain')P.palette='sky';if(!P.sharp)P.sharp='blue';return P;}
 fixPrefs(state.prefs);
 if(!state.prefs.ts)state.prefs.ts='m';if(!state.prefs.tidy)state.prefs.tidy='off';if(!state.prefs.cel)state.prefs.cel='rabbit';if(!state.prefs.sp)state.prefs.sp='std';
@@ -1161,8 +1187,8 @@ document.getElementById('s-family').addEventListener('click',async e=>{
   if(a==='create'){showSt();createFamily();}
   else if(a==='join'){showSt();joinFamily(document.getElementById('fam-in').value);}
   else if(a==='share'){
-    const text=`Join our family list in Mum Brain, Sorted. Open ${location.origin+location.pathname}, add it to your home screen, then tap the settings icon ⚙️, Family sharing, and enter this code: ${fmtCode(family.code)}`;
-    try{if(navigator.share){await navigator.share({title:'Mum Brain, Sorted',text});return;}}catch(err){return;}
+    const text=`Join our family list in ${BRAND.name}. Open ${location.origin+location.pathname}, add it to your home screen, then tap the settings icon ⚙️, Family sharing, and enter this code: ${fmtCode(family.code)}`;
+    try{if(navigator.share){await navigator.share({title:BRAND.name,text});return;}}catch(err){return;}
     try{await navigator.clipboard.writeText(text);b.textContent='Copied';setTimeout(()=>b.textContent='Send code',1500);}catch(err){}
   }
   else if(a==='leave'){
@@ -1461,7 +1487,7 @@ function fbCard(){
   let m={};try{m=JSON.parse(localStorage.getItem(KEY+'-fb')||'{}');}catch(e){}
   const wk=7*864e5,now=Date.now();
   if(!since||now-since<wk||m.sent||(m.later&&now-m.later<wk))return'';
-  return `<section class="nudge" aria-label="Feedback"><div class="nudge-h"><b>How are you finding Mum Brain?</b><button data-act="fblater">Not now</button></div>
+  return `<section class="nudge" aria-label="Feedback"><div class="nudge-h"><b>How are you finding ${BRAND.short}?</b><button data-act="fblater">Not now</button></div>
     <p>A couple of quick answers would really help shape what comes next.</p><button class="go" data-act="fbopen">Share feedback</button></section>`;
 }
 /* iPhone/iPad in Safari: websites not opened for 7 days have their saved data cleared, Home Screen apps don't.
@@ -1482,8 +1508,8 @@ function homeCard(){
   if(m&&Date.now()-m<3*864e5)return''; // "Later" hides it for 3 days
   const n=state.tasks.length;
   return `<section class="nudge" aria-label="Add to Home Screen"><div class="nudge-h"><b>Keep your jobs safe</b><button data-act="homehide">Later</button></div>
-    <p>iPhones clear websites that aren't opened for 7 days. Add Mum Brain to your Home Screen and it won't be cleared.</p>
-    <p>${n?`<b>1.</b> Save a backup first, as the Home Screen app starts with its own empty list.<br><b>2.</b> `:'<b>1.</b> '}Tap Share <span aria-hidden="true">⎙</span>, then <b>Add to Home Screen</b>.<br><b>${n?3:2}.</b> Open Mum Brain from its new icon${n?' and restore your backup':''}.</p>
+    <p>iPhones clear websites that aren't opened for 7 days. Add ${BRAND.short} to your Home Screen and it won't be cleared.</p>
+    <p>${n?`<b>1.</b> Save a backup first, as the Home Screen app starts with its own empty list.<br><b>2.</b> `:'<b>1.</b> '}Tap Share <span aria-hidden="true">⎙</span>, then <b>Add to Home Screen</b>.<br><b>${n?3:2}.</b> Open ${BRAND.short} from its new icon${n?' and restore your backup':''}.</p>
     ${n?'<button class="go" data-act="homesave">Save a backup</button>':''}</section>`;
 }
 function fbMark(k){let m={};try{m=JSON.parse(localStorage.getItem(KEY+'-fb')||'{}');}catch(e){}m[k]=Date.now();try{localStorage.setItem(KEY+'-fb',JSON.stringify(m));}catch(e){}}
@@ -1495,8 +1521,8 @@ function renderDump(){
   const sched=T.filter(t=>!isRep(t)&&t.date&&!t.done).sort((a,b)=>a.date.localeCompare(b.date)||byStar(a,b));
   const reps=T.filter(isRep).sort(byStar);
   const done=T.filter(t=>!isRep(t)&&t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
-  let h=`<header class="head"><h1>Brain dump</h1><p class="sub">Out of your head. Into your day.</p></header>${filterBar()}
-  <div class="quick"><input id="quick" placeholder="Add a job… e.g. Dentist Fri 3pm" autocomplete="off" enterkeyhint="done" aria-label="Add a job"><button data-act="quick" aria-label="Add">${I.plus}</button></div>${homeCard()}${nudgeCard()}`;
+  let h=`<header class="head"><h1>Brain dump</h1><p class="sub">${BRAND.slogan}</p></header>${filterBar()}
+  <div class="quick"><input id="quick" placeholder="Add a job… e.g. ${BRAND.egQuick}" autocomplete="off" enterkeyhint="done" aria-label="Add a job"><button data-act="quick" aria-label="Add">${I.plus}</button></div>${homeCard()}${nudgeCard()}`;
   if(!undated.length&&!sched.length&&!reps.length&&!done.length){
     h+=`<div class="empty"><strong>Nothing here yet${ui.filter===STAR?' starred':ui.filter?' in '+esc(listName(ui.filter)):''}</strong>Type anything on your mind above. You can give it a day, a colour or a repeat whenever you like.</div>`;
   }
@@ -1525,9 +1551,9 @@ function projCard(p){
 }
 function renderProjects(){
   const L=liveProjs(),A=(state.projects||[]).filter(p=>p.archived).sort((a,b)=>(b.archivedAt||0)-(a.archivedAt||0));
-  let h=`<header class="head"><h1>Brain dump</h1><p class="sub">Out of your head. Into your day.</p></header>${filterBar()}`;
+  let h=`<header class="head"><h1>Brain dump</h1><p class="sub">${BRAND.slogan}</p></header>${filterBar()}`;
   if(L.length)h+=`<section class="sec"><div class="sec-h"><h2>Projects</h2><span class="count">${L.length}</span></div><ul class="pcards">${L.map(projCard).join('')}<li><button class="pnew" data-act="pnew">${I.plus}New project</button></li></ul></section>`;
-  else h+=`<div class="empty"><strong>${A.length?'No projects on the go':'No projects yet'}</strong>Group the jobs for something bigger, like a camping trip, moving house or baby prep. Give each job a day when you're ready.<div style="margin-top:16px"><button class="pill" data-act="pnew">New project</button></div></div>`;
+  else h+=`<div class="empty"><strong>${A.length?'No projects on the go':'No projects yet'}</strong>Group the jobs for something bigger, like ${BRAND.egProjects}. Give each job a day when you're ready.<div style="margin-top:16px"><button class="pill" data-act="pnew">New project</button></div></div>`;
   if(A.length){
     h+=`<button class="parch-btn" data-act="parch" aria-expanded="${!!ui.showArch}">${ui.showArch?'Hide':'Show'} archived (${A.length})</button>`;
     if(ui.showArch)h+=`<ul class="pcards parch">${A.map(p=>`<li class="pcard" style="--pc:${hex(p.color)}"><div class="pc-top"><i class="pc-dot"></i><span class="pc-name">${esc(p.name)}</span><span class="pc-n">${nJobs(projJobs(p.id).length)}</span></div><div class="row"><button class="opt" data-act="pagain" data-id="${p.id}">Use again</button><button class="opt" data-act="prestore" data-id="${p.id}">Restore</button><button class="opt warnopt" data-act="pdel" data-id="${p.id}">Delete</button></div></li>`).join('')}</ul>`;
@@ -1829,7 +1855,7 @@ function paint(){
   fDate.parentNode.classList.toggle('unset',!fDate.value);fTime.parentNode.classList.toggle('unset',!fTime.value);
   document.querySelector('[data-time="none"]').classList.toggle('on',!draft.time);
   document.querySelectorAll('[data-alarm]').forEach(b=>{b.disabled=!draft.time;b.classList.toggle('on',!!draft.time&&b.dataset.alarm===(draft.alarm||'none'));});
-  document.getElementById('alarm-hint').textContent=(!draft.time?'Set a time to add an alarm. ':'')+(NATIVE?'Alarms arrive as a notification, even when Mum Brain is closed. If your phone is on silent, it won\'t make a sound.':'Alarms only sound while Mum Brain is open on your screen.');
+  document.getElementById('alarm-hint').textContent=(!draft.time?'Set a time to add an alarm. ':'')+(NATIVE?'Alarms arrive as a notification, even when '+BRAND.short+' is closed. If your phone is on silent, it won\'t make a sound.':'Alarms only sound while '+BRAND.short+' is open on your screen.');
   fStar.classList.toggle('on',!!draft.starred);
   document.getElementById('f-star-txt').textContent=draft.starred?'Marked as important':'Mark as important';
 }
@@ -2297,8 +2323,8 @@ function queueNotifs(){if(!LN)return;clearTimeout(notifTimer);notifTimer=setTime
 function paintNotifHint(){
   const el=document.getElementById('morn-hint');if(!el)return;
   el.textContent=notifPerm==='denied'
-    ?'Notifications are turned off for Mum Brain. To get alarms and your morning summary, go to iPhone Settings › Notifications › Mum Brain and turn on Allow Notifications.'
-    :'A notification each morning with the jobs planned for that day, even when Mum Brain is closed.';
+    ?'Notifications are turned off for '+BRAND.short+'. To get alarms and your morning summary, go to iPhone Settings › Notifications › '+BRAND.short+' and turn on Allow Notifications.'
+    :'A notification each morning with the jobs planned for that day, even when '+BRAND.short+' is closed.';
 }
 if(LN){
   try{LN.registerActionTypes({types:[{id:'job',actions:[{id:'done',title:'Done'}]}]});}catch(e){}
@@ -2410,14 +2436,14 @@ render();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(()=>{});}catch(e){}
 document.getElementById('bk-save').addEventListener('click',async()=>{
   const json=JSON.stringify({app:'todo',version:1,savedAt:new Date().toISOString(),state},null,1);
-  const n=state.tasks.filter(t=>t.list!==SHARED).length,name='Mum-Brain-backup-'+today()+'-'+n+'-job'+(n===1?'':'s')+'.json';
+  const n=state.tasks.filter(t=>t.list!==SHARED).length,name=BRAND.backupPrefix+today()+'-'+n+'-job'+(n===1?'':'s')+'.json';
   const hint=document.getElementById('bk-hint');
   const done=msg=>{try{localStorage.setItem(KEY+'-lastbk',JSON.stringify({at:new Date().toISOString(),n}));}catch(err){}paintBk();hint.textContent=msg;};
   // phones: open the share sheet so "Save to Files" lets you pick the folder (a Home Screen app can't save straight to Downloads)
   if(IOS||/Android/i.test(navigator.userAgent)){
     try{const f=new File([json],name,{type:'application/json'});
       if(navigator.canShare&&navigator.canShare({files:[f]})){
-        try{await navigator.share({files:[f],title:'Mum Brain backup'});done('Backup saved. Keep it somewhere you\'ll find it, like a Mum Brain folder in Files.');}
+        try{await navigator.share({files:[f],title:BRAND.short+' backup'});done('Backup saved. Keep it somewhere you\'ll find it, like a '+BRAND.short+' folder in Files.');}
         catch(err){hint.textContent=err&&err.name==='AbortError'?'Backup not saved. Tap Save a backup, then choose Save to Files.':'Couldn\'t open the share sheet. Try again.';}
         return;}
     }catch(err){}
@@ -2459,7 +2485,7 @@ document.getElementById('bk-load').addEventListener('change',e=>{
       box.innerHTML+=`
 <div class="row"><button class="opt" data-bk="save">Save current list first</button><button class="opt bk-go" data-bk="go">Restore backup</button><button class="opt" data-bk="cancel">Cancel</button></div>`;
       box.hidden=false;box.scrollIntoView({block:'nearest',behavior:'smooth'});
-    }catch(err){pendingBk=null;box.hidden=true;document.getElementById('bk-hint').textContent='That file isn\'t a backup from this app. Choose a file named Mum-Brain-backup-….json (older ones are named todo-backup-….json).';}};
+    }catch(err){pendingBk=null;box.hidden=true;document.getElementById('bk-hint').textContent='That file isn\'t a backup from this app. Choose a file named '+BRAND.backupPrefix+'….json (older ones are named todo-backup-….json).';}};
   r.readAsText(f);
 });
 document.getElementById('bk-confirm').addEventListener('click',e=>{
@@ -2470,7 +2496,7 @@ document.getElementById('bk-confirm').addEventListener('click',e=>{
   const st=pendingBk;pendingBk=null;box.hidden=true;
   // keep the live family list exactly as it is; only your own jobs come from the backup
   if(SHARING)st.tasks=st.tasks.filter(t=>t.list!==SHARED).concat(state.tasks.filter(t=>t.list===SHARED));
-  state=st;fixPrefs(state.prefs=state.prefs||{palette:'linen',font:'clean',mode:'light'});
+  state=st;fixPrefs(state.prefs=state.prefs||{palette:BRAND.palette,font:'clean',mode:'light'});
   if(!Array.isArray(state.lists))state.lists=[];
   if(!Array.isArray(state.projects))state.projects=[];
   save();applyPrefs();paintSettings();render();

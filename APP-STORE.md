@@ -19,3 +19,15 @@ The live web app on GitHub Pages (`main`) is not affected.
 4. **Done (v1.6.1):** on-device safe copy. Everything the app saves is also kept in the app's own storage (iPhone UserDefaults, via @capacitor/preferences), which iPhone doesn't clear. If the web storage is ever wiped, the app restores from the safe copy and reloads once. The Safari-only "Add to Home Screen" cards are hidden in the phone app.
 5. Home-screen widget (Dawn-style: greeting, today's jobs, brain dump nudge, month view on larger sizes).
 6. App icon, privacy policy page, store listing and screenshots.
+
+## Brand pack (keeping a future "everyone" edition open)
+All the Mum Brain–specific wording sits in one `BRAND` block at the top of the script in `index.html`:
+name, short name, slogan, tester note, feedback question, backup file name, example jobs
+("Book dentist", "Dentist Fri 3pm", "Camping trip", "baby prep") and the default theme (Linen).
+Other places that carry the name: `manifest.json`, `capacitor.config.json` (`appName`) and the icons.
+
+Deliberately **not** in the brand pack, so existing lists, backups and family sharing keep working across
+any edition: the storage key, the Firebase project, and the family-sharing encryption salts.
+
+Note: Apple's guideline 4.3 (spam) rejects near-identical apps under separate App IDs, so a general edition
+should be either a mode inside this one app, or a clearly different app – not a reskin.
