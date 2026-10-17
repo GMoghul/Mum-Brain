@@ -1,0 +1,38 @@
+# Builds the iPhone app on GitHub's Mac computers, so no Mac is needed at home.
+# Stage 1 (now): a test build to check everything compiles.
+# Stage 2 (once Apple approves the developer account): signing and upload to TestFlight.
+name: iPhone app build
+
+on:
+  push:
+    branches: [app-store]
+  workflow_dispatch:
+
+jobs:
+  build-check:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install app tools
+        run: npm install
+
+      - name: Copy the web app in
+        run: npm run web
+
+      - name: Create the iPhone project
+        run: |
+          if [ ! -d ios ]; then npx cap add ios; fi
+          npx cap sync ios
+
+      - name: Test build (no signing yet)
+        run: |
+          cd ios/App
+          if [ -d App.xcworkspace ]; then TARGET="-workspace App.xcworkspace"; else TARGET="-project App.xcodeproj"; fi
+          xcodebuild $TARGET -scheme App -configuration Debug \
+            -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
+            CODE_SIGNING_ALLOWED=NO build | tail -n 40

@@ -1,0 +1,12 @@
+{
+  "appId": "com.gmoghul.mumbrain",
+  "appName": "Mum Brain",
+  "webDir": "www",
+  "ios": {
+    "contentInset": "never",
+    "backgroundColor": "#F9F8FC"
+  },
+  "android": {
+    "backgroundColor": "#F9F8FC"
+  }
+}
