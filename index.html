@@ -466,6 +466,7 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .grip{flex:none;width:30px;height:30px;display:grid;place-items:center;color:var(--muted);touch-action:none;cursor:grab;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
 .lrow .grip{flex:none}
 .lrow.off>span:not(.grip){color:var(--muted)}
+.lrow .lhint{display:block;font-size:12.5px;line-height:1.35;color:var(--muted);margin-top:2px}
 .lrow button.pswitch{flex:none;width:44px;height:26px;border-radius:13px;background:var(--line);position:relative;transition:background .2s}
 .lrow button.pswitch i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s}
 .lrow button.pswitch.on{background:var(--accent)}
@@ -775,17 +776,10 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="seg seg3" id="s-style"><button data-sty="wash">Watercolour</button><button data-sty="sharp">Sharp</button><button data-sty="none">No theme</button></div>
       <div id="s-opts" style="margin-top:12px"></div>
     </div>
+    <div class="field"><span class="lbl">Appearance</span>
+      <div class="seg seg3" id="s-mode"><button data-mode="light">Light</button><button data-mode="auto">Match phone</button><button data-mode="dark">Dark</button></div>
+    </div>
     <div class="field"><span class="lbl">Font</span><div class="fonts" id="s-fonts"></div></div>
-    <div class="field"><span class="lbl">Lists</span>
-      <div id="s-lists"></div>
-      <div class="rep-hint">Projects: lists with dates, progress and subtasks, for bigger jobs like trip prep.</div>
-      <div class="newlist"><input class="f-date" id="sl-in" placeholder="New list name" autocomplete="off" enterkeyhint="done" aria-label="New list name"><button class="opt on" id="sl-add">Add list</button></div>
-    </div>
-    <div class="field"><span class="lbl">Morning sort</span>
-      <div class="seg" id="s-nudge" style="grid-template-columns:repeat(2,1fr)"><button data-nudge="on">On</button><button data-nudge="off">Off</button></div>
-      <div class="rep-hint">A small card each day with 3 jobs from your brain dump that need a day.</div>
-    </div>
-    <div class="field"><span class="lbl">Family sharing</span><div id="s-family"></div></div>
     <div class="field"><span class="lbl">Text size</span>
       <div class="seg" id="s-ts" style="grid-template-columns:repeat(4,1fr)"><button data-ts="s">Small</button><button data-ts="m">Standard</button><button data-ts="l">Large</button><button data-ts="xl">Largest</button></div>
     </div>
@@ -793,11 +787,14 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="seg seg3" id="s-sp"><button data-spc="compact">Compact</button><button data-spc="std">Standard</button><button data-spc="roomy">Roomy</button></div>
       <div class="rep-hint">Compact fits the most jobs on screen and hides note previews.</div>
     </div>
-    <div class="field"><span class="lbl">Backup</span>
-      <div class="row"><button class="opt" id="bk-save">Save a backup</button><label class="opt" style="display:inline-flex;align-items:center;cursor:pointer">Restore a backup<input type="file" id="bk-load" accept=".json,application/json" hidden></label></div>
-      <div class="rep-hint bk-last" id="bk-last"></div>
-      <div class="rep-hint" id="bk-hint">Your jobs are saved on this device. A backup file keeps them safe. On iPhone, choose Save to Files when the share sheet opens.</div>
-      <div class="bk-confirm" id="bk-confirm" hidden></div>
+    <div class="field"><span class="lbl">Lists</span>
+      <div id="s-lists"></div>
+      <div class="newlist"><input class="f-date" id="sl-in" placeholder="New list name" autocomplete="off" enterkeyhint="done" aria-label="New list name"><button class="opt on" id="sl-add">Add list</button></div>
+    </div>
+    <div class="field"><span class="lbl">Family sharing</span><div id="s-family"></div></div>
+    <div class="field"><span class="lbl">Morning sort</span>
+      <div class="seg" id="s-nudge" style="grid-template-columns:repeat(2,1fr)"><button data-nudge="on">On</button><button data-nudge="off">Off</button></div>
+      <div class="rep-hint">A small card each day with 3 jobs from your brain dump that need a day.</div>
     </div>
     <div class="field"><span class="lbl">Tidy away finished jobs</span>
       <div class="seg" id="s-tidy" style="grid-template-columns:repeat(4,1fr)"><button data-tidy="off">Never</button><button data-tidy="3">3 days</button><button data-tidy="7">1 week</button><button data-tidy="30">1 month</button></div>
@@ -807,8 +804,11 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="seg" id="s-cele" style="grid-template-columns:repeat(4,1fr)"><button data-cel="rabbit">Rabbit</button><button data-cel="bird">Bird</button><button data-cel="stars">Stars</button><button data-cel="off">Off</button></div>
       <div class="rep-hint">Plays when you tick off the last job of the day, or empty your brain dump. <button class="more" id="cel-try" style="margin:0;display:inline">Preview</button></div>
     </div>
-    <div class="field"><span class="lbl">Appearance</span>
-      <div class="seg seg3" id="s-mode"><button data-mode="light">Light</button><button data-mode="auto">Match phone</button><button data-mode="dark">Dark</button></div>
+    <div class="field"><span class="lbl">Backup</span>
+      <div class="row"><button class="opt" id="bk-save">Save a backup</button><label class="opt" style="display:inline-flex;align-items:center;cursor:pointer">Restore a backup<input type="file" id="bk-load" accept=".json,application/json" hidden></label></div>
+      <div class="rep-hint bk-last" id="bk-last"></div>
+      <div class="rep-hint" id="bk-hint">Your jobs are saved on this device. A backup file keeps them safe. On iPhone, choose Save to Files when the share sheet opens.</div>
+      <div class="bk-confirm" id="bk-confirm" hidden></div>
     </div>
   </div>
 </div>
@@ -1385,7 +1385,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.5.2';
+const APPV='1.5.3';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2199,7 +2199,8 @@ function paintSLists(){
   const L=listOrder(true),on=projOn();
   const end=id=>id===PROJ?`<button class="pswitch${on?' on':''}" role="switch" aria-checked="${on}" aria-label="Show Projects tag" data-projs="${on?'off':'on'}"><i></i></button>`
     :isSpecial(id)?'<span class="fixed">Built in</span>':`<button data-dellist="${id}">Delete</button>`;
-  document.getElementById('s-lists').innerHTML=L.map(([id,n])=>`<div class="lrow${id===PROJ&&!on?' off':''}" data-lid="${id}">${L.length>1?`<span class="grip" aria-hidden="true">${GRIP}</span>`:''}<span>${esc(n)}</span>${end(id)}</div>`).join('');
+  const hint={[PROJ]:'Lists with dates, progress and subtasks, for bigger jobs like trip prep.',[SHARED]:'Invite or manage family in Family sharing below.'};
+  document.getElementById('s-lists').innerHTML=L.map(([id,n])=>`<div class="lrow${id===PROJ&&!on?' off':''}" data-lid="${id}">${L.length>1?`<span class="grip" aria-hidden="true">${GRIP}</span>`:''}<span>${esc(n)}${hint[id]?`<small class="lhint">${hint[id]}</small>`:''}</span>${end(id)}</div>`).join('');
 }
 const slIn=document.getElementById('sl-in');
 document.getElementById('sl-add').addEventListener('click',()=>{addList(slIn);paintSLists();render();});
