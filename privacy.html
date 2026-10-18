@@ -117,7 +117,7 @@ footer{color:var(--muted);font-size:14px;text-align:center;margin-top:28px}
 </main>
 <script>
 // Contact email, shown in both places on the page
-var CONTACT='rose.moghul@gmail.com';
+var CONTACT=''; // add the app's own email address here once it's made
 document.querySelectorAll('#contact,[data-contact]').forEach(function(el){
   if(CONTACT){var a=document.createElement('a');a.href='mailto:'+CONTACT;a.textContent=CONTACT;el.appendChild(a);}
   else el.textContent='through the feedback form in the app’s Settings';
