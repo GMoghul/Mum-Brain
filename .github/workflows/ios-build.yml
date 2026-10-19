@@ -1,12 +1,22 @@
 # Builds the iPhone app on GitHub's Mac computers, so no Mac is needed at home.
-# Stage 1 (now): a test build to check everything compiles.
-# Stage 2 (once Apple approves the developer account): signing and upload to TestFlight.
+#
+# Job 1 "build-check": a quick test build (no signing) on every push.
+# Job 2 "testflight":   signs the app and uploads it to App Store Connect / TestFlight.
+#                       Runs only once the three App Store Connect secrets are saved in
+#                       GitHub (Settings > Secrets and variables > Actions):
+#                         ASC_KEY_ID     - the Key ID of the App Store Connect API key
+#                         ASC_ISSUER_ID  - the Issuer ID shown above the keys
+#                         ASC_KEY_P8     - the full text of the AuthKey_XXXX.p8 file
+#                       The key needs Admin access (Apple requires it for cloud signing).
 name: iPhone app build
 
 on:
   push:
     branches: [app-store]
   workflow_dispatch:
+
+env:
+  TEAM_ID: 327WHDC3C5
 
 jobs:
   build-check:
@@ -17,6 +27,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
+
+      - name: Use the newest Xcode
+        run: |
+          XC=$(ls -d /Applications/Xcode_2*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$XC" ]; then sudo xcode-select -s "$XC"; fi
+          xcodebuild -version
 
       - name: Install app tools
         run: npm install
@@ -29,10 +45,112 @@ jobs:
           if [ ! -d ios ]; then npx cap add ios; fi
           npx cap sync ios
 
-      - name: Test build (no signing yet)
+      - name: Test build (no signing)
         run: |
+          set -o pipefail
           cd ios/App
           if [ -d App.xcworkspace ]; then TARGET="-workspace App.xcworkspace"; else TARGET="-project App.xcodeproj"; fi
           xcodebuild $TARGET -scheme App -configuration Debug \
             -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
             CODE_SIGNING_ALLOWED=NO build | tail -n 40
+
+  testflight:
+    needs: build-check
+    runs-on: macos-15
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+    steps:
+      - name: Check the Apple secrets are saved
+        id: secrets
+        run: |
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_KEY_P8" ]; then
+            echo "App Store Connect secrets not saved yet - skipping the TestFlight upload."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.secrets.outputs.ready == 'true'
+
+      - uses: actions/setup-node@v4
+        if: steps.secrets.outputs.ready == 'true'
+        with:
+          node-version: 22
+
+      - name: Use the newest Xcode
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          XC=$(ls -d /Applications/Xcode_2*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$XC" ]; then sudo xcode-select -s "$XC"; fi
+          xcodebuild -version
+
+      - name: Build the iPhone project
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          npm install
+          npm run web
+          if [ ! -d ios ]; then npx cap add ios; fi
+          npx cap sync ios
+
+      - name: App settings (icon, version, export compliance)
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          PLIST=ios/App/App/Info.plist
+          # Uses only Apple's built-in encryption (family sharing), so no export paperwork per build.
+          /usr/libexec/PlistBuddy -c "Delete :ITSAppUsesNonExemptEncryption" "$PLIST" 2>/dev/null || true
+          /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"
+          # App icon: the Mum Brain icon instead of Capacitor's placeholder.
+          ICON=$(ls ios/App/App/Assets.xcassets/AppIcon.appiconset/*.png | head -1)
+          sips -z 1024 1024 icon-512.png --out "$ICON"
+          echo "Build number: ${{ github.run_number }}"
+
+      - name: Save the App Store Connect key
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          mkdir -p "$RUNNER_TEMP/keys"
+          printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey.p8"
+
+      - name: Sign and archive
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          set -o pipefail
+          cd ios/App
+          if [ -d App.xcworkspace ]; then TARGET="-workspace App.xcworkspace"; else TARGET="-project App.xcodeproj"; fi
+          xcodebuild $TARGET -scheme App -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            archive | tail -n 60
+
+      - name: Upload to App Store Connect (TestFlight)
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          set -o pipefail
+          OPTS="$RUNNER_TEMP/ExportOptions.plist"
+          plutil -create xml1 "$OPTS"
+          plutil -insert method -string app-store-connect "$OPTS"
+          plutil -insert destination -string upload "$OPTS"
+          plutil -insert teamID -string "$TEAM_ID" "$OPTS"
+          plutil -insert signingStyle -string automatic "$OPTS"
+          plutil -insert manageAppVersionAndBuildNumber -bool NO "$OPTS"
+          cat "$OPTS"
+          xcodebuild -exportArchive \
+            -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" \
+            -exportPath "$RUNNER_TEMP/export" \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$RUNNER_TEMP/keys/AuthKey.p8" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" | tail -n 60
+
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/keys"

@@ -10,7 +10,10 @@ The live web app on GitHub Pages (`main`) is not affected.
 
 ## Stages
 1. **Done:** project set up and a test build on GitHub's Macs.
-2. **Next (needs Apple approval):** signing + automatic upload to TestFlight. Needs an App Store Connect API key saved as GitHub secrets.
+2. **Set up (19 Oct 2026):** signing + automatic upload to TestFlight (job `testflight` in the workflow).
+   - Apple side done: App ID `com.gmoghul.mumbrainsorted` (Push Notifications + App Groups), app "Mum Brain, Sorted" in App Store Connect (SKU `mumbrainsorted001`, version 1.0).
+   - Needs three GitHub secrets: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8` (the .p8 file's full text). The key must have **Admin** access – Apple only allows cloud signing with Admin keys. Until they're saved, the upload job is skipped.
+   - Build number = the GitHub run number, so every upload is unique. Every push to `app-store` uploads a new TestFlight build.
 3. **Done (v1.6.0):** closed-app alarms and the morning summary (local notifications, scheduled on the phone).
    - Morning summary: on by default at 9am; on/off and time in Settings (phone app only).
    - Alarms: same alarm options as the web app; notifications have a **Done** button.
