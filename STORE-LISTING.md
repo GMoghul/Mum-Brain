@@ -4,6 +4,8 @@ Ready to copy into App Store Connect once Apple approves the developer account.
 Character limits are Apple's; every field below has been counted.
 
 ## Basics
+Contact email for App Store Connect (App Review and support): mumbrainsorted@gmail.com
+
 | Field | Text | Limit |
 |---|---|---|
 | App name | Mum Brain, Sorted | 17 / 30 |
