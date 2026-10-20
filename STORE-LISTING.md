@@ -9,7 +9,7 @@ Contact email for App Store Connect (App Review and support): mumbrainsorted@gma
 | Field | Text | Limit |
 |---|---|---|
 | App name | Mum Brain, Sorted | 17 / 30 |
-| Subtitle | Brain dump to-do list for mums | 30 / 30 |
+| Subtitle | Dump it. Sort it. Do it. | 24 / 30 |
 | Primary category | Productivity | |
 | Secondary category | Lifestyle | |
 | Age rating | 4+ (answer "None" to every content question) | |
@@ -25,7 +25,7 @@ Can be changed at any time without a new app version.
 > Out of your head. Into your day. Get every job out of your head first, then give it a day when you're ready. Made by a mum, for mums.
 
 ## Keywords (97 / 100)
-Commas, no spaces. Words already in the name or subtitle (mum, brain, dump, sorted, to-do) are left out, as Apple counts those anyway.
+Commas, no spaces. Words already in the name or subtitle (mum, brain, sorted, dump, sort, do) are left out, as Apple counts those anyway. "to do list" stays in, as it is no longer in the subtitle.
 
 ```
 to do list,planner,organiser,family,shared list,reminders,checklist,daily tasks,mom,routine,mummy

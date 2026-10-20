@@ -560,6 +560,42 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .pfin button{flex:none;height:38px;padding:0 14px;border-radius:11px;background:var(--primary);color:#fff;font-weight:600;font-size:14.5px}
 .proj-note{font-size:13.5px;color:var(--muted)}
 #psheet .f-title{margin-bottom:4px}
+
+/* welcome screens (first open only; replay from Settings › Help) */
+#welcome{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;
+  padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(18px + env(safe-area-inset-bottom,0px));opacity:0;transition:opacity .25s}
+#welcome[hidden]{display:none}
+#welcome.show{opacity:1}
+.wl-top{display:flex;justify-content:flex-end;max-width:460px;width:100%;margin:0 auto}
+.wl-skip{font-size:15px;font-weight:500;color:var(--muted);padding:8px 4px}
+.wl-body{flex:1;display:flex;flex-direction:column;justify-content:flex-start;padding-top:min(12vh,90px);max-width:460px;width:100%;margin:0 auto;text-align:center}
+.wl-step{font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)}
+.wl-body h2{font-family:var(--font-head);letter-spacing:var(--hls);font-weight:var(--hw);font-size:38px;line-height:1.1;margin:8px 0 12px}
+.wl-body p{margin:0 auto;max-width:340px;color:var(--muted);font-size:17px;line-height:1.5}
+.wl-eg{margin-top:10px;font-size:15px;color:var(--muted);font-family:var(--font-sub);font-style:var(--sub-style)}
+.wl-art{margin:0 auto 28px;width:100%;max-width:320px;min-height:196px;box-sizing:border-box;background:var(--solid);border-radius:20px;box-shadow:var(--shadow);padding:14px;text-align:left}
+.wl-art .q{display:flex;align-items:center;gap:8px;height:42px;padding:0 12px;border-radius:12px;background:var(--bg);font-size:15px;color:var(--ink)}
+.wl-art .q b{margin-left:auto;width:26px;height:26px;border-radius:8px;background:var(--primary);color:var(--solid);display:grid;place-items:center;font-size:18px;font-weight:600;line-height:1}
+.wl-art .cur{display:inline-block;width:2px;height:18px;background:var(--accent);margin-left:-6px;animation:wlblink 1s steps(1) infinite}
+.wl-art ul{list-style:none;margin:10px 0 0;padding:0}
+.wl-art li{display:flex;align-items:center;gap:10px;padding:9px 2px;border-top:1px solid var(--line);font-size:15px}
+.wl-art li:first-child{border-top:0}
+.wl-art .ck{flex:none;width:20px;height:20px;border-radius:7px;border:2px solid var(--line)}
+.wl-art .ck.on{background:var(--accent);border-color:var(--accent);position:relative}
+.wl-art .ck.on::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid var(--solid);border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
+.wl-art .dn{color:var(--muted);text-decoration:line-through}
+.wl-art .tag{margin-left:auto;font-size:12.5px;color:var(--muted)}
+.wl-art .hd{font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:2px 2px 4px}
+.wl-art .db{margin-left:auto;display:flex;gap:6px}
+.wl-art .db i{font-style:normal;font-size:12.5px;font-weight:600;padding:5px 9px;border-radius:8px;background:var(--accent-soft);color:var(--accent)}
+.wl-foot{max-width:460px;width:100%;margin:0 auto}
+.wl-dots{display:flex;justify-content:center;gap:8px;margin-bottom:18px}
+.wl-dots button{width:8px;height:8px;padding:0;border-radius:8px;background:var(--line);transition:width .2s,background .2s}
+.wl-dots button.on{width:22px;background:var(--accent)}
+.wl-next{width:100%;height:52px;border-radius:16px;background:var(--primary);color:var(--solid);font-size:16.5px;font-weight:600}
+.wl-slogan{margin-top:12px;text-align:center;color:var(--muted);font-size:15px;font-family:var(--font-sub);font-style:var(--sub-style);min-height:1.4em}
+@keyframes wlblink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){#welcome{transition:none}.wl-art .cur{animation:none}}
 </style>
 </head>
 <body>
@@ -753,6 +789,12 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 <div class="snack" id="snack" role="status" aria-live="polite"><span id="snack-t"></span><button id="snack-undo">Undo</button></div>
 <div class="cele" id="cele" aria-live="polite"><div class="stage" id="cele-stage"></div></div>
 
+<div id="welcome" role="dialog" aria-modal="true" aria-labelledby="wl-h" hidden>
+  <div class="wl-top"><button class="wl-skip" data-wl="skip">Skip</button></div>
+  <div class="wl-body" id="wl-body" aria-live="polite"></div>
+  <div class="wl-foot"><div class="wl-dots" id="wl-dots"></div><button class="wl-next" id="wl-next" data-wl="next">Next</button><div class="wl-slogan" id="wl-slogan"></div></div>
+</div>
+
 <div id="settings" aria-hidden="true">
   <div class="scrim" data-sact="close"></div>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="st-h">
@@ -815,6 +857,9 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="rep-hint" id="bk-hint">Your jobs are saved on this device. A backup file keeps them safe. On iPhone, choose Save to Files when the share sheet opens.</div>
       <div class="bk-confirm" id="bk-confirm" hidden></div>
     </div>
+    <div class="field"><span class="lbl">Help</span>
+      <div class="row"><button class="opt" id="wl-replay">Show the welcome screens</button></div>
+    </div>
   </div>
 </div>
 
@@ -872,7 +917,15 @@ const BRAND={
   egQuick:'Dentist Fri 3pm',           // Quick-add box example
   egProject:'Camping trip',            // New project name example
   egProjects:'a camping trip, moving house or baby prep', // empty Projects screen
-  palette:'linen'                      // default theme for new users
+  palette:'linen',                     // default theme for new users
+  welcome:[                            // first-open welcome screens: Dump it, Sort it, Do it
+    {h:'Dump it.',p:'Get every job out of your head, big or small. No dates, no sorting, just type it in.',eg:'e.g. “Nursery form”, “Book dentist Fri 3pm”',
+     art:{type:'Book dentist Fri 3pm',jobs:['Nursery form','Birthday present','Socks that fit']}},
+    {h:'Sort it.',p:'When you’ve got a minute, give jobs a day, or leave them in Brain dump until you’re ready. Each morning you’ll get 3 to sort, nothing more.',
+     art:{jobs:['Nursery form','Birthday present','Socks that fit']}},
+    {h:'Do it.',p:'Today shows just today’s jobs, so you can get on with your day. Tick them off and enjoy the little celebration.',
+     art:{done:'Nursery form',jobs:['Book dentist','Birthday present']}}
+  ]
 };
 document.title=BRAND.name;
 const GRIP='<svg viewBox="0 0 16 16" fill="currentColor"><circle cx="5.5" cy="3.5" r="1.4"/><circle cx="10.5" cy="3.5" r="1.4"/><circle cx="5.5" cy="8" r="1.4"/><circle cx="10.5" cy="8" r="1.4"/><circle cx="5.5" cy="12.5" r="1.4"/><circle cx="10.5" cy="12.5" r="1.4"/></svg>';
@@ -2428,6 +2481,41 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&st.classList.contai
 let lastDay=today();
 setInterval(()=>{if(today()!==lastDay){lastDay=today();tidy();returnOld();if(!draft)render();}},60000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&today()!==lastDay){lastDay=today();returnOld();if(!draft)render();}});
+
+/* ---------- welcome screens (Dump it, Sort it, Do it) ----------
+   Shown once on first open for new users; wording lives in BRAND.welcome. Replay from Settings › Help. */
+{
+const wl=document.getElementById('welcome'),W=BRAND.welcome,WK=KEY+'-welcomed';
+let wi=0;
+const art=i=>{const a=W[i].art;
+  if(i===0)return `<div class="wl-art"><div class="q"><span>${esc(a.type)}</span><span class="cur"></span><b>+</b></div><ul>${a.jobs.map(j=>`<li><span class="ck"></span>${esc(j)}<span class="tag">No day yet</span></li>`).join('')}</ul></div>`;
+  if(i===1)return `<div class="wl-art"><div class="hd">Sort 3 jobs</div><ul>${a.jobs.map(j=>`<li>${esc(j)}<span class="db"><i>Today</i><i>Tomorrow</i></span></li>`).join('')}</ul></div>`;
+  return `<div class="wl-art"><div class="hd">Today</div><ul><li><span class="ck on"></span><span class="dn">${esc(a.done)}</span></li>${a.jobs.map(j=>`<li><span class="ck"></span>${esc(j)}</li>`).join('')}</ul></div>`;};
+function paintWl(){
+  const w=W[wi],last=wi===W.length-1;
+  document.getElementById('wl-body').innerHTML=`${art(wi)}<div class="wl-step">Step ${wi+1} of ${W.length}</div><h2 id="wl-h">${esc(w.h)}</h2><p>${esc(w.p)}</p>${w.eg?`<div class="wl-eg">${esc(w.eg)}</div>`:''}`;
+  document.getElementById('wl-dots').innerHTML=W.map((x,j)=>`<button class="${j===wi?'on':''}" data-wl="go" data-i="${j}" aria-label="Step ${j+1}: ${esc(x.h)}"${j===wi?' aria-current="step"':''}></button>`).join('');
+  document.getElementById('wl-next').textContent=last?'Let’s start':'Next';
+  document.querySelector('.wl-skip').style.visibility=last?'hidden':'';
+  document.getElementById('wl-slogan').textContent=last?BRAND.slogan:'';}
+function openWl(){wi=0;paintWl();wl.hidden=false;requestAnimationFrame(()=>wl.classList.add('show'));document.getElementById('wl-next').focus();}
+function closeWl(){try{localStorage.setItem(WK,'1');}catch(e){}wl.classList.remove('show');setTimeout(()=>{wl.hidden=true;},250);}
+wl.addEventListener('click',e=>{const b=e.target.closest('[data-wl]');if(!b)return;
+  const a=b.dataset.wl;
+  if(a==='skip'){closeWl();return;}
+  if(a==='go'){wi=Number(b.dataset.i);paintWl();return;}
+  if(a==='next'){if(wi<W.length-1){wi++;paintWl();}else closeWl();}});
+let wx=null;
+wl.addEventListener('touchstart',e=>{wx=e.touches[0].clientX;},{passive:true});
+wl.addEventListener('touchend',e=>{if(wx==null)return;const dx=e.changedTouches[0].clientX-wx;wx=null;
+  if(dx<-50&&wi<W.length-1){wi++;paintWl();}else if(dx>50&&wi>0){wi--;paintWl();}},{passive:true});
+document.addEventListener('keydown',e=>{if(wl.hidden)return;
+  if(e.key==='Escape')closeWl();else if(e.key==='ArrowRight'&&wi<W.length-1){wi++;paintWl();}else if(e.key==='ArrowLeft'&&wi>0){wi--;paintWl();}});
+document.getElementById('wl-replay').addEventListener('click',()=>{closeSettings();setTimeout(openWl,300);});
+let seen=null;try{seen=localStorage.getItem(WK);}catch(e){}
+// people already using the app (they have jobs) don't need the welcome; brand-new lists get it once
+if(!seen){if(state.tasks.length){try{localStorage.setItem(WK,'1');}catch(e){}}else openWl();}
+}
 
 tidy();
 returnOld();
