@@ -20,6 +20,9 @@ env:
 
 jobs:
   build-check:
+    # Only on a manual run - the TestFlight job below does a full build anyway,
+    # and GitHub's Macs are often busy, so one Mac per push is quicker.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -55,7 +58,6 @@ jobs:
             CODE_SIGNING_ALLOWED=NO build | tail -n 40
 
   testflight:
-    needs: build-check
     runs-on: macos-15
     env:
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
