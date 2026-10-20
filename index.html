@@ -940,6 +940,17 @@ const KEY='todo-app-v1';
  set('fb-recommend','textContent',BRAND.recommendQ);
  const m=document.querySelector('meta[name="apple-mobile-web-app-title"]');if(m)m.content=BRAND.short;}
 const NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()); // true only in the App Store version
+/* iPhone app only: while a sheet (New job, project, Settings) is open, stop the phone pushing the whole
+   screen up when the keyboard appears. The page underneath stays where it was, so the sheet's top stays in view. */
+if(NATIVE){
+  const sheetOpen=()=>!!document.querySelector('.open .sheet,.sheet.open');
+  let keepY=window.scrollY||0;
+  const pin=()=>{if(sheetOpen()&&Math.abs((window.scrollY||0)-keepY)>1)window.scrollTo(0,keepY);};
+  window.addEventListener('scroll',()=>{if(!sheetOpen())keepY=window.scrollY||0;else pin();},{passive:true});
+  document.addEventListener('focusin',()=>{pin();setTimeout(pin,50);setTimeout(pin,300);});
+  try{const K=window.Capacitor.Plugins&&window.Capacitor.Plugins.Keyboard;
+    if(K){K.addListener('keyboardWillShow',pin);K.addListener('keyboardDidShow',pin);K.addListener('keyboardDidHide',pin);}}catch(e){}
+}
 const COLORS=[['grey','#9AA1AB'],['coral','#EF6F63'],['apricot','#F29A4A'],['butter','#DDB43A'],['sage','#62B07D'],['teal','#3FA7A2'],['sky','#5B9FE0'],['lavender','#9483DB'],['rose','#E57FB0']];
 const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
