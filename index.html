@@ -1857,7 +1857,7 @@ function openEditor(id,defaults){
   paint();
   ed.querySelector('.sheet').scrollTop=0; // always open at the top, not where the last job was left
   ed.classList.add('open');ed.setAttribute('aria-hidden','false');
-  if(isNew)setTimeout(()=>fTitle.focus(),60);
+  if(isNew)setTimeout(()=>fTitle.focus({preventScroll:true}),NATIVE?320:60); // in the iPhone app, wait until the sheet has slid fully up, or the phone shifts the whole screen to find the box
 }
 const fLists=document.getElementById('f-lists'),newlist=document.getElementById('newlist'),nlIn=document.getElementById('nl-in'),
   fCl=document.getElementById('f-cl'),clIn=document.getElementById('cl-in');
@@ -1978,7 +1978,7 @@ function openPSheet(mode,p){
   if(mode==='copy'){const n=projJobs(p.id).length;hint.textContent=`A fresh copy of ${nJobs(n)}, all unticked and with no days. Rename it if you like – the archived one stays as it is.`;}
   paintP();
   ps.classList.add('open');ps.setAttribute('aria-hidden','false');
-  if(mode!=='edit')setTimeout(()=>{pName.focus();if(mode==='copy')pName.select();},60);
+  if(mode!=='edit')setTimeout(()=>{pName.focus({preventScroll:true});if(mode==='copy')pName.select();},NATIVE?320:60);
 }
 function paintP(){
   document.querySelectorAll('#p-colors .sw').forEach(b=>b.classList.toggle('on',b.dataset.pcolor===pdraft.color));
