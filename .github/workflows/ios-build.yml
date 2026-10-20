@@ -115,7 +115,9 @@ jobs:
           mkdir -p "$RUNNER_TEMP/keys"
           printf '%s\n' "$ASC_KEY_P8" > "$RUNNER_TEMP/keys/AuthKey.p8"
 
-      - name: Sign and archive
+      - name: Archive (signed in the next step)
+        # Archived unsigned: automatic signing at this stage wants a registered test device.
+        # The upload step signs it for the App Store using Apple's cloud signing.
         if: steps.secrets.outputs.ready == 'true'
         run: |
           set -o pipefail
@@ -129,6 +131,7 @@ jobs:
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             DEVELOPMENT_TEAM="$TEAM_ID" CODE_SIGN_STYLE=Automatic \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             archive > "$RUNNER_TEMP/archive.log" 2>&1 || {
               # Show the errors as annotations so they can be read without the full log.
