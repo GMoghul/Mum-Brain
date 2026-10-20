@@ -940,16 +940,22 @@ const KEY='todo-app-v1';
  set('fb-recommend','textContent',BRAND.recommendQ);
  const m=document.querySelector('meta[name="apple-mobile-web-app-title"]');if(m)m.content=BRAND.short;}
 const NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()); // true only in the App Store version
-/* iPhone app only: while a sheet (New job, project, Settings) is open, stop the phone pushing the whole
-   screen up when the keyboard appears. The page underneath stays where it was, so the sheet's top stays in view. */
+/* iPhone app only: while a sheet (New job, project, Settings) is open, the page underneath is held still
+   (it can't scroll), so the phone has nothing to push up when the keyboard appears and the sheet's top stays
+   in view. When the sheet closes, the page goes back to exactly where it was. */
 if(NATIVE){
-  const sheetOpen=()=>!!document.querySelector('.open .sheet,.sheet.open');
-  let keepY=window.scrollY||0;
-  const pin=()=>{if(sheetOpen()&&Math.abs((window.scrollY||0)-keepY)>1)window.scrollTo(0,keepY);};
-  window.addEventListener('scroll',()=>{if(!sheetOpen())keepY=window.scrollY||0;else pin();},{passive:true});
-  document.addEventListener('focusin',()=>{pin();setTimeout(pin,50);setTimeout(pin,300);});
+  let locked=false,lockY=0;const B=document.body;
+  const sync=()=>{const open=!!document.querySelector('.open .sheet,.sheet.open');
+    if(open&&!locked){locked=true;lockY=window.scrollY||0;
+      Object.assign(B.style,{position:'fixed',top:'calc(env(safe-area-inset-top,0px) - '+lockY+'px)',left:'0',right:'0',width:'100%',overflow:'hidden'});}
+    else if(!open&&locked){locked=false;
+      Object.assign(B.style,{position:'',top:'',left:'',right:'',width:'',overflow:''});window.scrollTo(0,lockY);}};
+  const watch=()=>{document.querySelectorAll('.sheet').forEach(sh=>{[sh,sh.parentElement].forEach(el=>el&&new MutationObserver(sync).observe(el,{attributes:true,attributeFilter:['class']}));});};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch);else watch();
+  const back=()=>{if(locked&&window.scrollY)window.scrollTo(0,0);};
+  window.addEventListener('scroll',back,{passive:true});
   try{const K=window.Capacitor.Plugins&&window.Capacitor.Plugins.Keyboard;
-    if(K){K.addListener('keyboardWillShow',pin);K.addListener('keyboardDidShow',pin);K.addListener('keyboardDidHide',pin);}}catch(e){}
+    if(K){K.addListener('keyboardWillShow',back);K.addListener('keyboardDidShow',back);}}catch(e){}
 }
 const COLORS=[['grey','#9AA1AB'],['coral','#EF6F63'],['apricot','#F29A4A'],['butter','#DDB43A'],['sage','#62B07D'],['teal','#3FA7A2'],['sky','#5B9FE0'],['lavender','#9483DB'],['rose','#E57FB0']];
 const DAYS=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
