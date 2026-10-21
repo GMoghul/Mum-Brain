@@ -966,6 +966,7 @@ const BRAND={
   egQuick:'Dentist Fri 3pm',           // Quick-add box example
   egProject:'Camping trip',            // New project name example
   egProjects:'a camping trip, moving house or baby prep', // empty Projects screen
+  webUrl:'https://gmoghul.github.io/Mum-Brain/', // online version (used in the iPhone app's "Send code" message)
   palette:'linen',                     // default theme for new users
   welcome:[                            // first-open welcome screens: Dump it, Sort it, Do it
     {h:'Dump it.',p:'Get every job out of your head, big or small. No dates, no sorting, just type it in.',eg:'e.g. “Nursery form”, “Book dentist Fri 3pm”',
@@ -1317,7 +1318,10 @@ document.getElementById('s-family').addEventListener('click',async e=>{
   if(a==='create'){showSt();createFamily();}
   else if(a==='join'){showSt();joinFamily(document.getElementById('fam-in').value);}
   else if(a==='share'){
-    const text=`Join our family list in ${BRAND.name}. Open ${location.origin+location.pathname}, add it to your home screen, then tap the settings icon ⚙️, Family sharing, and enter this code: ${fmtCode(family.code)}`;
+    const web=NATIVE?BRAND.webUrl:location.origin+location.pathname;
+    const text=NATIVE
+      ?`Join our family list in ${BRAND.name}. In the app, tap the settings icon ⚙️, then Family sharing, and enter this code: ${fmtCode(family.code)}\n\nUsing the online version instead? Open ${web}, add it to your home screen and enter the same code.`
+      :`Join our family list in ${BRAND.name}. Open ${web}, add it to your home screen, then tap the settings icon ⚙️, Family sharing, and enter this code: ${fmtCode(family.code)}`;
     try{if(navigator.share){await navigator.share({title:BRAND.name,text});return;}}catch(err){return;}
     try{await navigator.clipboard.writeText(text);b.textContent='Copied';setTimeout(()=>b.textContent='Send code',1500);}catch(err){}
   }
@@ -2524,7 +2528,8 @@ function paintSLists(){
   const end=id=>id===PROJ?`<button class="pswitch${on?' on':''}" role="switch" aria-checked="${on}" aria-label="Show Projects tag" data-projs="${on?'off':'on'}"><i></i></button>`
     :isSpecial(id)?'<span class="fixed">Built in</span>':`<button data-dellist="${id}">Delete</button>`;
   const hint={[PROJ]:'Lists with dates, subtasks and progress bars. Ideal for bigger jobs, e.g. prepping for a trip or a renovation project.',[SHARED]:'Invite or manage family in Family sharing below.'};
-  document.getElementById('s-lists').innerHTML=L.map(([id,n])=>`<div class="lrow${id===PROJ&&!on?' off':''}" data-lid="${id}">${L.length>1?`<span class="grip" aria-hidden="true">${GRIP}</span>`:''}<span>${esc(n)}${hint[id]?`<small class="lhint">${hint[id]}</small>`:''}</span>${end(id)}</div>`).join('');
+  document.getElementById('s-lists').innerHTML=L.map(([id,n])=>`<div class="lrow${id===PROJ&&!on?' off':''}" data-lid="${id}">${L.length>1?`<span class="grip" aria-hidden="true">${GRIP}</span>`:''}<span>${esc(n)}${hint[id]?`<small class="lhint">${hint[id]}</small>`:''}</span>${end(id)}</div>`).join('')
+    +(SHARING?'':`<div class="lrow off"><span>Shared<small class="lhint">Shows here once you create or join a family in Family sharing below. Moving from another phone? Enter the same family code.</small></span><span class="fixed">Built in</span></div>`);
 }
 const slIn=document.getElementById('sl-in');
 document.getElementById('sl-add').addEventListener('click',()=>{addList(slIn);paintSLists();render();});
@@ -2728,7 +2733,9 @@ document.getElementById('bk-confirm').addEventListener('click',e=>{
   if(!Array.isArray(state.lists))state.lists=[];
   if(!Array.isArray(state.projects))state.projects=[];
   save();applyPrefs();paintSettings();render();
-  document.getElementById('bk-hint').textContent='Backup restored: '+jobs(SHARING?st.tasks.filter(t=>t.list!==SHARED).length:st.tasks.length)+(SHARING?'. Your family list was left as it is.':'.');
+  const hadShared=!SHARING&&st.tasks.some(t=>t.list===SHARED);
+  document.getElementById('bk-hint').textContent='Backup restored: '+jobs(SHARING?st.tasks.filter(t=>t.list!==SHARED).length:st.tasks.length)+(SHARING?'. Your family list was left as it is.':hadShared?'. To see your Shared list, enter your family code in Family sharing below. You can find it in Settings › Family sharing on your other phone or the online version.':'.');
+  if(hadShared){const fi=document.getElementById('fam-in');if(fi)fi.scrollIntoView({block:'center',behavior:'smooth'});}
 });
 if('serviceWorker' in navigator&&location.protocol==='https:'){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
 connect();
