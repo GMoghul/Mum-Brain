@@ -4,16 +4,23 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <script>
-/* iPhone app only: when the app first opens, the phone takes a moment to say how tall the clock bar is.
-   Until it does, keep the screen blank (just the background colour), so the title doesn't flash under the
-   clock and then jump down. Shows anyway after 0.8s, whatever happens. */
-(function(){try{var C=window.Capacitor;if(!(C&&C.isNativePlatform&&C.isNativePlatform()&&C.getPlatform&&C.getPlatform()==='ios'))return;
-  var d=document.documentElement;d.classList.add('waitsafe');var t0=Date.now();
+/* iPhone app only: when the app opens, the phone takes a moment to say how much room the clock bar and the
+   home bar need. To avoid a jump, the app remembers those sizes from last time and uses them straight away
+   (--sat0/--sab0), then switches to the phone's own numbers once they arrive. The very first time the app is
+   opened there's nothing remembered, so the screen stays blank for that split second instead. */
+(function(){var d=document.documentElement;try{var C=window.Capacitor;if(!(C&&C.isNativePlatform&&C.isNativePlatform()&&C.getPlatform&&C.getPlatform()==='ios'))return;
+  var saved=null;try{saved=JSON.parse(localStorage.getItem('mb-safe')||'null');}catch(e){}
+  if(saved&&saved.t>0){d.style.setProperty('--sat0',saved.t+'px');d.style.setProperty('--sab0',(saved.b||0)+'px');}
+  else d.classList.add('waitsafe');
+  var t0=Date.now();
+  function done(){d.classList.remove('waitsafe');d.style.removeProperty('--sat0');d.style.removeProperty('--sab0');}
   function check(){var b=document.body;if(!b){requestAnimationFrame(check);return;}
     var p=document.getElementById('safeprobe');if(!p){p=document.createElement('div');p.id='safeprobe';
-      p.style.cssText='position:fixed;left:0;top:0;width:1px;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none';b.appendChild(p);}
-    if(p.offsetHeight>0||Date.now()-t0>800){requestAnimationFrame(function(){d.classList.remove('waitsafe');});}else requestAnimationFrame(check);}
-  requestAnimationFrame(check);}catch(e){document.documentElement.classList.remove('waitsafe');}})();
+      p.style.cssText='position:fixed;left:0;top:0;width:1px;height:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);visibility:hidden;pointer-events:none';b.appendChild(p);}
+    var top=parseFloat(getComputedStyle(p).height)||0,bot=parseFloat(getComputedStyle(p).paddingBottom)||0;
+    if(top>0){try{localStorage.setItem('mb-safe',JSON.stringify({t:top,b:bot}));}catch(e){}done();}
+    else if(Date.now()-t0>1500)done();else requestAnimationFrame(check);}
+  requestAnimationFrame(check);}catch(e){d.classList.remove('waitsafe');}})();
 </script>
 <style>html.waitsafe body>*{opacity:0!important}</style>
 <title>Mum Brain, Sorted</title>
@@ -38,8 +45,8 @@
   --star:#E3A008; --warn:#D9534F; --wash-op:var(--wash-l);
   --shadow:0 1px 2px rgba(20,24,32,.04),0 6px 20px rgba(20,24,32,.05);
   box-sizing:border-box;
-  padding-top:env(safe-area-inset-top,0px);
-  padding-bottom:env(safe-area-inset-bottom,0px);
+  padding-top:max(env(safe-area-inset-top,0px),var(--sat0,0px));
+  padding-bottom:max(env(safe-area-inset-bottom,0px),var(--sab0,0px));
   color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
@@ -56,9 +63,9 @@
 }
 *,*::before,*::after{box-sizing:inherit}
 /* Solid strip behind the phone's clock bar, so the list doesn't scroll up underneath the time (only has height in the iPhone app) */
-body::before{content:"";position:fixed;left:0;right:0;top:0;height:env(safe-area-inset-top,0px);background:var(--bg);z-index:8;pointer-events:none}
+body::before{content:"";position:fixed;left:0;right:0;top:0;height:max(env(safe-area-inset-top,0px),var(--sat0,0px));background:var(--bg);z-index:8;pointer-events:none}
 [hidden]{display:none!important}
-html{scroll-padding-top:env(safe-area-inset-top,0px);height:100%}
+html{scroll-padding-top:max(env(safe-area-inset-top,0px),var(--sat0,0px));height:100%}
 body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);
   font-family:var(--font-body);font-size:16px;line-height:1.45;
   -webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent}
@@ -67,7 +74,7 @@ input,textarea{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
 svg{display:block}
 
-main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px calc(150px + env(safe-area-inset-bottom,0px))}
+main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px calc(150px + max(env(safe-area-inset-bottom,0px),var(--sab0,0px)))}
 .head h1,.today-head .dow,.mhead h1,.sheet-top h2{font-family:var(--font-head);letter-spacing:var(--hls)}
 .topbar{position:absolute;top:12px;right:18px;z-index:2;display:flex;gap:8px}
 .topbar .iconbtn{width:38px;height:38px}
@@ -199,8 +206,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .dots i.d{opacity:.3}
 
 /* fab + tabs */
-.fab{position:fixed;right:max(12px,calc(50% - 268px));bottom:calc(12px + env(safe-area-inset-bottom,0px));width:66px;height:66px;border-radius:24px;background:var(--primary);color:#fff;display:grid;place-items:center;box-shadow:0 8px 24px color-mix(in srgb,var(--primary) 34%,transparent);z-index:5}
-.tabs{position:fixed;left:max(12px,calc(50% - 268px));right:calc(max(12px,calc(50% - 268px)) + 76px);bottom:calc(12px + env(safe-area-inset-bottom,0px));height:66px;box-sizing:border-box;z-index:6;background:color-mix(in srgb,var(--solid) 94%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:24px;padding:6px;box-shadow:0 2px 6px rgba(20,24,32,.05),0 14px 36px rgba(20,24,32,.11)}
+.fab{position:fixed;right:max(12px,calc(50% - 268px));bottom:calc(12px + max(env(safe-area-inset-bottom,0px),var(--sab0,0px)));width:66px;height:66px;border-radius:24px;background:var(--primary);color:#fff;display:grid;place-items:center;box-shadow:0 8px 24px color-mix(in srgb,var(--primary) 34%,transparent);z-index:5}
+.tabs{position:fixed;left:max(12px,calc(50% - 268px));right:calc(max(12px,calc(50% - 268px)) + 76px);bottom:calc(12px + max(env(safe-area-inset-bottom,0px),var(--sab0,0px)));height:66px;box-sizing:border-box;z-index:6;background:color-mix(in srgb,var(--solid) 94%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:24px;padding:6px;box-shadow:0 2px 6px rgba(20,24,32,.05),0 14px 36px rgba(20,24,32,.11)}
 .tabs nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px}
 .tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:54px;padding:0;white-space:nowrap;border-radius:18px;font-size:11.5px;font-weight:600;color:var(--muted);transition:background .2s,color .2s}
 .tab[aria-selected="true"]{color:var(--accent);background:var(--accent-soft);font-weight:700}
@@ -208,7 +215,7 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 /* sheet */
 .scrim{position:fixed;inset:0;background:rgba(10,12,16,.38);opacity:0;pointer-events:none;transition:opacity .2s;z-index:20}
 .sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;max-width:560px;margin:0 auto;background:var(--solid);border-radius:24px 24px 0 0;
-  padding:10px 20px calc(20px + env(safe-area-inset-bottom,0px));max-height:calc(100% - 24px - env(safe-area-inset-top,0px));overflow-y:auto;
+  padding:10px 20px calc(20px + max(env(safe-area-inset-bottom,0px),var(--sab0,0px)));max-height:calc(100% - 24px - max(env(safe-area-inset-top,0px),var(--sat0,0px)));overflow-y:auto;
   transform:translateY(105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);visibility:hidden}
 .open .scrim{opacity:1;pointer-events:auto}
 .open .sheet{transform:none;visibility:visible}
@@ -291,7 +298,7 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .sw.custom input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;border:0;padding:0}
 .sw.custom .plus{position:absolute;inset:0;display:grid;place-items:center;color:#fff;font-weight:700;font-size:18px;text-shadow:0 1px 2px rgba(0,0,0,.3)}
 .sw.custom.on .plus{display:none}
-.toast{position:fixed;left:12px;right:12px;top:calc(12px + env(safe-area-inset-top,0px));z-index:40;max-width:520px;margin:0 auto;background:var(--solid);border-radius:18px;box-shadow:0 10px 40px rgba(0,0,0,.18);padding:14px 14px 14px 16px;display:flex;align-items:center;gap:12px;transform:translateY(calc(-100% - 40px - env(safe-area-inset-top,0px)));visibility:hidden;transition:transform .3s cubic-bezier(.2,.8,.2,1),visibility 0s linear .3s}
+.toast{position:fixed;left:12px;right:12px;top:calc(12px + max(env(safe-area-inset-top,0px),var(--sat0,0px)));z-index:40;max-width:520px;margin:0 auto;background:var(--solid);border-radius:18px;box-shadow:0 10px 40px rgba(0,0,0,.18);padding:14px 14px 14px 16px;display:flex;align-items:center;gap:12px;transform:translateY(calc(-100% - 40px - max(env(safe-area-inset-top,0px),var(--sat0,0px))));visibility:hidden;transition:transform .3s cubic-bezier(.2,.8,.2,1),visibility 0s linear .3s}
 .toast.show{transform:none;visibility:visible;transition:transform .3s cubic-bezier(.2,.8,.2,1),visibility 0s}
 .toast .ic{width:38px;height:38px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
 .toast .tx{flex:1;min-width:0}
@@ -385,11 +392,11 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .lrow .fixed{font-size:13px;color:var(--muted)}
 
 /* undo bar */
-.snack{position:fixed;left:12px;right:12px;bottom:calc(92px + env(safe-area-inset-bottom,0px));z-index:30;max-width:520px;margin:0 auto;
+.snack{position:fixed;left:12px;right:12px;bottom:calc(92px + max(env(safe-area-inset-bottom,0px),var(--sab0,0px)));z-index:30;max-width:520px;margin:0 auto;
   background:#24262B;color:#fff;border-radius:14px;padding:6px 6px 6px 16px;display:flex;align-items:center;gap:10px;min-height:48px;
   box-shadow:0 10px 30px rgba(0,0,0,.2);transform:translateY(20px);opacity:0;pointer-events:none;transition:transform .25s ease,opacity .25s ease}
 .snack.show{transform:none;opacity:1;pointer-events:auto}
-.warnbar{position:fixed;left:12px;right:12px;bottom:calc(150px + env(safe-area-inset-bottom,0px));z-index:45;max-width:520px;margin:0 auto;background:#B23A35;color:#fff;border-radius:16px;padding:12px 8px 12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);transform:translateY(20px);opacity:0;transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .3s}
+.warnbar{position:fixed;left:12px;right:12px;bottom:calc(150px + max(env(safe-area-inset-bottom,0px),var(--sab0,0px)));z-index:45;max-width:520px;margin:0 auto;background:#B23A35;color:#fff;border-radius:16px;padding:12px 8px 12px 16px;display:flex;align-items:center;gap:10px;box-shadow:0 10px 30px rgba(0,0,0,.2);transform:translateY(20px);opacity:0;transition:transform .3s cubic-bezier(.2,.8,.2,1),opacity .3s}
 .warnbar.show{transform:none;opacity:1}
 .warnbar span{flex:1;font-size:14.5px;line-height:1.35}
 .warnbar button{flex:none;height:36px;padding:0 14px;border-radius:10px;background:rgba(255,255,255,.18);color:#fff;font-weight:700;font-size:14px}
@@ -578,7 +585,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 
 /* welcome screens (first open only; replay from Settings › Help) */
 #welcome{position:fixed;inset:0;z-index:40;background:var(--bg);display:flex;flex-direction:column;
-  padding:calc(14px + env(safe-area-inset-top,0px)) 16px calc(18px + env(safe-area-inset-bottom,0px));opacity:0;transition:opacity .25s}
+  padding:calc(14px + max(env(safe-area-inset-top,0px),var(--sat0,0px))) 16px calc(18px + max(env(safe-area-inset-bottom,0px),var(--sab0,0px)));opacity:0;transition:opacity .25s}
 #welcome[hidden]{display:none}
 #welcome.show{opacity:1}
 .wl-top{display:flex;justify-content:flex-end;max-width:460px;width:100%;margin:0 auto}
@@ -960,7 +967,7 @@ if(NATIVE){
   let locked=false,lockY=0;const B=document.body;
   const sync=()=>{const open=!!document.querySelector('.open .sheet,.sheet.open');
     if(open&&!locked){locked=true;lockY=window.scrollY||0;
-      Object.assign(B.style,{position:'fixed',top:'calc(env(safe-area-inset-top,0px) - '+lockY+'px)',left:'0',right:'0',width:'100%',overflow:'hidden'});}
+      Object.assign(B.style,{position:'fixed',top:'calc(max(env(safe-area-inset-top,0px),var(--sat0,0px)) - '+lockY+'px)',left:'0',right:'0',width:'100%',overflow:'hidden'});}
     else if(!open&&locked){locked=false;
       Object.assign(B.style,{position:'',top:'',left:'',right:'',width:'',overflow:''});window.scrollTo(0,lockY);}};
   const watch=()=>{document.querySelectorAll('.sheet').forEach(sh=>{[sh,sh.parentElement].forEach(el=>el&&new MutationObserver(sync).observe(el,{attributes:true,attributeFilter:['class']}));});};
