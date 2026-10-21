@@ -106,7 +106,7 @@ jobs:
           /usr/libexec/PlistBuddy -c "Add :ITSAppUsesNonExemptEncryption bool false" "$PLIST"
           # App icon: the Mum Brain icon instead of Capacitor's placeholder.
           ICON=$(ls ios/App/App/Assets.xcassets/AppIcon.appiconset/*.png | head -1)
-          sips -z 1024 1024 icon-512.png --out "$ICON"
+          cp icon-1024.png "$ICON"
           echo "Build number: ${{ github.run_number }}"
 
       - name: Save the App Store Connect key
