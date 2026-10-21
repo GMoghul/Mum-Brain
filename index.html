@@ -142,6 +142,10 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 :root[data-style="sharp"] .earlier-line{box-shadow:none;border:1.5px solid var(--line);border-radius:8px}
 .bk-empty{color:var(--warn)}
 .fb-row{display:flex;gap:10px;margin-top:12px}
+.lbl-sub{display:block;margin:14px 0 6px;font-size:13px;color:var(--muted)}
+.greet{display:block;width:100%;text-align:left;margin-top:8px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--solid);color:var(--ink);font-size:14px;line-height:1.35}
+.greet.on{border-color:var(--accent);background:var(--accent-soft)}
+#morn-more.off{opacity:.45;pointer-events:none}
 .fb-row .opt{flex:1;white-space:nowrap;padding-left:8px;padding-right:8px}
 #fb-quick:disabled{opacity:.45}
 .rep-hint.bk-last{margin-top:10px;color:var(--ink)}
@@ -864,6 +868,14 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="field" id="morn-field" hidden><span class="lbl">Morning summary</span>
       <div class="row" style="align-items:center;gap:8px"><div class="seg" id="s-morn" style="grid-template-columns:repeat(2,1fr);flex:1"><button data-morn="on">On</button><button data-morn="off">Off</button></div><input type="time" class="f-date" id="morn-at" aria-label="Morning summary time" style="width:124px"></div>
       <div class="rep-hint" id="morn-hint"></div>
+      <div id="morn-more">
+        <span class="lbl lbl-sub">Good morning style</span>
+        <div class="seg" id="s-mstyle" style="grid-template-columns:repeat(3,1fr)"><button data-mstyle="gentle">Gentle</button><button data-mstyle="cheerful">Cheerful</button><button data-mstyle="straight">Straight to it</button></div>
+        <div id="s-greets"></div>
+        <span class="lbl lbl-sub">Each job as its own notification</span>
+        <div class="seg" id="s-mjobs" style="grid-template-columns:repeat(2,1fr)"><button data-mjobs="on">On</button><button data-mjobs="off">Off</button></div>
+        <div class="rep-hint">Your good morning message sits on top, with today's jobs tucked underneath. Only the good morning message makes a sound.</div>
+      </div>
     </div>
     <div class="field"><span class="lbl">Tidy away finished jobs</span>
       <div class="seg" id="s-tidy" style="grid-template-columns:repeat(4,1fr)"><button data-tidy="off">Never</button><button data-tidy="3">3 days</button><button data-tidy="7">1 week</button><button data-tidy="30">1 month</button></div>
@@ -2352,17 +2364,32 @@ if(!NATIVE){setInterval(checkAlarms,20000);setTimeout(checkAlarms,1500);}
 // and re-planned every time the jobs change or the app is opened.
 // iPhone allows 64 waiting notifications per app, so: up to 10 morning summaries + the 50 soonest alarms.
 var LN=NATIVE?((window.Capacitor.Plugins&&window.Capacitor.Plugins.LocalNotifications)||(window.Capacitor.registerPlugin&&window.Capacitor.registerPlugin('LocalNotifications'))):null;
-var MORNING_ID=900000,MORNING_DAYS=10,MAX_ALARMS=50;
+var MORNING_ID=900000,MORNING_DAYS=10,MAX_ALARMS=50,MAX_PENDING=60;
+var MJOB_ID=800000,MJOB_DAYS=2,MJOB_SHOW=5; // jobs as their own notifications: next 2 mornings, 5 shown (or all 6), then "+N more"
+// Good morning messages: 3 styles, 2 to pick from in each, plus a line for days with no jobs.
+const GREETS={
+  gentle:{name:'Gentle',
+    pick:[(n,j)=>`Good morning! You've got ${n} ${j} today. There's no rush though, have a look when you're ready 😊`,
+          (n,j)=>`Morning! A new day and a fresh start. ${n} ${j} on the list, but take it at your own pace 🙂`],
+    none:'Good morning! Nothing on the list today, enjoy it ☺️'},
+  cheerful:{name:'Cheerful',
+    pick:[(n,j)=>`Morning! ${n} ${j} today. Tick off one and you're already winning 💪🏻`,
+          (n,j)=>`Rise and shine (ish)! ${n} ${j} lined up for today. Let's get started! 🤗`],
+    none:'Morning! A clear list today. Treat yourself 🎉'},
+  straight:{name:'Straight to it',
+    pick:[(n,j)=>`Morning! ${n} ${j} today. Let's go! 👍`,
+          (n,j)=>`Good morning. ${n} ${j}. You know the drill 😎`],
+    none:'Morning. No jobs today 👍'}
+};
 var notifPerm=null,notifTimer=null,notifLast='';
 const morningOn=()=>(state.prefs&&state.prefs.morn)!=='off';
 const morningTime=()=>(state.prefs&&state.prefs.mornAt)||'09:00';
+const mornStyle=()=>GREETS[state.prefs&&state.prefs.mornStyle]?state.prefs.mornStyle:'gentle';
+const mornPick=()=>(state.prefs&&state.prefs.mornPick)==1?1:0;
+const mornJobsOn=()=>(state.prefs&&state.prefs.mornJobs)!=='off';
+function greetText(n,style,pick){const g=GREETS[style||mornStyle()];return n?g.pick[pick==null?mornPick():pick](n,n===1?'job':'jobs'):g.none;}
 function dueJobs(day){return state.tasks.filter(t=>!archivedJob(t)&&occurs(t,day)&&!isDone(t,day)).sort(byTime);}
-function morningText(day){
-  const L=dueJobs(day);
-  if(!L.length)return 'Nothing planned today. Fancy picking a job or two from your brain dump?';
-  const names=L.slice(0,3).map(t=>(t.time?fmtTime(t.time)+' ':'')+t.title).join(', ');
-  return (L.length===1?'1 job today: ':L.length+' jobs today: ')+names+(L.length>3?' and '+(L.length-3)+' more':'');
-}
+function morningText(day){return greetText(dueJobs(day).length);}
 function planNotifs(){
   const now=Date.now(),t0=today(),out=[];
   if(morningOn()){
@@ -2370,7 +2397,18 @@ function planNotifs(){
     for(let i=0;i<MORNING_DAYS;i++){
       const day=addDays(t0,i),at=parse(day);at.setHours(h,m,0,0);
       if(at.getTime()<=now+30000)continue;
-      out.push({id:MORNING_ID+i,title:'Good morning',body:morningText(day),schedule:{at,allowWhileIdle:true},extra:{kind:'morning',day}});
+      const L=dueJobs(day),thread='morning-'+day,base=at.getTime();
+      // iPhone puts the newest notification on top, so the jobs go out first (last job first, a second apart)
+      // and the good morning message arrives last, landing on top with the jobs in order underneath.
+      let gap=0;
+      if(mornJobsOn()&&i<MJOB_DAYS&&L.length){
+        const show=L.length<=MJOB_SHOW+1?L:L.slice(0,MJOB_SHOW),more=L.length-show.length,list=[];
+        show.forEach((t,k)=>list.push({id:MJOB_ID+i*10+k,title:t.title,body:t.time?'At '+fmtTime(t.time):'',actionTypeId:'job',extra:{kind:'mjob',id:t.id,day}}));
+        if(more)list.push({id:MJOB_ID+i*10+9,title:'+'+more+' more in '+BRAND.short,body:'Tap to see the rest of today',extra:{kind:'morning',day}});
+        list.reverse().forEach(n=>{n.threadIdentifier=thread;n.schedule={at:new Date(base+gap*1000),allowWhileIdle:true};gap++;out.push(n);});
+        gap++;
+      }
+      out.push({id:MORNING_ID+i,title:'',body:greetText(L.length),sound:'default',threadIdentifier:thread,schedule:{at:new Date(base+gap*1000),allowWhileIdle:true},extra:{kind:'morning',day}});
     }
   }
   const al=[];
@@ -2386,7 +2424,7 @@ function planNotifs(){
       al.push({fire,n:{title:t.title,body:t.alarm==='0'?'Now':'At '+fmtTime(t.time)+' '+when,actionTypeId:'job',extra:{kind:'alarm',id:t.id,day}}});
     }
   }
-  al.sort((a,b)=>a.fire-b.fire).slice(0,MAX_ALARMS).forEach((a,i)=>{a.n.id=i+1;a.n.schedule={at:new Date(a.fire),allowWhileIdle:true};out.push(a.n);});
+  al.sort((a,b)=>a.fire-b.fire).slice(0,Math.min(MAX_ALARMS,MAX_PENDING-out.length)).forEach((a,i)=>{a.n.id=i+1;a.n.schedule={at:new Date(a.fire),allowWhileIdle:true};out.push(a.n);});
   return out;
 }
 async function notifAllowed(ask){
@@ -2422,7 +2460,7 @@ if(LN){
   try{LN.registerActionTypes({types:[{id:'job',actions:[{id:'done',title:'Done'}]}]});}catch(e){}
   LN.addListener('localNotificationActionPerformed',r=>{
     const x=(r&&r.notification&&r.notification.extra)||{};
-    if(r.actionId==='done'&&x.kind==='alarm'){const t=find(x.id);if(t&&!isDone(t,x.day))toggle(x.id,x.day);return;}
+    if(r.actionId==='done'&&(x.kind==='alarm'||x.kind==='mjob')){const t=find(x.id);if(t&&!isDone(t,x.day))toggle(x.id,x.day);return;}
     if(x.day){ui.searching=false;ui.tab='today';ui.day=x.day;render();}
   });
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNotifs(true);});
@@ -2471,7 +2509,11 @@ function paintSettings(){
   document.querySelectorAll('[data-nudge]').forEach(b=>b.classList.toggle('on',b.dataset.nudge===(P.nudge||'on')));
   document.querySelectorAll('[data-spc]').forEach(b=>b.classList.toggle('on',b.dataset.spc===(P.sp||'std')));
   document.getElementById('morn-field').hidden=!NATIVE;
-  if(NATIVE){document.querySelectorAll('[data-morn]').forEach(b=>b.classList.toggle('on',b.dataset.morn===(P.morn||'on')));const mt=document.getElementById('morn-at');mt.value=morningTime();mt.disabled=!morningOn();paintNotifHint();}
+  if(NATIVE){document.querySelectorAll('[data-morn]').forEach(b=>b.classList.toggle('on',b.dataset.morn===(P.morn||'on')));const mt=document.getElementById('morn-at');mt.value=morningTime();mt.disabled=!morningOn();paintNotifHint();
+    const ms=mornStyle();document.getElementById('morn-more').classList.toggle('off',!morningOn());
+    document.querySelectorAll('[data-mstyle]').forEach(b=>b.classList.toggle('on',b.dataset.mstyle===ms));
+    document.querySelectorAll('[data-mjobs]').forEach(b=>b.classList.toggle('on',b.dataset.mjobs===(mornJobsOn()?'on':'off')));
+    document.getElementById('s-greets').innerHTML=[0,1].map(k=>`<button class="greet${k===mornPick()?' on':''}" data-mpick="${k}">${esc(greetText(6,ms,k))}</button>`).join('');}
 }
 document.getElementById('morn-at').addEventListener('change',e=>{if(!e.target.value)return;state.prefs.mornAt=e.target.value;save();syncNotifs(true);});
 document.getElementById('cel-try').addEventListener('click',()=>{closeSettings();setTimeout(()=>celebrate('preview'),250);});
@@ -2498,7 +2540,7 @@ document.getElementById('fb-send').addEventListener('click',async()=>{
 });
 function closeSettings(){st.classList.remove('open');st.setAttribute('aria-hidden','true');}
 st.addEventListener('click',e=>{
-  const b=e.target.closest('[data-sact],button[data-pal],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-projs]');if(!b)return;
+  const b=e.target.closest('[data-sact],button[data-pal],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-mstyle],button[data-mpick],button[data-mjobs],button[data-projs]');if(!b)return;
   if(b.dataset.sact){closeSettings();return;}
   if(b.dataset.pal)state.prefs.palette=b.dataset.pal;
   if(b.dataset.sharp)state.prefs.sharp=b.dataset.sharp;
@@ -2510,6 +2552,9 @@ st.addEventListener('click',e=>{
   if(b.dataset.tidy){state.prefs.tidy=b.dataset.tidy;tidy();render();}
   if(b.dataset.nudge){state.prefs.nudge=b.dataset.nudge;render();}
   if(b.dataset.morn){state.prefs.morn=b.dataset.morn;syncNotifs(true);}
+  if(b.dataset.mstyle){state.prefs.mornStyle=b.dataset.mstyle;state.prefs.mornPick=0;syncNotifs(true);}
+  if(b.dataset.mpick){state.prefs.mornPick=Number(b.dataset.mpick);syncNotifs(true);}
+  if(b.dataset.mjobs){state.prefs.mornJobs=b.dataset.mjobs;syncNotifs(true);}
   if(b.dataset.projs){state.prefs.proj=b.dataset.projs;if(b.dataset.projs==='off'&&ui.filter===PROJ){ui.filter=null;ui.proj=null;try{localStorage.setItem(KEY+'-filter','');}catch(err){}}render();}
   if(b.dataset.cel){state.prefs.cel=b.dataset.cel;if(b.dataset.cel!=='off'){closeSettings();setTimeout(()=>celebrate('preview'),250);}}
   applyPrefs();paintSettings();save();
