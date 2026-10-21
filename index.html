@@ -3,6 +3,19 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<script>
+/* iPhone app only: when the app first opens, the phone takes a moment to say how tall the clock bar is.
+   Until it does, keep the screen blank (just the background colour), so the title doesn't flash under the
+   clock and then jump down. Shows anyway after 0.8s, whatever happens. */
+(function(){try{var C=window.Capacitor;if(!(C&&C.isNativePlatform&&C.isNativePlatform()&&C.getPlatform&&C.getPlatform()==='ios'))return;
+  var d=document.documentElement;d.classList.add('waitsafe');var t0=Date.now();
+  function check(){var b=document.body;if(!b){requestAnimationFrame(check);return;}
+    var p=document.getElementById('safeprobe');if(!p){p=document.createElement('div');p.id='safeprobe';
+      p.style.cssText='position:fixed;left:0;top:0;width:1px;height:env(safe-area-inset-top,0px);visibility:hidden;pointer-events:none';b.appendChild(p);}
+    if(p.offsetHeight>0||Date.now()-t0>800){requestAnimationFrame(function(){d.classList.remove('waitsafe');});}else requestAnimationFrame(check);}
+  requestAnimationFrame(check);}catch(e){document.documentElement.classList.remove('waitsafe');}})();
+</script>
+<style>html.waitsafe body>*{opacity:0!important}</style>
 <title>Mum Brain, Sorted</title>
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
