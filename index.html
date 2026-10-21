@@ -489,6 +489,7 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .fam-code{font-family:ui-monospace,Menlo,monospace;font-size:26px;font-weight:700;letter-spacing:.08em;text-align:center;background:var(--accent-soft);color:var(--accent);border-radius:14px;padding:16px 10px;margin-bottom:10px;user-select:all;-webkit-user-select:all}
 .fam-join{display:flex;gap:8px;margin-top:10px}
 .fam-join input{flex:1;min-width:0;text-transform:uppercase;font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em}
+.fam-how{margin-top:10px;font-size:14px;font-weight:600;color:var(--accent);padding:4px 0}
 .fam-status{font-size:13.5px;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:6px}
 /* reorder, morning sort, feedback */
 .task[data-drag]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -635,6 +636,17 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .wl-art .gp{margin-left:auto;width:12px;height:16px;color:var(--muted)}
 .wl-art .lt{display:inline-flex;align-items:center;gap:5px;margin-top:12px;font-size:13px;font-weight:600;padding:7px 11px;border-radius:10px;background:var(--accent-soft);color:var(--accent)}
 .wl-art .lt svg{width:14px;height:14px}
+/* sharing guide pictures */
+.wl-art .fp{font-size:13.5px;color:var(--muted);margin:2px 2px 10px}
+.wl-art .fc{font-family:ui-monospace,Menlo,monospace;font-size:22px;font-weight:700;letter-spacing:.08em;text-align:center;background:var(--accent-soft);color:var(--accent);border-radius:12px;padding:12px 8px}
+.wl-art .fb{display:flex;gap:8px;margin-top:10px}
+.wl-art .fb i{flex:1;font-style:normal;text-align:center;font-size:14px;font-weight:600;padding:9px 8px;border-radius:10px;background:var(--bg);color:var(--ink)}
+.wl-art .fb i.on{background:var(--accent);color:var(--solid)}
+.wl-art .fj{flex:2!important;text-align:left!important;font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em}
+.wl-art .tags{display:flex;gap:6px;margin:0 0 6px}
+.wl-art .tags i{font-style:normal;font-size:13px;font-weight:600;padding:6px 11px;border-radius:999px;background:var(--bg);color:var(--ink);display:inline-flex;align-items:center;gap:5px}
+.wl-art .tags i.on{background:var(--primary);color:var(--solid)}
+.wl-art .tags svg{width:12px;height:12px}
 @keyframes wlblink{50%{opacity:0}}
 @media (prefers-reduced-motion:reduce){#welcome{transition:none}.wl-art .cur{animation:none}}
 </style>
@@ -907,7 +919,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="bk-confirm" id="bk-confirm" hidden></div>
     </div>
     <div class="field"><span class="lbl">Help</span>
-      <div class="row" style="flex-wrap:wrap;gap:8px"><button class="opt" id="ht-replay">Show me how it works</button><button class="opt" id="wl-replay">Show the welcome screens</button></div>
+      <div class="row" style="flex-wrap:wrap;gap:8px"><button class="opt" id="ht-replay">Show me how it works</button><button class="opt" id="sh-replay">How sharing works</button><button class="opt" id="wl-replay">Show the welcome screens</button></div>
     </div>
   </div>
 </div>
@@ -985,6 +997,14 @@ const BRAND={
      art:{kind:'tick',done:'Nursery form',jobs:['Book dentist','Socks that fit']}},
     {h:'Move things around',p:'Hold a job, then drag it up or down. On the Week tab you can drag it to another day.',eg:'Hard day? Tap Lighter day on Today to move the less important jobs to tomorrow.',
      art:{kind:'move',jobs:['Book dentist','Birthday present','Socks that fit']}}
+  ],
+  sharehow:[                           // "How sharing works" guide: opened from Settings › Family sharing and Settings › Help
+    {h:'Create your family',p:'Open Settings, go to Family sharing and tap Create a family. You’ll get your own family code.',
+     art:{kind:'create',code:'K7QM-42XP'}},
+    {h:'Invite your family',p:'Tap Send code and message it to them. On their phone, they open Settings › Family sharing, type in the code and tap Join.',
+     art:{kind:'join',code:'K7QM-42XP'}},
+    {h:'Share jobs',p:'Tap the Shared tag at the top, then add jobs as normal. Or open any job and choose Shared under List. Ticks show up for everyone.',eg:'Shared jobs are scrambled on your phone first, so only your family can read them.',
+     art:{kind:'shared',done:'Bin day',jobs:['Nursery pick-up','Book dentist']}}
   ]
 };
 document.title=BRAND.name;
@@ -1295,20 +1315,21 @@ function leaveFamily(){
   if(ui.filter===SHARED)ui.filter=null;
   family=null;saveFamily();cache();paintFamily();render();
 }
+const FAM_HOW='<button class="fam-how" data-fam="how">How sharing works</button>';
 function paintFamily(){
   const el=document.getElementById('s-family');if(!el)return;
   if(family&&family.code){
     el.innerHTML=`<p class="fam-p">Anything in the <b>Shared</b> list is shared with everyone who joins using this code. It's scrambled on your phone first, so only people with the code can read it.</p>
       <div class="fam-code">${fmtCode(family.code)}</div>
       <div class="row"><button class="opt on" data-fam="share">Send code</button><button class="opt" data-fam="leave">Leave family</button></div>
-      <div class="fam-status" id="fam-status"><i></i>Connecting…</div>`;
+      <div class="fam-status" id="fam-status"><i></i>Connecting…</div>${FAM_HOW}`;
     if(famStatus==='ok')setFamStatus('ok','Connected. Shared jobs are scrambled before they leave your phone.');
     else if(famStatus==='err')setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');
   }else{
     el.innerHTML=`<p class="fam-p">Share a list with your family. Everyone sees the same jobs, and ticks show up for all.</p>
       <div class="row"><button class="opt on" data-fam="create">Create a family</button></div>
       <div class="fam-join"><input class="f-date" id="fam-in" placeholder="Or enter a family code" autocomplete="off" autocapitalize="characters" enterkeyhint="go" aria-label="Family code"><button class="opt" data-fam="join">Join</button></div>
-      <div class="fam-status" id="fam-status" hidden><i></i></div>`;
+      <div class="fam-status" id="fam-status" hidden><i></i></div>${FAM_HOW}`;
     const inp=el.querySelector('#fam-in');inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();joinFamily(inp.value);}});
   }
 }
@@ -2618,9 +2639,13 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&today()!=
    Shown once on first open for new users; wording lives in BRAND.welcome. Replay from Settings › Help. */
 {
 const wl=document.getElementById('welcome'),WK=KEY+'-welcomed',HK=KEY+'-howto';
-const SETS={welcome:BRAND.welcome,howto:BRAND.howto||[]};
+const SETS={welcome:BRAND.welcome,howto:BRAND.howto||[],share:BRAND.sharehow||[]};
 let set='welcome',W=SETS.welcome,wi=0,chain=false;
 const art=i=>{const a=W[i].art;
+  if(set==='share'){
+    if(a.kind==='create')return `<div class="wl-art"><div class="hd">Family sharing</div><div class="fc">${esc(a.code)}</div><div class="fb"><i class="on">Send code</i><i>Leave family</i></div></div>`;
+    if(a.kind==='join')return `<div class="wl-art"><div class="hd">On their phone</div><div class="fp">Settings › Family sharing</div><div class="fb"><i class="fj">${esc(a.code)}</i><i class="on">Join</i></div></div>`;
+    return `<div class="wl-art"><div class="tags"><i>All</i><i class="on">${I.people}Shared</i><i>Home</i></div><ul><li><span class="ck on"></span><span class="dn">${esc(a.done)}</span></li>${a.jobs.map(j=>`<li><span class="ck"></span>${esc(j)}</li>`).join('')}</ul></div>`;}
   if(set==='howto'){
     if(a.kind==='add')return `<div class="wl-art"><div class="q"><span>${esc(a.type)}</span><span class="cur"></span><b>+</b></div><ul>${a.jobs.map(j=>`<li><span class="ck"></span>${esc(j[0])}${j[1]?`<span class="tm">${esc(j[1])}</span>`:'<span class="tag">No day yet</span>'}</li>`).join('')}</ul></div>`;
     if(a.kind==='day')return `<div class="wl-art"><div class="sh">${esc(a.job)}</div><div class="opts"><i>Today</i><i class="on">Tomorrow</i><i>Pick a date</i></div></div>`;
@@ -2630,16 +2655,16 @@ const art=i=>{const a=W[i].art;
   if(i===1)return `<div class="wl-art"><div class="hd">Sort 3 jobs</div><ul>${a.jobs.map(j=>`<li>${esc(j)}<span class="db"><i>Today</i><i>Tomorrow</i></span></li>`).join('')}</ul></div>`;
   return `<div class="wl-art"><div class="hd">Today</div><ul><li><span class="ck on"></span><span class="dn">${esc(a.done)}</span></li>${a.jobs.map(j=>`<li><span class="ck"></span>${esc(j)}</li>`).join('')}</ul></div>`;};
 function paintWl(){
-  const w=W[wi],last=wi===W.length-1,ht=set==='howto';
-  document.getElementById('wl-body').innerHTML=`${art(wi)}<div class="wl-step">${ht?'How it works · ':'Step '}${wi+1} of ${W.length}</div><h2 id="wl-h">${esc(w.h)}</h2><p>${esc(w.p)}</p>${w.eg?`<div class="wl-eg">${esc(w.eg)}</div>`:''}`;
+  const w=W[wi],last=wi===W.length-1,ht=set==='howto',sh=set==='share';
+  document.getElementById('wl-body').innerHTML=`${art(wi)}<div class="wl-step">${ht?'How it works · ':sh?'Sharing · ':'Step '}${wi+1} of ${W.length}</div><h2 id="wl-h">${esc(w.h)}</h2><p>${esc(w.p)}</p>${w.eg?`<div class="wl-eg">${esc(w.eg)}</div>`:''}`;
   document.getElementById('wl-dots').innerHTML=W.map((x,j)=>`<button class="${j===wi?'on':''}" data-wl="go" data-i="${j}" aria-label="Step ${j+1}: ${esc(x.h)}"${j===wi?' aria-current="step"':''}></button>`).join('');
   // first open: the welcome leads straight into the how-to
-  document.getElementById('wl-next').textContent=last?(chain&&!ht?'Show me how':'Let’s start'):'Next';
+  document.getElementById('wl-next').textContent=last?(sh?'Got it':chain&&!ht?'Show me how':'Let’s start'):'Next';
   document.querySelector('.wl-skip').style.visibility=last&&!(chain&&!ht)?'hidden':'';
-  document.getElementById('wl-slogan').textContent=last&&ht===chain?BRAND.slogan:'';}
+  document.getElementById('wl-slogan').textContent=last&&!sh&&ht===chain?BRAND.slogan:'';}
 function openWl(which,first){set=which;W=SETS[which];wi=0;chain=!!first&&which==='welcome'&&SETS.howto.length>0;paintWl();
   wl.hidden=false;requestAnimationFrame(()=>wl.classList.add('show'));document.getElementById('wl-next').focus();}
-function seenIt(){try{localStorage.setItem(WK,'1');if(set==='howto'||chain)localStorage.setItem(HK,'1');}catch(e){}}
+function seenIt(){if(set==='share')return;try{localStorage.setItem(WK,'1');if(set==='howto'||chain)localStorage.setItem(HK,'1');}catch(e){}}
 function closeWl(){seenIt();chain=false;wl.classList.remove('show');setTimeout(()=>{wl.hidden=true;},250);}
 function nextWl(){if(wi<W.length-1){wi++;paintWl();return;}
   if(chain&&set==='welcome'){set='howto';W=SETS.howto;wi=0;paintWl();return;}
@@ -2656,6 +2681,8 @@ wl.addEventListener('touchend',e=>{if(wx==null)return;const dx=e.changedTouches[
 document.addEventListener('keydown',e=>{if(wl.hidden)return;
   if(e.key==='Escape')closeWl();else if(e.key==='ArrowRight'&&wi<W.length-1){wi++;paintWl();}else if(e.key==='ArrowLeft'&&wi>0){wi--;paintWl();}});
 document.getElementById('ht-replay').addEventListener('click',()=>{closeSettings();setTimeout(()=>openWl('howto'),300);});
+document.getElementById('sh-replay').addEventListener('click',()=>{closeSettings();setTimeout(()=>openWl('share'),300);});
+document.getElementById('s-family').addEventListener('click',e=>{if(e.target.closest('[data-fam="how"]')){closeSettings();setTimeout(()=>openWl('share'),300);}});
 document.getElementById('wl-replay').addEventListener('click',()=>{closeSettings();setTimeout(()=>openWl('welcome'),300);});
 let seen=null;try{seen=localStorage.getItem(WK);}catch(e){}
 // people already using the app (they have jobs) don't need the welcome; brand-new lists get it once
