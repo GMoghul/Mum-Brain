@@ -100,6 +100,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .progress{margin-top:18px;display:flex;align-items:center;gap:12px;font-size:14px;color:var(--muted)}
 .bar{flex:1;height:6px;border-radius:6px;background:var(--line);overflow:hidden}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:6px;transition:width .35s ease}
+.progress .lighter{flex:none;display:inline-flex;align-items:center;gap:5px;margin:-6px 0}
+.progress .lighter svg{width:15px;height:15px}
 
 /* quick add */
 .quick{display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:16px;padding:6px 6px 6px 16px;box-shadow:var(--shadow);margin-bottom:26px}
@@ -1005,6 +1007,7 @@ const newId=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
 const ord=n=>{const s=['th','st','nd','rd'],v=n%100;return n+(s[(v-20)%10]||s[v]||s[0])};
 
 const I={
+  leaf:'<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 19c0-8 5-13 14-14 0 9-5 14-13 14z"/><path d="M5 19l7-7"/></svg>',
   tick:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
   rep:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2.5l3 3-3 3"/><path d="M4 11.5v-1a5 5 0 0 1 5-5h11"/><path d="M7 21.5l-3-3 3-3"/><path d="M20 12.5v1a5 5 0 0 1-5 5H4"/></svg>',
   star:'<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2l2.6 5.5 6 .7-4.4 4.1 1.2 5.9L12 16.5l-5.4 2.9 1.2-5.9L3.4 9.4l6-.7z"/></svg>',
@@ -1776,6 +1779,8 @@ function quickAdd(){
   if(p)snack('Added for '+whenLabel(p.date,p.time),()=>{const x=find(t.id);if(!x)return;x.title=v;x.date=null;x.time=null;x.alarm='none';save();render();});
 }
 
+// Lighter day: today's unfinished jobs that aren't marked important, one-off ones only (repeating jobs stay put).
+function lightJobs(){const t0=today();return state.tasks.filter(t=>vis(t)&&!isRep(t)&&!t.done&&!t.starred&&t.date===t0);}
 function renderToday(){
   const t0=today(),dayS=ui.day,d=parse(dayS),T=state.tasks.filter(vis),isT=dayS===t0;
   const overdue=isT?T.filter(t=>!isRep(t)&&t.date&&t.date<t0&&!t.done).sort((a,b)=>a.date.localeCompare(b.date)||byStar(a,b)):[];
@@ -1787,7 +1792,7 @@ function renderToday(){
     ${isT?'':`<button class="pill sm" data-act="dtoday">Back to today</button>`}
     <button class="navbtn" data-act="dprev" aria-label="Previous day">${I.left}</button>
     <button class="navbtn" data-act="dnext" aria-label="Next day">${I.right}</button></div>
-  ${list.length?`<div class="progress"><div class="bar"><i style="width:${pct}%"></i></div><span>${n} of ${list.length} done</span></div>`:''}</header>`;
+  ${list.length?`<div class="progress"><div class="bar"><i style="width:${pct}%"></i></div><span>${n} of ${list.length} done</span>${isT&&lightJobs().length?`<button class="pill sm lighter" data-act="lighter">${I.leaf}Lighter day</button>`:''}</div>`:''}</header>`;
   if(isT)h+=nudgeCard()+fbCard();
   h+=filterBar();
   // more than 3 old jobs fold to one line, so today's jobs come first
@@ -2111,6 +2116,8 @@ view.addEventListener('click',e=>{
     if(act==='filter'){ui.filter=a.dataset.f||null;ui.proj=null;try{localStorage.setItem(KEY+'-filter',ui.filter||'');}catch(err){}render();return;}
     if(act==='roll'){const t0=today(),tm=addDays(t0,1);
       undoable(n=>`Moved ${n} to tomorrow`,()=>{let n=0;state.tasks.forEach(t=>{if(vis(t)&&!isRep(t)&&!t.done&&t.date&&t.date<=t0){t.date=tm;n++;}});return n;});return;}
+    if(act==='lighter'){const tm=addDays(today(),1),L=lightJobs();
+      undoable(n=>`Lighter day: ${n} ${n===1?'job':'jobs'} moved to tomorrow`,()=>{L.forEach(t=>{t.date=tm;});return L.length;});return;}
     if(act==='wprev'||act==='wnext'){shiftWeek(act==='wnext'?1:-1);return;}
     if(act==='wtoday'){const f=ui.week>mondayOf(today());ui.week=mondayOf(today());render();anim(f?'in-r':'in-l');return;}
     if(act==='addto'){openEditor(null,Object.assign({date:a.dataset.date},newDefaults()));return;}
