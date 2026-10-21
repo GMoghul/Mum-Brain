@@ -2421,7 +2421,7 @@ function planNotifs(){
       const fire=at.getTime()-Number(t.alarm)*60000;
       if(fire<=now+5000)continue;
       const when=day===t0?'today':day===addDays(t0,1)?'tomorrow':dayLabel(day);
-      al.push({fire,n:{title:t.title,body:t.alarm==='0'?'Now':'At '+fmtTime(t.time)+' '+when,actionTypeId:'job',extra:{kind:'alarm',id:t.id,day}}});
+      al.push({fire,n:{title:t.title,sound:'default',body:t.alarm==='0'?'Now':'At '+fmtTime(t.time)+' '+when,actionTypeId:'job',extra:{kind:'alarm',id:t.id,day}}});
     }
   }
   al.sort((a,b)=>a.fire-b.fire).slice(0,Math.min(MAX_ALARMS,MAX_PENDING-out.length)).forEach((a,i)=>{a.n.id=i+1;a.n.schedule={at:new Date(a.fire),allowWhileIdle:true};out.push(a.n);});
