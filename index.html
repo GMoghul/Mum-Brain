@@ -608,7 +608,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .wl-art ul{list-style:none;margin:10px 0 0;padding:0}
 .wl-art li{display:flex;align-items:center;gap:10px;padding:9px 2px;border-top:1px solid var(--line);font-size:15px}
 .wl-art li:first-child{border-top:0}
-.wl-art .ck{flex:none;width:20px;height:20px;border-radius:7px;border:2px solid var(--line)}
+.wl-art .ck{flex:none;width:20px;height:20px;border-radius:50%;border:2px solid var(--line)}
 .wl-art .ck.on{background:var(--accent);border-color:var(--accent);position:relative}
 .wl-art .ck.on::after{content:"";position:absolute;left:5px;top:1px;width:5px;height:10px;border:solid var(--solid);border-width:0 2.5px 2.5px 0;transform:rotate(45deg)}
 .wl-art .dn{color:var(--muted);text-decoration:line-through}
@@ -622,6 +622,19 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .wl-dots button.on{width:22px;background:var(--accent)}
 .wl-next{width:100%;height:52px;border-radius:16px;background:var(--primary);color:var(--solid);font-size:16.5px;font-weight:600}
 .wl-slogan{margin-top:12px;text-align:center;color:var(--muted);font-size:15px;font-family:var(--font-sub);font-style:var(--sub-style);min-height:1.4em}
+/* how-to tour pictures */
+.wl-art .tm{margin-left:auto;font-size:12.5px;font-weight:600;padding:4px 8px;border-radius:8px;background:var(--accent-soft);color:var(--accent)}
+.wl-art .sh{font-size:17px;font-weight:600;padding:4px 2px 12px;border-bottom:1px solid var(--line)}
+.wl-art .opts{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.wl-art .opts i{font-style:normal;font-size:14px;font-weight:600;padding:9px 12px;border-radius:10px;background:var(--bg);color:var(--ink)}
+.wl-art .opts i.on{background:var(--accent);color:var(--solid)}
+.wl-art .sn{display:flex;align-items:center;margin-top:12px;padding:10px 12px;border-radius:12px;background:#1B1E23;color:#fff;font-size:14px}
+.wl-art .sn b{margin-left:auto;color:#C9B8FF;font-weight:700}
+.wl-art li.lift{background:var(--solid);border-radius:12px;box-shadow:0 8px 22px rgba(0,0,0,.16);transform:scale(1.03) translateX(4px);border-top-color:transparent;padding-left:10px;padding-right:10px}
+.wl-art li.lift+li{border-top-color:transparent}
+.wl-art .gp{margin-left:auto;width:12px;height:16px;color:var(--muted)}
+.wl-art .lt{display:inline-flex;align-items:center;gap:5px;margin-top:12px;font-size:13px;font-weight:600;padding:7px 11px;border-radius:10px;background:var(--accent-soft);color:var(--accent)}
+.wl-art .lt svg{width:14px;height:14px}
 @keyframes wlblink{50%{opacity:0}}
 @media (prefers-reduced-motion:reduce){#welcome{transition:none}.wl-art .cur{animation:none}}
 </style>
@@ -894,7 +907,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="bk-confirm" id="bk-confirm" hidden></div>
     </div>
     <div class="field"><span class="lbl">Help</span>
-      <div class="row"><button class="opt" id="wl-replay">Show the welcome screens</button></div>
+      <div class="row" style="flex-wrap:wrap;gap:8px"><button class="opt" id="ht-replay">Show me how it works</button><button class="opt" id="wl-replay">Show the welcome screens</button></div>
     </div>
   </div>
 </div>
@@ -961,6 +974,16 @@ const BRAND={
      art:{jobs:['Nursery form','Birthday present','Socks that fit']}},
     {h:'Do it.',p:'Today shows just today’s jobs, so you can get on with your day. Tick them off and enjoy the little celebration.',
      art:{done:'Nursery form',jobs:['Book dentist','Birthday present']}}
+  ],
+  howto:[                              // "Show me how" tour: 4 practical screens, after the welcome and from Settings › Help
+    {h:'Add a job',p:'Type in the box at the top of Brain dump and tap +. That’s it, it’s saved.',eg:'Add a day or time if you like, e.g. “Dentist Fri 3pm”',
+     art:{kind:'add',type:'Dentist Fri 3pm',jobs:[['Nursery form',''],['Dentist','Fri 3pm']]}},
+    {h:'Give it a day',p:'Tap a job to open it, then choose Today, Tomorrow or Pick a date and tap Save job. No rush, it can stay in Brain dump as long as you like.',
+     art:{kind:'day',job:'Birthday present'}},
+    {h:'Tick it off',p:'Tap the circle when a job’s done. Ticked the wrong one? Tap Undo at the bottom of the screen.',
+     art:{kind:'tick',done:'Nursery form',jobs:['Book dentist','Socks that fit']}},
+    {h:'Move things around',p:'Hold a job, then drag it up or down. On the Week tab you can drag it to another day.',eg:'Hard day? Tap Lighter day on Today to move the less important jobs to tomorrow.',
+     art:{kind:'move',jobs:['Book dentist','Birthday present','Socks that fit']}}
   ]
 };
 document.title=BRAND.name;
@@ -2117,7 +2140,7 @@ view.addEventListener('click',e=>{
     if(act==='roll'){const t0=today(),tm=addDays(t0,1);
       undoable(n=>`Moved ${n} to tomorrow`,()=>{let n=0;state.tasks.forEach(t=>{if(vis(t)&&!isRep(t)&&!t.done&&t.date&&t.date<=t0){t.date=tm;n++;}});return n;});return;}
     if(act==='lighter'){const tm=addDays(today(),1),L=lightJobs();
-      undoable(n=>`Lighter day: ${n} ${n===1?'job':'jobs'} moved to tomorrow`,()=>{L.forEach(t=>{t.date=tm;});return L.length;});return;}
+      undoable(n=>`Lighter day: ${n} moved to tomorrow`,()=>{L.forEach(t=>{t.date=tm;});return L.length;});return;}
     if(act==='wprev'||act==='wnext'){shiftWeek(act==='wnext'?1:-1);return;}
     if(act==='wtoday'){const f=ui.week>mondayOf(today());ui.week=mondayOf(today());render();anim(f?'in-r':'in-l');return;}
     if(act==='addto'){openEditor(null,Object.assign({date:a.dataset.date},newDefaults()));return;}
@@ -2589,36 +2612,49 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&today()!=
 /* ---------- welcome screens (Dump it, Sort it, Do it) ----------
    Shown once on first open for new users; wording lives in BRAND.welcome. Replay from Settings › Help. */
 {
-const wl=document.getElementById('welcome'),W=BRAND.welcome,WK=KEY+'-welcomed';
-let wi=0;
+const wl=document.getElementById('welcome'),WK=KEY+'-welcomed',HK=KEY+'-howto';
+const SETS={welcome:BRAND.welcome,howto:BRAND.howto||[]};
+let set='welcome',W=SETS.welcome,wi=0,chain=false;
 const art=i=>{const a=W[i].art;
+  if(set==='howto'){
+    if(a.kind==='add')return `<div class="wl-art"><div class="q"><span>${esc(a.type)}</span><span class="cur"></span><b>+</b></div><ul>${a.jobs.map(j=>`<li><span class="ck"></span>${esc(j[0])}${j[1]?`<span class="tm">${esc(j[1])}</span>`:'<span class="tag">No day yet</span>'}</li>`).join('')}</ul></div>`;
+    if(a.kind==='day')return `<div class="wl-art"><div class="sh">${esc(a.job)}</div><div class="opts"><i>Today</i><i class="on">Tomorrow</i><i>Pick a date</i></div></div>`;
+    if(a.kind==='tick')return `<div class="wl-art"><div class="hd">Today</div><ul><li><span class="ck on"></span><span class="dn">${esc(a.done)}</span></li>${a.jobs.map(j=>`<li><span class="ck"></span>${esc(j)}</li>`).join('')}</ul><div class="sn">Done ✓<b>Undo</b></div></div>`;
+    return `<div class="wl-art"><div class="hd">Today</div><ul>${a.jobs.map((j,k)=>`<li class="${k===1?'lift':''}"><span class="ck"></span>${esc(j)}${k===1?`<span class="gp">${GRIP}</span>`:''}</li>`).join('')}</ul><span class="lt">${I.leaf}Lighter day</span></div>`;}
   if(i===0)return `<div class="wl-art"><div class="q"><span>${esc(a.type)}</span><span class="cur"></span><b>+</b></div><ul>${a.jobs.map(j=>`<li><span class="ck"></span>${esc(j)}<span class="tag">No day yet</span></li>`).join('')}</ul></div>`;
   if(i===1)return `<div class="wl-art"><div class="hd">Sort 3 jobs</div><ul>${a.jobs.map(j=>`<li>${esc(j)}<span class="db"><i>Today</i><i>Tomorrow</i></span></li>`).join('')}</ul></div>`;
   return `<div class="wl-art"><div class="hd">Today</div><ul><li><span class="ck on"></span><span class="dn">${esc(a.done)}</span></li>${a.jobs.map(j=>`<li><span class="ck"></span>${esc(j)}</li>`).join('')}</ul></div>`;};
 function paintWl(){
-  const w=W[wi],last=wi===W.length-1;
-  document.getElementById('wl-body').innerHTML=`${art(wi)}<div class="wl-step">Step ${wi+1} of ${W.length}</div><h2 id="wl-h">${esc(w.h)}</h2><p>${esc(w.p)}</p>${w.eg?`<div class="wl-eg">${esc(w.eg)}</div>`:''}`;
+  const w=W[wi],last=wi===W.length-1,ht=set==='howto';
+  document.getElementById('wl-body').innerHTML=`${art(wi)}<div class="wl-step">${ht?'How it works · ':'Step '}${wi+1} of ${W.length}</div><h2 id="wl-h">${esc(w.h)}</h2><p>${esc(w.p)}</p>${w.eg?`<div class="wl-eg">${esc(w.eg)}</div>`:''}`;
   document.getElementById('wl-dots').innerHTML=W.map((x,j)=>`<button class="${j===wi?'on':''}" data-wl="go" data-i="${j}" aria-label="Step ${j+1}: ${esc(x.h)}"${j===wi?' aria-current="step"':''}></button>`).join('');
-  document.getElementById('wl-next').textContent=last?'Let’s start':'Next';
-  document.querySelector('.wl-skip').style.visibility=last?'hidden':'';
-  document.getElementById('wl-slogan').textContent=last?BRAND.slogan:'';}
-function openWl(){wi=0;paintWl();wl.hidden=false;requestAnimationFrame(()=>wl.classList.add('show'));document.getElementById('wl-next').focus();}
-function closeWl(){try{localStorage.setItem(WK,'1');}catch(e){}wl.classList.remove('show');setTimeout(()=>{wl.hidden=true;},250);}
+  // first open: the welcome leads straight into the how-to
+  document.getElementById('wl-next').textContent=last?(chain&&!ht?'Show me how':'Let’s start'):'Next';
+  document.querySelector('.wl-skip').style.visibility=last&&!(chain&&!ht)?'hidden':'';
+  document.getElementById('wl-slogan').textContent=last&&ht===chain?BRAND.slogan:'';}
+function openWl(which,first){set=which;W=SETS[which];wi=0;chain=!!first&&which==='welcome'&&SETS.howto.length>0;paintWl();
+  wl.hidden=false;requestAnimationFrame(()=>wl.classList.add('show'));document.getElementById('wl-next').focus();}
+function seenIt(){try{localStorage.setItem(WK,'1');if(set==='howto'||chain)localStorage.setItem(HK,'1');}catch(e){}}
+function closeWl(){seenIt();chain=false;wl.classList.remove('show');setTimeout(()=>{wl.hidden=true;},250);}
+function nextWl(){if(wi<W.length-1){wi++;paintWl();return;}
+  if(chain&&set==='welcome'){set='howto';W=SETS.howto;wi=0;paintWl();return;}
+  closeWl();}
 wl.addEventListener('click',e=>{const b=e.target.closest('[data-wl]');if(!b)return;
   const a=b.dataset.wl;
   if(a==='skip'){closeWl();return;}
   if(a==='go'){wi=Number(b.dataset.i);paintWl();return;}
-  if(a==='next'){if(wi<W.length-1){wi++;paintWl();}else closeWl();}});
+  if(a==='next')nextWl();});
 let wx=null;
 wl.addEventListener('touchstart',e=>{wx=e.touches[0].clientX;},{passive:true});
 wl.addEventListener('touchend',e=>{if(wx==null)return;const dx=e.changedTouches[0].clientX-wx;wx=null;
   if(dx<-50&&wi<W.length-1){wi++;paintWl();}else if(dx>50&&wi>0){wi--;paintWl();}},{passive:true});
 document.addEventListener('keydown',e=>{if(wl.hidden)return;
   if(e.key==='Escape')closeWl();else if(e.key==='ArrowRight'&&wi<W.length-1){wi++;paintWl();}else if(e.key==='ArrowLeft'&&wi>0){wi--;paintWl();}});
-document.getElementById('wl-replay').addEventListener('click',()=>{closeSettings();setTimeout(openWl,300);});
+document.getElementById('ht-replay').addEventListener('click',()=>{closeSettings();setTimeout(()=>openWl('howto'),300);});
+document.getElementById('wl-replay').addEventListener('click',()=>{closeSettings();setTimeout(()=>openWl('welcome'),300);});
 let seen=null;try{seen=localStorage.getItem(WK);}catch(e){}
 // people already using the app (they have jobs) don't need the welcome; brand-new lists get it once
-if(!seen){if(state.tasks.length){try{localStorage.setItem(WK,'1');}catch(e){}}else openWl();}
+if(!seen){if(state.tasks.length){try{localStorage.setItem(WK,'1');}catch(e){}}else openWl('welcome',true);}
 }
 
 tidy();
