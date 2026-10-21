@@ -16,6 +16,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - Build number = the GitHub run number, so every upload is unique. Every push to `app-store` uploads a new TestFlight build.
 3. **Done (v1.6.0):** closed-app alarms and the morning summary (local notifications, scheduled on the phone).
    - Morning summary: on by default at 9am; on/off and time in Settings (phone app only).
+   - Good morning message (v1.6.2): 3 styles (Gentle, Cheerful, Straight to it), 2 greetings each to pick from, plus a no-jobs line. Only the greeting makes a sound; each job (up to 5, then "+N more") arrives quietly as a "passive" notification grouped underneath, with a Done button. Jobs ticked off in the app are cleared from the notification list.
    - Alarms: same alarm options as the web app; notifications have a **Done** button.
    - iPhone allows 64 waiting notifications, so the app plans 10 days of morning summaries and the 50 soonest alarms, and re-plans every time jobs change or the app is opened.
    - Limits: the summary uses the jobs the phone knew about when the app was last opened; normal notifications are muted on silent (true alarms through silent are a possible later upgrade).

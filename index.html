@@ -2403,8 +2403,9 @@ function planNotifs(){
       let gap=0;
       if(mornJobsOn()&&i<MJOB_DAYS&&L.length){
         const show=L.length<=MJOB_SHOW+1?L:L.slice(0,MJOB_SHOW),more=L.length-show.length,list=[];
-        show.forEach((t,k)=>list.push({id:MJOB_ID+i*10+k,title:t.title,body:t.time?'At '+fmtTime(t.time):'',actionTypeId:'job',extra:{kind:'mjob',id:t.id,day}}));
-        if(more)list.push({id:MJOB_ID+i*10+9,title:'+'+more+' more in '+BRAND.short,body:'Tap to see the rest of today',extra:{kind:'morning',day}});
+        // "passive": jobs slip quietly into the group without a sound, banner or lighting up the screen.
+        show.forEach((t,k)=>list.push({id:MJOB_ID+i*10+k,title:t.title,body:t.time?'At '+fmtTime(t.time):'',actionTypeId:'job',interruptionLevel:'passive',extra:{kind:'mjob',id:t.id,day}}));
+        if(more)list.push({id:MJOB_ID+i*10+9,title:'+'+more+' more in '+BRAND.short,body:'Tap to see the rest of today',interruptionLevel:'passive',extra:{kind:'morning',day}});
         list.reverse().forEach(n=>{n.threadIdentifier=thread;n.schedule={at:new Date(base+gap*1000),allowWhileIdle:true};gap++;out.push(n);});
         gap++;
       }
@@ -2438,7 +2439,7 @@ async function syncNotifs(force){
   if(!LN)return;
   const want=planNotifs();
   const sig=JSON.stringify(want.map(n=>[n.id,n.title,n.body,+n.schedule.at]));
-  if(sig===notifLast&&!force)return;
+  if(sig===notifLast&&!force){clearDoneNotifs();return;}
   const ask=morningOn()||want.length>0;
   if(!(await notifAllowed(ask))){paintNotifHint();return;}
   try{
@@ -2447,7 +2448,19 @@ async function syncNotifs(force){
     if(want.length)await LN.schedule({notifications:want});
     notifLast=sig;
   }catch(e){notifLast='';}
+  clearDoneNotifs();
   paintNotifHint();
+}
+// Jobs ticked off (or deleted) in the app disappear from the iPhone's notification list too.
+async function clearDoneNotifs(){
+  try{
+    const d=await LN.getDeliveredNotifications(),gone=[];
+    for(const n of (d&&d.notifications)||[]){
+      const x=n.extra||{};if(x.kind!=='mjob'&&x.kind!=='alarm')continue;
+      const t=find(x.id);if(!t||archivedJob(t)||isDone(t,x.day))gone.push({id:n.id});
+    }
+    if(gone.length)await LN.removeDeliveredNotifications({notifications:gone});
+  }catch(e){}
 }
 function queueNotifs(){if(!LN)return;clearTimeout(notifTimer);notifTimer=setTimeout(()=>syncNotifs(false),1200);}
 function paintNotifHint(){
