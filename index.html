@@ -2459,7 +2459,9 @@ function planNotifs(){
       if(mornJobsOn()&&i<MJOB_DAYS&&L.length){
         const show=L.length<=MJOB_SHOW+1?L:L.slice(0,MJOB_SHOW),more=L.length-show.length,list=[];
         // "passive": jobs slip quietly into the group without a sound, banner or lighting up the screen.
-        show.forEach((t,k)=>list.push({id:MJOB_ID+i*10+k,title:t.title,body:t.time?'At '+fmtTime(t.time):'',actionTypeId:'job',interruptionLevel:'passive',extra:{kind:'mjob',id:t.id,day}}));
+        // Like Dawn: the job in bold, with its day (and time if it has one) underneath, e.g. "Thu 22 Oct · 3 pm".
+        const dd=parse(day),dayLbl=DAYS[dd.getDay()].slice(0,3)+' '+dd.getDate()+' '+MONTHS[dd.getMonth()].slice(0,3);
+        show.forEach((t,k)=>list.push({id:MJOB_ID+i*10+k,title:t.title,body:dayLbl+(t.time?' · '+fmtTime(t.time):''),actionTypeId:'job',interruptionLevel:'passive',extra:{kind:'mjob',id:t.id,day}}));
         if(more)list.push({id:MJOB_ID+i*10+9,title:'+'+more+' more in '+BRAND.short,body:'Tap to see the rest of today',interruptionLevel:'passive',extra:{kind:'morning',day}});
         list.reverse().forEach(n=>{n.threadIdentifier=thread;n.schedule={at:new Date(base+gap*1000),allowWhileIdle:true};gap++;out.push(n);});
         gap++;
