@@ -195,8 +195,11 @@ jobs:
         run: |
           cd "$RUNNER_TEMP/export" && ls && unzip -q -o *.ipa -d ipa
           A=ipa/Payload/App.app
-          echo "== App =="; codesign -d --entitlements - "$A" 2>/dev/null | tail -n 12
-          echo "== Widget =="; codesign -d --entitlements - "$A/PlugIns/MumBrainWidget.appex" 2>/dev/null | tail -n 12
+          for B in "$A" "$A/PlugIns/MumBrainWidget.appex"; do
+            E=$(codesign -d --entitlements - --xml "$B" 2>/dev/null | plutil -convert json -o - - 2>/dev/null || true)
+            echo "::notice::$(basename "$B"): $E"
+            echo "$E" | grep -q "group.com.gmoghul.mumbrainsorted" || { echo "::error::$(basename "$B") is missing the App Group"; exit 1; }
+          done
 
       - name: Remove the key
         if: always()
