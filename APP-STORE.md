@@ -21,7 +21,12 @@ The live web app on GitHub Pages (`main`) is not affected.
    - iPhone allows 64 waiting notifications, so the app plans 10 days of morning summaries and the 50 soonest alarms, and re-plans every time jobs change or the app is opened.
    - Limits: the summary uses the jobs the phone knew about when the app was last opened; normal notifications are muted on silent (true alarms through silent are a possible later upgrade).
 4. **Done (v1.6.1):** on-device safe copy. Everything the app saves is also kept in the app's own storage (iPhone UserDefaults, via @capacitor/preferences), which iPhone doesn't clear. If the web storage is ever wiped, the app restores from the safe copy and reloads once. The Safari-only "Add to Home Screen" cards are hidden in the phone app.
-5. Home-screen widget (Dawn-style: greeting, today's jobs, brain dump nudge, month view on larger sizes).
+5. **Done (widget):** home and lock screen widget (`ios-widget/`, added to the Xcode project by `scripts/add-widget.sh` on GitHub's Mac).
+   - Small (day, date, up to 4 jobs), Medium (greeting, date, progress + up to 5 jobs), Large (adds a mini month with dots, Brain dump button, "still to do from earlier"); lock screen: rectangular, circular ring, inline.
+   - App's theme colours, dark mode and fonts (static Fraunces/Figtree instances, OFL). Tap opens Today (`mumbrain://today`); Brain dump button opens Brain dump.
+   - The app sends the next 8 days of jobs to the App Group `group.com.gmoghul.mumbrainsorted` via its own `WidgetBridge` plugin (registered in `MainViewController`); the widget turns over at midnight by itself.
+   - Apple side: App Group created and added to the app's App ID; widget App ID `com.gmoghul.mumbrainsorted.widget` with the same group.
+   - The archive is unsigned, so the build gives the app and widget a placeholder signature carrying the App Group before the real signing. Run the workflow by hand with mode `check` to build and sign without uploading.
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)
