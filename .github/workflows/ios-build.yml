@@ -14,6 +14,12 @@ on:
   push:
     branches: [app-store]
   workflow_dispatch:
+    inputs:
+      mode:
+        description: "upload = send to TestFlight, check = build and sign only (nothing uploaded)"
+        type: choice
+        options: [upload, check]
+        default: upload
 
 env:
   TEAM_ID: 327WHDC3C5
@@ -47,6 +53,9 @@ jobs:
         run: |
           if [ ! -d ios ]; then npx cap add ios; fi
           npx cap sync ios
+
+      - name: Add the home screen widget
+        run: scripts/add-widget.sh
 
       - name: Test build (no signing)
         run: |
@@ -97,6 +106,10 @@ jobs:
           if [ ! -d ios ]; then npx cap add ios; fi
           npx cap sync ios
 
+      - name: Add the home screen widget
+        if: steps.secrets.outputs.ready == 'true'
+        run: scripts/add-widget.sh
+
       - name: App settings (icon, version, export compliance)
         if: steps.secrets.outputs.ready == 'true'
         run: |
@@ -140,6 +153,18 @@ jobs:
               tail -n 60 "$RUNNER_TEMP/archive.log"; exit 1; }
           tail -n 20 "$RUNNER_TEMP/archive.log"
 
+      - name: Mark the App Group in the archive
+        # The archive is unsigned, so give the app and widget a placeholder signature that carries
+        # their App Group. The upload step re-signs both for real and keeps the App Group.
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          APP="$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app"
+          for f in "$APP"/Frameworks/*; do [ -e "$f" ] && codesign -f -s - "$f"; done
+          for x in "$APP"/PlugIns/*.appex; do [ -e "$x" ] && codesign -f -s - --entitlements ios/App/MumBrainWidget/MumBrainWidget.entitlements "$x"; done
+          codesign -f -s - --entitlements ios/App/App/App.entitlements "$APP"
+          ls "$APP/PlugIns"
+          codesign -d --entitlements - "$APP" 2>/dev/null | tail -n 8
+
       - name: Upload to App Store Connect (TestFlight)
         if: steps.secrets.outputs.ready == 'true'
         run: |
@@ -147,7 +172,8 @@ jobs:
           OPTS="$RUNNER_TEMP/ExportOptions.plist"
           plutil -create xml1 "$OPTS"
           plutil -insert method -string app-store-connect "$OPTS"
-          plutil -insert destination -string upload "$OPTS"
+          if [ "${{ inputs.mode }}" = "check" ]; then DEST=export; else DEST=upload; fi
+          plutil -insert destination -string $DEST "$OPTS"
           plutil -insert teamID -string "$TEAM_ID" "$OPTS"
           plutil -insert signingStyle -string automatic "$OPTS"
           plutil -insert manageAppVersionAndBuildNumber -bool NO "$OPTS"
@@ -163,6 +189,17 @@ jobs:
               grep -iE "error" "$RUNNER_TEMP/export.log" | sort -u | head -n 9 | while IFS= read -r l; do echo "::error::$l"; done
               tail -n 60 "$RUNNER_TEMP/export.log"; exit 1; }
           tail -n 20 "$RUNNER_TEMP/export.log"
+
+      - name: Show what got signed (check mode)
+        if: steps.secrets.outputs.ready == 'true' && inputs.mode == 'check'
+        run: |
+          cd "$RUNNER_TEMP/export" && ls && unzip -q -o *.ipa -d ipa
+          A=ipa/Payload/App.app
+          for B in "$A" "$A/PlugIns/MumBrainWidget.appex"; do
+            E=$(codesign -d --entitlements - --xml "$B" 2>/dev/null | plutil -convert json -o - - 2>/dev/null || true)
+            echo "::notice::$(basename "$B"): $E"
+            echo "$E" | grep -q "group.com.gmoghul.mumbrainsorted" || { echo "::error::$(basename "$B") is missing the App Group"; exit 1; }
+          done
 
       - name: Remove the key
         if: always()

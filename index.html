@@ -1135,6 +1135,7 @@ function save(){
   try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){warn('Couldn\'t save on this phone – its storage may be full. Save a backup in Settings to keep your jobs safe.');}
   if(remote){clearTimeout(timer);timer=setTimeout(()=>push(true),500);}
   syncShared();
+  widgetQueue();
 }
 function cache(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){warn('Couldn\'t save on this phone – its storage may be full. Save a backup in Settings to keep your jobs safe.');}}
 function push(retry){
@@ -2519,7 +2520,7 @@ async function clearDoneNotifs(){
     if(gone.length)await LN.removeDeliveredNotifications({notifications:gone});
   }catch(e){}
 }
-function queueNotifs(){if(!LN)return;clearTimeout(notifTimer);notifTimer=setTimeout(()=>syncNotifs(false),1200);}
+function queueNotifs(){widgetQueue();if(!LN)return;clearTimeout(notifTimer);notifTimer=setTimeout(()=>syncNotifs(false),1200);}
 function paintNotifHint(){
   const el=document.getElementById('morn-hint');if(!el)return;
   el.textContent=notifPerm==='denied'
@@ -2535,6 +2536,51 @@ if(LN){
   });
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNotifs(true);});
   setTimeout(()=>syncNotifs(true),2500);
+}
+
+/* ---------- phone app: home screen and lock screen widget ----------
+   The widget can't read the app's storage, so the app hands it a small summary (the next 8 days of jobs,
+   the brain dump count and the theme colours) through a shared space on the phone. The widget moves on to
+   the next day by itself at midnight; it's refreshed whenever jobs change or the app is closed. */
+var WB=NATIVE?((window.Capacitor.Plugins&&window.Capacitor.Plugins.WidgetBridge)||(window.Capacitor.registerPlugin&&window.Capacitor.registerPlugin('WidgetBridge'))):null;
+var widgetTimer=null,widgetLast='';
+function widgetData(){
+  const t0=today(),P=state.prefs||{},live=state.tasks.filter(t=>!archivedJob(t));
+  let pal=PALETTES.find(x=>x.id===P.palette)||PALETTES[0];
+  if(P.style==='sharp'){const sc=SHARP.find(x=>x.id===P.sharp)||SHARP[0];pal={accent:sc.c,bg:'#FFFFFF',w:pal.w,wash:0};}
+  else if(P.style==='none')pal={accent:'#2F343B',bg:'#F6F7F9',w:pal.w,wash:0};
+  const days=[];
+  for(let i=0;i<8;i++){const d=addDays(t0,i);
+    days.push({d,jobs:live.filter(t=>occurs(t,d)).sort((a,b)=>(isDone(a,d)-isDone(b,d))||byTime(a,b)).slice(0,14)
+      .map(t=>({id:String(t.id),t:t.title||'',tm:t.time?fmtTime(t.time):'',c:hex(t.color),done:!!isDone(t,d),star:!!t.starred}))});}
+  // dots on the large widget's month: days with something planned, this month and next
+  const marks={},n0=new Date(),m0=new Date(n0.getFullYear(),n0.getMonth(),1),m2=new Date(n0.getFullYear(),n0.getMonth()+2,1);
+  for(let d=ymd(m0);d<ymd(m2);d=addDays(d,1)){const k=live.filter(t=>occurs(t,d)&&!isDone(t,d)).length;if(k)marks[d]=k;}
+  return {v:1,days,marks,
+    dump:live.filter(undatedJob).length,
+    late:live.filter(t=>!isRep(t)&&t.date&&t.date<t0&&!t.done).length,
+    theme:{accent:pal.accent,bg:pal.bg,ink:pal.ink||'',muted:pal.muted||'',line:pal.line||'',w:pal.w,wash:pal.wash,mode:P.mode||'auto'}};
+}
+async function widgetSync(){
+  if(!WB)return;
+  try{const json=JSON.stringify(widgetData());if(json===widgetLast)return;await WB.set({json});widgetLast=json;}catch(e){}
+}
+function widgetQueue(){if(!WB)return;clearTimeout(widgetTimer);widgetTimer=setTimeout(widgetSync,800);}
+// Tapping the widget opens the app on Today (or Brain dump from its "Brain dump" line)
+var CAPP=NATIVE?((window.Capacitor.Plugins&&window.Capacitor.Plugins.App)||(window.Capacitor.registerPlugin&&window.Capacitor.registerPlugin('App'))):null;
+function openLink(u){
+  if(!u||!/^mumbrain:/i.test(u))return;
+  ui.searching=false;ui.proj=null;
+  if(/dump/i.test(u))ui.tab='dump';else{ui.tab='today';ui.day=today();}
+  window.scrollTo(0,0);render();
+}
+if(CAPP){
+  try{CAPP.addListener('appUrlOpen',e=>openLink(e&&e.url));}catch(e){}
+  try{CAPP.getLaunchUrl().then(r=>openLink(r&&r.url)).catch(()=>{});}catch(e){}
+}
+if(WB){
+  document.addEventListener('visibilitychange',()=>{if(document.hidden){clearTimeout(widgetTimer);widgetSync();}});
+  setTimeout(widgetSync,2000);
 }
 
 /* ---------- settings ---------- */
