@@ -907,6 +907,11 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
         <div class="rep-hint">Your good morning message sits on top, with today's jobs tucked underneath. Only the good morning message makes a sound.</div>
       </div>
     </div>
+    <div class="field" id="bdr-field" hidden><span class="lbl">Brain dump reminder</span>
+      <div class="seg" id="s-bdr" style="grid-template-columns:repeat(4,1fr)"><button data-bdr="off">Off</button><button data-bdr="am">Morning</button><button data-bdr="pm">Night</button><button data-bdr="own">Pick a time</button></div>
+      <div class="row" id="bdr-own" hidden style="margin-top:8px"><input type="time" class="f-date" id="bdr-at" aria-label="Brain dump reminder time" style="width:124px"></div>
+      <div class="rep-hint" id="bdr-hint"></div>
+    </div>
     <div class="field"><span class="lbl">Tidy away finished jobs</span>
       <div class="seg" id="s-tidy" style="grid-template-columns:repeat(4,1fr)"><button data-tidy="off">Never</button><button data-tidy="3">3 days</button><button data-tidy="7">1 week</button><button data-tidy="30">1 month</button></div>
       <div class="rep-hint">Ticked-off jobs are cleared this long after you finish them.</div>
@@ -974,6 +979,7 @@ const BRAND={
   name:'Mum Brain, Sorted',            // full name (page title, share messages)
   short:'Mum Brain',                   // short name (home-screen icon, hints)
   slogan:'Out of your head. Into your day.',
+  dumpNudge:'Time for a quick brain dump. Out of your head, into your day 💭', // Brain dump reminder notification
   recommendQ:'Would you recommend Mum Brain to another mum?', // feedback question
   backupPrefix:'Mum-Brain-backup-',    // start of backup file names
   egJob:'Book dentist',                // New job box example
@@ -2449,6 +2455,11 @@ const morningTime=()=>(state.prefs&&state.prefs.mornAt)||'09:00';
 const mornStyle=()=>GREETS[state.prefs&&state.prefs.mornStyle]?state.prefs.mornStyle:'gentle';
 const mornPick=()=>(state.prefs&&state.prefs.mornPick)==1?1:0;
 const mornJobsOn=()=>(state.prefs&&state.prefs.mornJobs)!=='off';
+// Brain dump reminder: a gentle daily nudge at a time that suits (off until switched on).
+var BDR_ID=700000,BDR_DAYS=7;
+const BDR_TIMES={am:'09:30',pm:'21:00'};
+const bdrMode=()=>['am','pm','own'].includes(state.prefs&&state.prefs.bdr)?state.prefs.bdr:'off';
+const bdrTime=()=>bdrMode()==='own'?((state.prefs&&state.prefs.bdrAt)||'21:00'):BDR_TIMES[bdrMode()];
 function greetText(n,style,pick){const g=GREETS[style||mornStyle()];return n?g.pick[pick==null?mornPick():pick](n,n===1?'job':'jobs'):g.none;}
 function dueJobs(day){return state.tasks.filter(t=>!archivedJob(t)&&occurs(t,day)&&!isDone(t,day)).sort(byTime);}
 function morningText(day){return greetText(dueJobs(day).length);}
@@ -2474,6 +2485,14 @@ function planNotifs(){
         gap++;
       }
       out.push({id:MORNING_ID+i,title:'',body:greetText(L.length),sound:'default',threadIdentifier:thread,schedule:{at:new Date(base+gap*1000),allowWhileIdle:true},extra:{kind:'morning',day}});
+    }
+  }
+  if(bdrMode()!=='off'){
+    const[h,m]=bdrTime().split(':').map(Number);
+    for(let i=0;i<BDR_DAYS+1&&out.filter(n=>n.extra.kind==='bdump').length<BDR_DAYS;i++){
+      const day=addDays(t0,i),at=parse(day);at.setHours(h,m,0,0);
+      if(at.getTime()<=now+30000)continue;
+      out.push({id:BDR_ID+i,title:'',body:BRAND.dumpNudge,sound:'default',schedule:{at,allowWhileIdle:true},extra:{kind:'bdump'}});
     }
   }
   const al=[];
@@ -2504,7 +2523,7 @@ async function syncNotifs(force){
   const want=planNotifs();
   const sig=JSON.stringify(want.map(n=>[n.id,n.title,n.body,+n.schedule.at]));
   if(sig===notifLast&&!force){clearDoneNotifs();return;}
-  const ask=morningOn()||want.length>0;
+  const ask=morningOn()||bdrMode()!=='off'||want.length>0;
   if(!(await notifAllowed(ask))){paintNotifHint();return;}
   try{
     const p=await LN.getPending();
@@ -2528,6 +2547,11 @@ async function clearDoneNotifs(){
 }
 function queueNotifs(){widgetQueue();if(!LN)return;clearTimeout(notifTimer);notifTimer=setTimeout(()=>syncNotifs(false),1200);}
 function paintNotifHint(){
+  const bh=document.getElementById('bdr-hint');
+  if(bh)bh.textContent=notifPerm==='denied'&&bdrMode()!=='off'
+    ?'Notifications are turned off for '+BRAND.short+'. Turn on Allow Notifications in iPhone Settings › Notifications › '+BRAND.short+'.'
+    :bdrMode()==='off'?'A gentle nudge each day to empty your head, at a time that suits you.'
+    :'Every day at '+fmtTime(bdrTime())+'. Tap it to go straight to Brain dump.';
   const el=document.getElementById('morn-hint');if(!el)return;
   el.textContent=notifPerm==='denied'
     ?'Notifications are turned off for '+BRAND.short+'. To get alarms and your morning summary, go to iPhone Settings › Notifications › '+BRAND.short+' and turn on Allow Notifications.'
@@ -2538,6 +2562,7 @@ if(LN){
   LN.addListener('localNotificationActionPerformed',r=>{
     const x=(r&&r.notification&&r.notification.extra)||{};
     if(r.actionId==='done'&&(x.kind==='alarm'||x.kind==='mjob')){const t=find(x.id);if(t&&!isDone(t,x.day))toggle(x.id,x.day);return;}
+    if(x.kind==='bdump'){ui.searching=false;ui.tab='dump';ui.proj=null;render();return;}
     if(x.day){ui.searching=false;ui.tab='today';ui.day=x.day;render();}
   });
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNotifs(true);});
@@ -2632,12 +2657,16 @@ function paintSettings(){
   document.querySelectorAll('[data-nudge]').forEach(b=>b.classList.toggle('on',b.dataset.nudge===(P.nudge||'on')));
   document.querySelectorAll('[data-spc]').forEach(b=>b.classList.toggle('on',b.dataset.spc===(P.sp||'std')));
   document.getElementById('morn-field').hidden=!NATIVE;
+  document.getElementById('bdr-field').hidden=!NATIVE;
+  if(NATIVE){const bm=bdrMode();document.querySelectorAll('[data-bdr]').forEach(b=>b.classList.toggle('on',b.dataset.bdr===bm));
+    document.getElementById('bdr-own').hidden=bm!=='own';document.getElementById('bdr-at').value=bdrTime()||'21:00';}
   if(NATIVE){document.querySelectorAll('[data-morn]').forEach(b=>b.classList.toggle('on',b.dataset.morn===(P.morn||'on')));const mt=document.getElementById('morn-at');mt.value=morningTime();mt.disabled=!morningOn();paintNotifHint();
     const ms=mornStyle();document.getElementById('morn-more').classList.toggle('off',!morningOn());
     document.querySelectorAll('[data-mstyle]').forEach(b=>b.classList.toggle('on',b.dataset.mstyle===ms));
     document.querySelectorAll('[data-mjobs]').forEach(b=>b.classList.toggle('on',b.dataset.mjobs===(mornJobsOn()?'on':'off')));
     document.getElementById('s-greets').innerHTML=[0,1].map(k=>`<button class="greet${k===mornPick()?' on':''}" data-mpick="${k}">${esc(greetText(6,ms,k))}</button>`).join('');}
 }
+document.getElementById('bdr-at').addEventListener('change',e=>{if(!e.target.value)return;state.prefs.bdrAt=e.target.value;save();syncNotifs(true);paintSettings();});
 document.getElementById('morn-at').addEventListener('change',e=>{if(!e.target.value)return;state.prefs.mornAt=e.target.value;save();syncNotifs(true);});
 document.getElementById('cel-try').addEventListener('click',()=>{closeSettings();setTimeout(()=>celebrate('preview'),250);});
 document.getElementById('gear').addEventListener('click',()=>{if(!fbRec&&!['fb-stuck','fb-change','fb-add'].some(id=>document.getElementById(id).value.trim()))fbOpen(false);paintSettings();st.classList.add('open');st.setAttribute('aria-hidden','false');});
@@ -2663,7 +2692,7 @@ document.getElementById('fb-send').addEventListener('click',async()=>{
 });
 function closeSettings(){st.classList.remove('open');st.setAttribute('aria-hidden','true');}
 st.addEventListener('click',e=>{
-  const b=e.target.closest('[data-sact],button[data-pal],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-mstyle],button[data-mpick],button[data-mjobs],button[data-projs]');if(!b)return;
+  const b=e.target.closest('[data-sact],button[data-pal],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-mstyle],button[data-mpick],button[data-mjobs],button[data-bdr],button[data-projs]');if(!b)return;
   if(b.dataset.sact){closeSettings();return;}
   if(b.dataset.pal)state.prefs.palette=b.dataset.pal;
   if(b.dataset.sharp)state.prefs.sharp=b.dataset.sharp;
@@ -2678,6 +2707,7 @@ st.addEventListener('click',e=>{
   if(b.dataset.mstyle){state.prefs.mornStyle=b.dataset.mstyle;state.prefs.mornPick=0;syncNotifs(true);}
   if(b.dataset.mpick){state.prefs.mornPick=Number(b.dataset.mpick);syncNotifs(true);}
   if(b.dataset.mjobs){state.prefs.mornJobs=b.dataset.mjobs;syncNotifs(true);}
+  if(b.dataset.bdr){state.prefs.bdr=b.dataset.bdr;if(b.dataset.bdr==='own'&&!state.prefs.bdrAt)state.prefs.bdrAt='21:00';syncNotifs(true);}
   if(b.dataset.projs){state.prefs.proj=b.dataset.projs;if(b.dataset.projs==='off'&&ui.filter===PROJ){ui.filter=null;ui.proj=null;try{localStorage.setItem(KEY+'-filter','');}catch(err){}}render();}
   if(b.dataset.cel){state.prefs.cel=b.dataset.cel;if(b.dataset.cel!=='off'){closeSettings();setTimeout(()=>celebrate('preview'),250);}}
   applyPrefs();paintSettings();save();
