@@ -31,7 +31,7 @@ The live web app on GitHub Pages (`main`) is not affected.
 
 ## Brand pack (keeping a future "everyone" edition open)
 All the Mum Brain–specific wording sits in one `BRAND` block at the top of the script in `index.html`:
-name, short name, slogan, tester note, feedback question, backup file name, example jobs
+name, short name, slogan, feedback question, backup file name, example jobs
 ("Book dentist", "Dentist Fri 3pm", "Camping trip", "baby prep") and the default theme (Linen).
 Other places that carry the name: `manifest.json`, `capacitor.config.json` (`appName`) and the icons.
 

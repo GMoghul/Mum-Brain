@@ -5,7 +5,7 @@ A general "for everyone" mode may be added later, so on the `app-store` branch a
 text lives in the `BRAND` block at the top of the script in `index.html`. The block holds:
 - the app name and short name
 - the slogan
-- the tester note and the feedback question
+- the feedback question
 - the backup file name
 - example jobs/projects
 - the default theme

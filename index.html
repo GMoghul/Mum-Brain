@@ -42,7 +42,7 @@
   --accent-base:#3E63DD; --bg-l:#F7F8FA; --w1:#A9C6F2; --w2:#C9B8EE; --w3:#BFE3E0; --wash-l:.6;
   --bg:var(--bg-l); --solid:#FFFFFF; --surface:rgba(255,255,255,.86); --ink:var(--ink-l,#1B1E23); --muted:var(--muted-l,#6E747D); --line:var(--line-l,#E4E7EB);
   --accent:var(--accent-base); --primary:var(--primary-l,var(--accent)); --accent-soft:color-mix(in srgb,var(--accent) 13%,var(--solid));
-  --star:#E3A008; --warn:#D9534F; --wash-op:var(--wash-l);
+  --star:#E3A008; --warn:#C0392B; --wash-op:var(--wash-l);
   --shadow:0 1px 2px rgba(20,24,32,.04),0 6px 20px rgba(20,24,32,.05);
   box-sizing:border-box;
   padding-top:max(env(safe-area-inset-top,0px),var(--sat0,0px));
@@ -121,6 +121,10 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .task{display:flex;align-items:flex-start;gap:12px;padding:calc(14px * var(--sp)) 12px calc(14px * var(--sp)) 14px;cursor:pointer;position:relative}
 .task+.task::before{content:"";position:absolute;top:0;left:52px;right:0;height:1px;background:var(--line)}
 .check{flex:none;width:calc(26px * var(--ts));height:calc(26px * var(--ts));border-radius:50%;border:2px solid var(--c);display:grid;place-items:center;margin-top:-1px;transition:background .15s}
+/* bigger tap areas without changing the look (Apple suggests at least 44pt) */
+.check,.sec-h button,.wempty button,.more,.lrow button:not(.pswitch){position:relative}
+.check::after{content:"";position:absolute;inset:-6px -9px}
+.sec-h button::after,.wempty button::after,.more::after,.lrow button:not(.pswitch)::after{content:"";position:absolute;inset:-12px -6px}
 .check svg{opacity:0;color:#fff;transition:opacity .15s}
 .check.on{background:var(--c)}
 .check.on svg{opacity:1}
@@ -858,7 +862,6 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="seg seg3" id="fb-rec"><button data-rec="yes">Yes</button><button data-rec="maybe">Maybe</button><button data-rec="no">No</button></div>
       <div class="fb-row" id="fb-row"><button class="opt" id="fb-more" aria-expanded="false" aria-controls="fb-rest">More questions</button><button class="opt on" id="fb-quick" disabled>Send feedback</button></div>
       <div id="fb-rest" hidden>
-      <p class="fam-p" id="tester-note">You're one of the first mums trying Mum Brain. Tell me what's working and what isn't.</p>
       <textarea class="f-note" id="fb-stuck" placeholder="Was there anything you couldn't work out how to do?"></textarea>
       <textarea class="f-note" id="fb-change" placeholder="What would you change?"></textarea>
       <textarea class="f-note" id="fb-add" placeholder="What would you add?"></textarea>
@@ -971,7 +974,6 @@ const BRAND={
   name:'Mum Brain, Sorted',            // full name (page title, share messages)
   short:'Mum Brain',                   // short name (home-screen icon, hints)
   slogan:'Out of your head. Into your day.',
-  testerNote:"You're one of the first mums trying Mum Brain. Tell me what's working and what isn't.",
   recommendQ:'Would you recommend Mum Brain to another mum?', // feedback question
   backupPrefix:'Mum-Brain-backup-',    // start of backup file names
   egJob:'Book dentist',                // New job box example
@@ -1014,7 +1016,6 @@ const KEY='todo-app-v1';
 {const set=(id,a,v)=>{const e=document.getElementById(id);if(e)e[a]=v;};
  set('f-title','placeholder','Type your job here, e.g. '+BRAND.egJob);
  set('p-name','placeholder','Project name, e.g. '+BRAND.egProject);
- set('tester-note','textContent',BRAND.testerNote);
  set('fb-recommend','textContent',BRAND.recommendQ);
  const m=document.querySelector('meta[name="apple-mobile-web-app-title"]');if(m)m.content=BRAND.short;}
 const NATIVE=!!(window.Capacitor&&window.Capacitor.isNativePlatform&&window.Capacitor.isNativePlatform()); // true only in the App Store version
