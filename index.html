@@ -1405,12 +1405,16 @@ function toggle(id,s){
   const nowDone=isDone(t,s);
   save();render();
   if(nowDone){
+    buzz('tick');
     snack('Done ✓',()=>{const i=state.tasks.findIndex(x=>x.id===id);if(i>=0){state.tasks[i]=JSON.parse(before);save();render();}});
     const p=t.proj&&!isRep(t)?projOf(t.proj):null,ps=p?projStats(p.id):null;
     if(ps&&ps.total>1&&ps.done===ps.total){if((state.prefs.cel||'rabbit')!=='off')setTimeout(()=>celebrate('proj',p.name),350);}
     else checkCelebrate();
   }
 }
+/* gentle vibration in the iPhone app: a light tap when a job is ticked off, a soft "success" for celebrations */
+var HAP=NATIVE?((window.Capacitor.Plugins&&window.Capacitor.Plugins.Haptics)||(window.Capacitor.registerPlugin&&window.Capacitor.registerPlugin('Haptics'))):null;
+function buzz(kind){if(!HAP)return;try{(kind==='cele'?HAP.notification({type:'SUCCESS'}):HAP.impact({style:'LIGHT'})).catch(()=>{});}catch(e){}}
 /* undo bar */
 let snackTimer=null,snackUndo=null;
 let warnKind='';
@@ -1494,6 +1498,7 @@ const WING=`<svg viewBox="0 0 130 100" aria-hidden="true"><path d="M62 46 C56 30
 const STAR_SVG=c=>`<svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 2.5 L12 21.5 M2.5 12 L21.5 12 M5.5 5.5 L18.5 18.5 M18.5 5.5 L5.5 18.5" stroke="${c}" stroke-width="2" stroke-linecap="round"/></svg>`;
 let celeTimer=null;
 function celebrate(why,name){
+  if(why!=='preview')buzz('cele');
   const kind=state.prefs.cel==='off'?'rabbit':(state.prefs.cel||'rabbit');
   const el=document.getElementById('cele'),st=document.getElementById('cele-stage');
   const msg=why==='proj'?[esc(name)+' done!','Every job ticked off. Archive it whenever you\'re ready.']:why==='dump'?['Brain dump cleared!','Every job ticked off. Enjoy the quiet.']:why==='preview'?['All done for today!','This is how your celebration looks.']:['All done for today!','Everything ticked off. Well done, you.'];
