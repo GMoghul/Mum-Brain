@@ -65,11 +65,18 @@ jobs:
       - name: Switch on the Google services the function needs
         if: env.HAS_SA == 'true'
         run: |
-          gcloud services enable --project "$PROJECT" \
-            cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
-            run.googleapis.com eventarc.googleapis.com pubsub.googleapis.com \
-            secretmanager.googleapis.com || {
-            echo "::error::Couldn't switch on the services. Is the Firebase project on the Blaze (pay as you go) plan?"; exit 1; }
+          echo "Signed in as: $(gcloud config get-value account 2>/dev/null)"
+          # Service Usage and Resource Manager first: without them Google can't switch the others on
+          for API in serviceusage.googleapis.com cloudresourcemanager.googleapis.com cloudbilling.googleapis.com \
+                     cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
+                     run.googleapis.com eventarc.googleapis.com pubsub.googleapis.com secretmanager.googleapis.com; do
+            if ! OUT=$(gcloud services enable "$API" --project "$PROJECT" 2>&1); then
+              MSG=$(echo "$OUT" | tr '\n' ' ' | cut -c1-600)
+              echo "::error::Couldn't switch on $API: $MSG"
+              exit 1
+            fi
+            echo "on: $API"
+          done
 
       - name: Install
         if: env.HAS_SA == 'true'
