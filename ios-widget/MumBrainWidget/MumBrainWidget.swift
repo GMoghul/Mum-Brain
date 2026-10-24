@@ -223,13 +223,14 @@ struct Tick: View {
     let color: Color
     let done: Bool
     let size: CGFloat
+    var check: Color = .white
     var body: some View {
         ZStack {
             if done {
                 Circle().fill(color)
                 Image(systemName: "checkmark")
                     .font(.system(size: size * 0.55, weight: .bold))
-                    .foregroundColor(.white)
+                    .foregroundColor(check)
             } else {
                 Circle().strokeBorder(color, lineWidth: max(1.5, size * 0.13))
             }
@@ -242,21 +243,15 @@ struct Row: View {
     let job: WJob
     let p: Palette
     let size: CGFloat
-    var plain: Bool = false   // small widget: ink-coloured rings, no stars
     var body: some View {
         HStack(spacing: 7) {
-            Tick(color: plain ? p.ink : Color(hex: job.c), done: job.done, size: size + 1)
+            Tick(color: p.ink, done: job.done, size: size + 1, check: p.bg)
             Text(job.t)
                 .font(F.body(size))
                 .foregroundColor(job.done ? p.muted : p.ink)
                 .strikethrough(job.done, color: p.muted)
                 .lineLimit(1)
             Spacer(minLength: 2)
-            if job.star && !job.done && !plain {
-                Image(systemName: "star.fill")
-                    .font(.system(size: size * 0.7))
-                    .foregroundColor(starColor)
-            }
             if !job.tm.isEmpty {
                 Text(job.tm)
                     .font(F.body(size - 2))
@@ -274,13 +269,12 @@ struct JobList: View {
     let limit: Int
     let size: CGFloat
     let spacing: CGFloat
-    var plain: Bool = false
     var body: some View {
         // show every job if they all fit, otherwise leave a line for "+N more"
         let shown = e.jobs.count <= limit ? e.jobs : Array(e.jobs.prefix(limit - 1))
         VStack(alignment: .leading, spacing: spacing) {
             ForEach(shown) { j in
-                Row(job: j, p: p, size: size, plain: plain)
+                Row(job: j, p: p, size: size)
             }
             if e.jobs.count > shown.count {
                 Text("+\(e.jobs.count - shown.count) more")
@@ -322,6 +316,12 @@ struct ProgressLine: View {
     var body: some View {
         let total = e.jobs.count
         let frac = total > 0 ? CGFloat(e.doneCount) / CGFloat(total) : 0
+        if e.doneCount == 0 {
+            // nothing ticked yet: no empty bar or zero, just the count
+            Text(total == 1 ? "1 job today" : "\(total) jobs today")
+                .font(F.body(11))
+                .foregroundColor(p.muted)
+        } else {
         VStack(alignment: .leading, spacing: 4) {
             GeometryReader { g in
                 ZStack(alignment: .leading) {
@@ -333,6 +333,7 @@ struct ProgressLine: View {
             Text("\(e.doneCount) of \(total) done")
                 .font(F.body(11))
                 .foregroundColor(p.muted)
+        }
         }
     }
 }
@@ -440,7 +441,7 @@ struct SmallView: View {
             if e.open.isEmpty {
                 Message(e: e, p: p, size: 12.5)
             } else {
-                JobList(e: e, p: p, limit: 4, size: 11.5, spacing: 6, plain: true)
+                JobList(e: e, p: p, limit: 4, size: 11.5, spacing: 6)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -479,7 +480,7 @@ struct MediumView: View {
                     Message(e: e, p: p, size: 13)
                     Spacer(minLength: 0)
                 } else {
-                    JobList(e: e, p: p, limit: 5, size: 13, spacing: 6)
+                    JobList(e: e, p: p, limit: 5, size: 11.5, spacing: 6)
                     Spacer(minLength: 0)
                 }
             }
