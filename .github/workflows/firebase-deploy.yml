@@ -1,0 +1,102 @@
+# Sets up the server side of shared-list notifications in Firebase. Run it by hand
+# (Actions › Firebase setup › Run workflow) after the first setup, or whenever functions/ or
+# firestore.rules change. Nothing here touches the app or TestFlight.
+#
+# Needs these GitHub secrets (Settings › Secrets and variables › Actions):
+#   FIREBASE_SA   - the full text of a Google service account key (JSON) for the mum-brain-sorted project
+#   APNS_KEY_P8   - the full text of the Apple Push Notifications key file (AuthKey_XXXX.p8)
+#   APNS_KEY_ID   - that key's Key ID (10 letters/numbers)
+name: Firebase setup
+
+on:
+  push:
+    branches: [app-store]
+    paths: ['functions/**', 'firestore.rules', 'firebase.json', '.github/workflows/firebase-deploy.yml']
+  workflow_dispatch:
+    inputs:
+      apns:
+        description: "Send the Apple notification key to Firebase (only needed the first time or after making a new key)"
+        type: boolean
+        default: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT: mum-brain-sorted
+      HAS_SA: ${{ secrets.FIREBASE_SA != '' }}
+      # on a manual run, follow the tick box; on a push, only send the Apple key when it's saved
+      SEND_APNS: ${{ github.event_name == 'workflow_dispatch' && inputs.apns || github.event_name == 'push' && secrets.APNS_KEY_P8 != '' }}
+    steps:
+      - name: Skip until Firebase is set up
+        if: env.HAS_SA != 'true'
+        run: echo "::notice::FIREBASE_SA isn't saved yet, so nothing was deployed. Save the secrets, then run Firebase setup."
+
+      - uses: actions/checkout@v4
+        if: env.HAS_SA == 'true'
+
+      - name: Check the secrets are saved
+        if: env.HAS_SA == 'true'
+        env:
+          SA: ${{ secrets.FIREBASE_SA }}
+          P8: ${{ secrets.APNS_KEY_P8 }}
+          KID: ${{ secrets.APNS_KEY_ID }}
+        run: |
+          [ -n "$SA" ] || { echo "::error::FIREBASE_SA secret isn't saved yet"; exit 1; }
+          if [ "$SEND_APNS" = "true" ]; then
+            [ -n "$P8" ] || { echo "::error::APNS_KEY_P8 secret isn't saved yet"; exit 1; }
+            [ -n "$KID" ] || { echo "::error::APNS_KEY_ID secret isn't saved yet"; exit 1; }
+            echo "$P8" | grep -q "BEGIN PRIVATE KEY" || { echo "::error::APNS_KEY_P8 should be the whole .p8 file, including the BEGIN and END lines"; exit 1; }
+          fi
+
+      - uses: google-github-actions/auth@v2
+        if: env.HAS_SA == 'true'
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SA }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+        if: env.HAS_SA == 'true'
+
+      - uses: actions/setup-node@v4
+        if: env.HAS_SA == 'true'
+        with:
+          node-version: 22
+
+      - name: Switch on the Google services the function needs
+        if: env.HAS_SA == 'true'
+        run: |
+          gcloud services enable --project "$PROJECT" \
+            cloudfunctions.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com \
+            run.googleapis.com eventarc.googleapis.com pubsub.googleapis.com \
+            secretmanager.googleapis.com || {
+            echo "::error::Couldn't switch on the services. Is the Firebase project on the Blaze (pay as you go) plan?"; exit 1; }
+
+      - name: Install
+        if: env.HAS_SA == 'true'
+        run: |
+          npm install -g firebase-tools@14
+          cd functions && npm install --omit=dev
+
+      - name: Save the Apple notification key in Firebase
+        if: env.HAS_SA == 'true' && env.SEND_APNS == 'true'
+        env:
+          P8: ${{ secrets.APNS_KEY_P8 }}
+          KID: ${{ secrets.APNS_KEY_ID }}
+        run: |
+          printf '%s\n' "$P8" > "$RUNNER_TEMP/apns.p8"
+          printf '%s' "$(echo "$KID" | tr -d '[:space:]')" > "$RUNNER_TEMP/kid.txt"
+          firebase functions:secrets:set APNS_KEY_P8 --data-file "$RUNNER_TEMP/apns.p8" --project "$PROJECT" --force --non-interactive
+          firebase functions:secrets:set APNS_KEY_ID --data-file "$RUNNER_TEMP/kid.txt" --project "$PROJECT" --force --non-interactive
+          rm -f "$RUNNER_TEMP/apns.p8" "$RUNNER_TEMP/kid.txt"
+
+      - name: Deploy the function and database rules
+        if: env.HAS_SA == 'true'
+        run: |
+          # The very first deploy sometimes fails while Google sets up permissions behind the scenes; try again once.
+          firebase deploy --only functions,firestore:rules --project "$PROJECT" --force --non-interactive || {
+            echo "First try failed, waiting a minute and trying again…"; sleep 60;
+            firebase deploy --only functions,firestore:rules --project "$PROJECT" --force --non-interactive; }
+
+      - name: Tidy old copies of the key
+        if: env.HAS_SA == 'true' && env.SEND_APNS == 'true'
+        run: firebase functions:secrets:prune --project "$PROJECT" --force --non-interactive || true
