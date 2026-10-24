@@ -6,6 +6,78 @@ service cloud.firestore {
     function isFamilyId(f) { return f.matches('^[0-9a-f]{64}$'); }
     function isOldCode(f) { return f.matches('^[A-Z0-9]{12}$'); }
 
+    // ---- who's in the family, and admins ----
+    function signedIn() { return request.auth != null; }
+    function isAdmin(f) {
+      return signedIn() && exists(/databases/$(database)/documents/families/$(f)/members/$(request.auth.uid))
+        && get(/databases/$(database)/documents/families/$(f)/members/$(request.auth.uid)).data.role == 'admin';
+    }
+    // the same, but counting what's being written in this batch (setting up a new family in one go)
+    function isAdminAfter(f) {
+      return signedIn() && existsAfter(/databases/$(database)/documents/families/$(f)/members/$(request.auth.uid))
+        && getAfter(/databases/$(database)/documents/families/$(f)/members/$(request.auth.uid)).data.role == 'admin';
+    }
+    function ownerAfterIs(f, uid) {
+      return existsAfter(/databases/$(database)/documents/families/$(f)/meta/owner) && getAfter(/databases/$(database)/documents/families/$(f)/meta/owner).data.uid == uid;
+    }
+    function rotatedByMe(f) {
+      return signedIn() && existsAfter(/databases/$(database)/documents/families/$(f)/meta/rotated)
+        && getAfter(/databases/$(database)/documents/families/$(f)/meta/rotated).data.by == request.auth.uid;
+    }
+    function validMember() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['v', 'n', 'role', 'creator', 'd', 'at'])
+        && d.v == 1 && d.role in ['admin', 'member'] && d.creator is bool
+        && d.n is string && d.n.size() <= 400
+        && d.d is string && d.d.size() <= 40
+        && d.at is int;
+    }
+
+    match /families/{fam}/members/{uid} {
+      allow read: if signedIn() && isFamilyId(fam);
+      // joining adds yourself as a member; the creator (or the admin moving the family to a new code) starts as admin;
+      // an admin moving the family adds everyone else too
+      allow create: if signedIn() && isFamilyId(fam) && validMember()
+        && ((request.auth.uid == uid
+              && (request.resource.data.role == 'member' || ownerAfterIs(fam, uid) || rotatedByMe(fam)))
+            || isAdminAfter(fam))
+        && (request.resource.data.creator == false || ownerAfterIs(fam, uid));
+      // you can change your own name; admins can make others admin or not, but never change the creator
+      allow update: if signedIn() && validMember()
+        && request.resource.data.creator == resource.data.creator
+        && ((request.auth.uid == uid && request.resource.data.role == resource.data.role)
+            || (isAdmin(fam) && !resource.data.creator
+                && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['role'])));
+      allow delete: if signedIn() && (request.auth.uid == uid || (isAdmin(fam) && !resource.data.creator));
+    }
+
+    // who created the family (set once)
+    match /families/{fam}/meta/owner {
+      allow create: if signedIn() && isFamilyId(fam)
+        && request.resource.data.keys().hasOnly(['v', 'uid']) && request.resource.data.v == 1
+        && (request.resource.data.uid == request.auth.uid || rotatedByMe(fam));
+    }
+    // a family set up by an admin when someone was removed (only possible on a brand-new family id)
+    match /families/{fam}/meta/rotated {
+      allow create: if signedIn() && isFamilyId(fam)
+        && !exists(/databases/$(database)/documents/families/$(fam)/meta/info)
+        && request.resource.data.keys().hasOnly(['v', 'by', 'at']) && request.resource.data.v == 1
+        && request.resource.data.by == request.auth.uid && request.resource.data.at is int;
+    }
+    // this family has moved to a new code (someone was removed)
+    match /families/{fam}/meta/moved {
+      allow create: if isFamilyId(fam) && isAdmin(fam)
+        && request.resource.data.keys().hasOnly(['v', 'at']) && request.resource.data.v == 1 && request.resource.data.at is int;
+    }
+    // the new code, scrambled, left for each member who's staying; only that member can read it
+    match /families/{fam}/moves/{uid} {
+      allow create: if isFamilyId(fam) && isAdmin(fam)
+        && request.resource.data.keys().hasOnly(['v', 'c', 'at']) && request.resource.data.v == 1
+        && request.resource.data.c is string && request.resource.data.c.size() <= 200
+        && request.resource.data.at is int;
+      allow read, delete: if signedIn() && request.auth.uid == uid;
+    }
+
     match /families/{fam}/tasks/{taskId} {
       allow read: if isFamilyId(fam) || isOldCode(fam);
       allow delete: if isFamilyId(fam) || isOldCode(fam);

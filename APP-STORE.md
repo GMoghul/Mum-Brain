@@ -40,6 +40,12 @@ The live web app on GitHub Pages (`main`) is not affected.
    - Changes to either show in the shared-change notification ("Needs doing by Fri 30 Oct", "Now with Sam").
    - "Send code" message no longer mentions the online version.
    - Two calmer, unisex themes: Navy and Stone (bottom row with Ink).
+9. **Family admins, like a WhatsApp group (v1.9.0, 24 Oct 2026):**
+   - Settings › Family sharing shows everyone in the family ("In this family"), with "Admin" next to admins. Whoever created the family is the first admin and can't be removed or dismissed; admins tap a person to **Make admin / Dismiss as admin** or **Remove** (tap twice). If the last admin leaves, the longest-standing member becomes admin.
+   - Each phone signs in quietly with Firebase **anonymous sign-in** (turned on in console.firebase.google.com › Security › Authentication, 24 Oct 2026; leave "Auto clean-up" off). `families/{id}/members/{uid}`: name (scrambled with the family key), role, creator, phone id. `meta/owner` = the creator's sign-in (set once; for families made before v1.9.0, the first phone to open v1.9.0 claims it).
+   - **Removing someone moves the family to a new code** (they already know the old one, so that's the only way to really shut them out): the admin's phone sets up a new family with the same people and roles (`meta/rotated`), copies the shared jobs across, leaves each remaining member a scrambled note with the new code in `families/{old}/moves/{uid}` (only that member's sign-in can read it), marks the old family `meta/moved` and clears its jobs. Other phones follow automatically; the removed person's phone sees the move with no note and leaves ("You're no longer in the family list"). The notification server ignores moved families.
+   - Shared jobs themselves still work without sign-in (so the online version keeps working). People using the online version don't appear in the member list and aren't moved over when someone is removed.
+   - Limitation: deleting and reinstalling the app (or clearing its data) gives the phone a new sign-in, so it rejoins as a new member and the old entry stays in the list. If that was the creator, they lose the creator spot.
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)

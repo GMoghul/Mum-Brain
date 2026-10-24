@@ -75,6 +75,9 @@ exports.sharedChange = onDocumentCreated(
     const { fid } = event.params;
     try {
       if (e.v !== 1 || typeof e.iv !== 'string' || typeof e.ct !== 'string') return;
+      // a family that has moved to a new code (someone was removed): nothing is sent from it any more
+      const moved = await getFirestore().doc(`families/${fid}/meta/moved`).get();
+      if (moved.exists) return;
       const devices = await getFirestore().collection(`families/${fid}/devices`).get();
       const targets = devices.docs.filter(d => d.id !== e.from && typeof d.get('t') === 'string');
       if (!targets.length) return;

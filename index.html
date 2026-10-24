@@ -497,6 +497,18 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .fam-join{display:flex;gap:8px;margin-top:10px}
 .fam-join input{flex:1;min-width:0;text-transform:uppercase;font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em}
 .fam-how{margin-top:10px;font-size:14px;font-weight:600;color:var(--accent);padding:4px 0}
+.fm-list{background:var(--bg);border-radius:12px;overflow:hidden}
+.fm-row{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 14px;font-size:15px;color:var(--ink);text-align:left;border-top:1px solid var(--line)}
+.fm-row:first-child{border-top:0}
+.fm-row:disabled{opacity:1;cursor:default}
+.fm-n{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fm-you{color:var(--muted)}
+.fm-tag{font-size:12.5px;color:var(--muted)}
+.fm-chev{color:var(--muted);font-size:18px;transition:transform .2s}
+.fm-row.open .fm-chev{transform:rotate(90deg)}
+.fm-acts{padding:4px 14px 12px}
+.fm-acts .opt{background:var(--solid)}
+.fm-acts .fm-rm{color:var(--warn)}
 .fam-status{font-size:13.5px;color:var(--muted);margin-top:8px;display:flex;align-items:center;gap:6px}
 /* reorder, morning sort, feedback */
 .task[data-drag]{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
@@ -1027,7 +1039,7 @@ const BRAND={
      art:{kind:'move',jobs:['Book dentist','Birthday present','Socks that fit']}}
   ],
   sharehow:[                           // "How sharing works" guide: opened from Settings › Family sharing and Settings › Help
-    {h:'Create your family',p:'Open Settings, go to Family sharing and tap Create a family. You’ll get your own family code.',
+    {h:'Create your family',p:'Open Settings, go to Family sharing and tap Create a family. You’ll get your own family code.',eg:'You’re the family’s admin, so you can make others admin or remove people, like a WhatsApp group.',
      art:{kind:'create',code:'K7QM-42XP'}},
     {h:'Invite your family',p:'Tap Send code and message it to them. On their phone, they open Settings › Family sharing, type in the code and tap Join.',
      art:{kind:'join',code:'K7QM-42XP'}},
@@ -1232,6 +1244,7 @@ function famMembers(){
   const me=devId(),m={};
   const see=(d,n,at)=>{if(!d||d===me)return;if(!m[d]||(at||0)>=m[d].at)m[d]={d,n:n||(m[d]&&m[d].n)||'',at:at||0};};
   for(const t of state.tasks){if(t.list!==SHARED)continue;see(t.bd,t.by,t.bat);see(t.ebd,t.eby,t.eat);see(t.own,t.ownN,0);}
+  for(const x of Object.values(famMem))if(x.name)see(x.d,x.name,Infinity);
   return Object.values(m).filter(x=>x.n).sort((a,b)=>a.n.localeCompare(b.n));
 }
 const ownerName=t=>t.own===devId()?'You':(t.ownN||'Someone');
@@ -1272,7 +1285,10 @@ async function fbLoad(){
   if(fb)return fb;
   const [appM,fsM]=await Promise.all([import(FB+'firebase-app.js'),import(FB+'firebase-firestore.js')]);
   const app=appM.initializeApp(FIREBASE);
-  fb={fs:fsM,db:fsM.getFirestore(app)};return fb;
+  // quiet sign-in for the member list and admins; if it can't load, shared jobs still work without it
+  let authM=null,auth=null;
+  try{authM=await import(FB+'firebase-auth.js');auth=authM.initializeAuth(app,{persistence:[authM.indexedDBLocalPersistence,authM.browserLocalPersistence]});}catch(e){authM=null;auth=null;}
+  fb={fs:fsM,db:fsM.getFirestore(app),authM,auth};return fb;
 }
 const CODE_AB='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 function newCode(){let c='';const r=new Uint32Array(12);crypto.getRandomValues(r);for(const x of r)c+=CODE_AB[x%CODE_AB.length];return c;}
@@ -1354,6 +1370,7 @@ async function connectFamily(){
       if(!draft)render();
       noteFlush();pushSetup();
     },err=>{sharedCol=null;sharedReady=false;setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');});
+    memStart(fs,db,code,fid,key);
   }catch(e){setFamStatus('err',e&&e.message==='nocrypto'?'This browser can\'t scramble shared jobs. Open the app from your home screen.':'Can\'t reach the family list right now. Check your internet connection.');}
 }
 function saveFamily(){try{localStorage.setItem(KEY+'-family',JSON.stringify(family));}catch(e){}SHARING=!!(family&&family.code);}
@@ -1377,13 +1394,182 @@ async function joinFamily(raw){
   state.tasks=state.tasks.filter(t=>t.list!==SHARED);cache();clearPend();
   family={code};saveFamily();sharedSeen={};saveSeen();paintFamily();render();connectFamily();
 }
-function leaveFamily(){
+function leaveFamily(removed){
+  if(!removed&&family&&family.code)memLeave(family.code);
+  memStop();famMem={};
   pushForget();noteQ={};saveNoteQ();
   if(famUnsub){try{famUnsub();}catch(e){}famUnsub=null;}
   sharedCol=null;sharedReady=false;sharedSeen={};clearPend();
   state.tasks=state.tasks.filter(t=>t.list!==SHARED);
   if(ui.filter===SHARED)ui.filter=null;
   family=null;saveFamily();cache();paintFamily();render();
+}
+/* ---------- who's in the family, and admins (like a WhatsApp group) ----------
+   Each phone signs in quietly (Firebase anonymous sign-in: no email or password) so the family list knows who's who.
+   families/{id}/members/{uid}: name (scrambled with the family key), role 'admin' or 'member', creator, phone id.
+   The person who created the family is the first admin and can't be removed; admins can make others admin.
+   Removing someone quietly moves the family to a new code: the admin's phone copies the shared jobs across,
+   then leaves each remaining member a note with the new code (scrambled, and only that member's sign-in can read it),
+   and marks the old family as moved. Everyone else follows automatically; the removed person can't, because
+   there's no note for them and they don't know the new code. */
+var famMem={},myUid=null,memErr=false,memUnsubs=[],memOpen=null,fbUidP=null;
+async function fbUid(){
+  const f=await fbLoad();
+  if(!f.auth)throw new Error('noauth');
+  if(!fbUidP)fbUidP=(async()=>{
+    await f.auth.authStateReady();
+    if(f.auth.currentUser)return f.auth.currentUser.uid;
+    return (await f.authM.signInAnonymously(f.auth)).user.uid;
+  })().catch(e=>{fbUidP=null;throw e;});
+  return fbUidP;
+}
+async function lockStr(key,aad,s){
+  const iv=crypto.getRandomValues(new Uint8Array(12));
+  const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:enc.encode(aad)},key,enc.encode(s||''));
+  return b64(iv)+'.'+b64(ct);
+}
+async function unlockStr(key,aad,v){
+  if(typeof v!=='string'||v.indexOf('.')<0)return null;
+  const [iv,ct]=v.split('.');
+  try{return dec.decode(await crypto.subtle.decrypt({name:'AES-GCM',iv:unb64(iv),additionalData:enc.encode(aad)},key,unb64(ct)));}catch(e){return null;}
+}
+function memStop(){for(const u of memUnsubs){try{u();}catch(e){}}memUnsubs=[];}
+async function memStart(fs,db,code,fid,key){
+  memStop();
+  const same=()=>family&&family.code===code;
+  let uid;
+  try{uid=await fbUid();}catch(e){memErr=true;paintMembers();return;}
+  if(!same())return;
+  myUid=uid;
+  const P=(...p)=>fs.doc(db,'families',fid,...p);
+  try{
+    if(await followMove(fs,db,code,fid,key,uid))return;
+    if((await fs.getDoc(P('meta','moved'))).exists()){if(same())famGone();return;}
+    const mine=await fs.getDoc(P('members',uid));
+    if(!same())return;
+    const n=await lockStr(key,'member:'+uid,myName());
+    if(!mine.exists()){
+      // the first phone in (normally whoever created the family) becomes its creator and first admin
+      let owner=await fs.getDoc(P('meta','owner'));
+      if(!owner.exists()){try{await fs.setDoc(P('meta','owner'),{v:1,uid});}catch(e){}owner=await fs.getDoc(P('meta','owner'));}
+      const isOwner=owner.exists()&&owner.data().uid===uid;
+      await fs.setDoc(P('members',uid),{v:1,n,role:isOwner?'admin':'member',creator:isOwner,d:devId(),at:Date.now()});
+    }else await fs.updateDoc(P('members',uid),{n,d:devId()});
+  }catch(e){memErr=true;paintMembers();return;}
+  if(!same())return;
+  memErr=false;
+  memUnsubs.push(fs.onSnapshot(fs.collection(db,'families',fid,'members'),async qs=>{
+    const m={};
+    await Promise.all(qs.docs.map(async x=>{const v=x.data()||{};
+      m[x.id]={uid:x.id,name:((await unlockStr(key,'member:'+x.id,v.n))||'').trim(),role:v.role==='admin'?'admin':'member',creator:!!v.creator,d:v.d||'',at:v.at||0};}));
+    if(!same())return;
+    famMem=m;paintMembers();
+  },()=>{}));
+  // an admin removed someone: follow the family to its new code (or, if it was you, step out)
+  memUnsubs.push(fs.onSnapshot(P('meta','moved'),async s=>{
+    if(!s.exists()||!same())return;
+    try{if(await followMove(fs,db,code,fid,key,uid))return;}catch(e){}
+    if(same())famGone();
+  },()=>{}));
+}
+async function followMove(fs,db,code,fid,key,uid){
+  const s=await fs.getDoc(fs.doc(db,'families',fid,'moves',uid));
+  if(!s.exists())return false;
+  const nc=cleanCode(await unlockStr(key,'move:'+uid,s.data().c));
+  if(nc.length!==12)return false;
+  if(family&&family.code===code)await switchFamily(nc);
+  try{await fs.deleteDoc(s.ref);}catch(e){}
+  return true;
+}
+async function switchFamily(nc){
+  memStop();
+  await pushForget(true);
+  if(famUnsub){try{famUnsub();}catch(e){}famUnsub=null;}
+  sharedCol=null;sharedReady=false;
+  family=Object.assign({},family,{code:nc});saveFamily();saveSeen();
+  paintFamily();connectFamily();
+}
+function famGone(){
+  leaveFamily(true);
+  warn('You’re no longer in the family list. If that’s a mistake, ask your family to send you their latest code.','fam');
+}
+// leaving: if you're the last admin, the longest-standing member becomes admin first (like WhatsApp)
+async function memLeave(code){
+  const uid=myUid,m=famMem;if(!uid||!m[uid])return;
+  try{
+    const [{fs,db},{fid}]=await Promise.all([fbLoad(),famKeys(code)]);
+    const others=Object.values(m).filter(x=>x.uid!==uid);
+    if(m[uid].role==='admin'&&others.length&&!others.some(x=>x.role==='admin')){
+      others.sort((a,b)=>a.at-b.at);
+      await fs.updateDoc(fs.doc(db,'families',fid,'members',others[0].uid),{role:'admin'});
+    }
+    await fs.deleteDoc(fs.doc(db,'families',fid,'members',uid));
+  }catch(e){}
+}
+async function memName(){
+  if(!family||!family.code||!myUid||!famMem[myUid])return;
+  try{const [{fs,db},{fid,key}]=await Promise.all([fbLoad(),famKeys(family.code)]);
+    await fs.updateDoc(fs.doc(db,'families',fid,'members',myUid),{n:await lockStr(key,'member:'+myUid,myName())});}catch(e){}
+}
+async function memRole(uid){
+  const x=famMem[uid];if(!x||x.creator||!family)return;
+  try{const [{fs,db},{fid}]=await Promise.all([fbLoad(),famKeys(family.code)]);
+    await fs.updateDoc(fs.doc(db,'families',fid,'members',uid),{role:x.role==='admin'?'member':'admin'});
+  }catch(e){warn('Couldn’t change that right now. Check your internet connection and try again.','fam');}
+}
+async function memRemove(uid){
+  const gone=famMem[uid],me=famMem[myUid];
+  if(!family||!gone||gone.creator||uid===myUid||!me||me.role!=='admin')return;
+  const code=family.code,who=gone.name||'They';
+  memStop();setFamStatus('wait','Removing '+(gone.name||'them')+'…');
+  let moved=false;
+  try{
+    const [{fs,db},{fid,key}]=await Promise.all([fbLoad(),famKeys(code)]);
+    const nc=newCode(),{fid:f2,key:k2}=await famKeys(nc),now=Date.now();
+    const keep=Object.values(famMem).filter(x=>x.uid!==uid);
+    const creator=keep.find(x=>x.creator);
+    const N=(...p)=>fs.doc(db,'families',f2,...p),O=(...p)=>fs.doc(db,'families',fid,...p);
+    // 1) the new family: same people, same roles
+    let b=fs.writeBatch(db);
+    b.set(N('meta','info'),{v:2,created:now});
+    b.set(N('meta','rotated'),{v:1,by:myUid,at:now});
+    b.set(N('meta','owner'),{v:1,uid:creator?creator.uid:myUid});
+    for(const x of keep)b.set(N('members',x.uid),{v:1,n:await lockStr(k2,'member:'+x.uid,x.name),role:x.uid===myUid?'admin':x.role,creator:x.creator,d:x.d,at:x.at});
+    await b.commit();
+    // 2) the shared jobs, copied across
+    const qs=await fs.getDocs(fs.collection(db,'families',fid,'tasks'));
+    const jobs=[];
+    for(const x of qs.docs){const t=await unlockJob(key,x.id,x.data());if(t&&t.id===x.id)jobs.push(t);}
+    for(let i=0;i<jobs.length;i+=200){b=fs.writeBatch(db);
+      for(const t of jobs.slice(i,i+200))b.set(N('tasks',t.id),await lockJob(k2,t.id,JSON.stringify(t)));
+      await b.commit();}
+    // 3) a note with the new code for everyone staying, then the old family is marked as moved
+    b=fs.writeBatch(db);
+    for(const x of keep)if(x.uid!==myUid)b.set(O('moves',x.uid),{v:1,c:await lockStr(key,'move:'+x.uid,nc),at:now});
+    b.set(O('meta','moved'),{v:1,at:now});
+    await b.commit();moved=true;
+    // 4) clear the old list, then this phone moves over too
+    try{for(let i=0;i<qs.docs.length;i+=200){b=fs.writeBatch(db);for(const x of qs.docs.slice(i,i+200))b.delete(x.ref);await b.commit();}}catch(e){}
+    memOpen=null;await switchFamily(nc);
+    snack(who+(gone.name?' has':' have')+' been removed. Everyone else has been moved over automatically.');
+  }catch(e){
+    if(!moved){warn('Couldn’t remove '+(gone.name||'them')+' right now. Check your internet connection and try again.','fam');connectFamily();}
+  }
+}
+function paintMembers(){
+  const el=document.getElementById('fam-mem');if(!el)return;
+  if(memErr){el.innerHTML='<div class="rep-hint">Couldn’t load who’s in your family right now. Shared jobs still work as normal.</div>';return;}
+  const L=Object.values(famMem);
+  if(!L.length){el.innerHTML='';return;}
+  const me=famMem[myUid],iAdmin=!!(me&&me.role==='admin');
+  L.sort((a,b)=>(b.uid===myUid)-(a.uid===myUid)||(b.creator-a.creator)||((b.role==='admin')-(a.role==='admin'))||a.at-b.at);
+  el.innerHTML=`<span class="lbl lbl-sub">In this family (${L.length})</span><div class="fm-list">`+L.map(x=>{
+    const can=iAdmin&&x.uid!==myUid&&!x.creator,open=can&&memOpen===x.uid;
+    const nm=x.uid===myUid?(x.name?esc(x.name)+' <span class="fm-you">(you)</span>':'You'):(x.name?esc(x.name):'<span class="fm-you">No name yet</span>');
+    return `<button class="fm-row${open?' open':''}" data-mem="${esc(x.uid)}"${can?'':' disabled'}><span class="fm-n">${nm}</span>${x.role==='admin'?'<span class="fm-tag">Admin</span>':''}${can?'<span class="fm-chev" aria-hidden="true">›</span>':''}</button>`
+      +(open?`<div class="row fm-acts"><button class="opt" data-mact="role">${x.role==='admin'?'Dismiss as admin':'Make admin'}</button><button class="opt fm-rm" data-mact="rm">Remove</button></div>`:'');
+  }).join('')+'</div>'
+    +`<div class="rep-hint">${iAdmin?'Tap someone to make them an admin or remove them from the family.':'Admins can remove people from the family.'}</div>`;
 }
 /* ---------- shared list notifications ----------
    When you add, change, tick off or remove a shared job, everyone else in the family gets a notification
@@ -1570,15 +1756,16 @@ function paintFamily(){
       <div class="fam-code">${fmtCode(family.code)}</div>
       <div class="row"><button class="opt on" data-fam="share">Send code</button><button class="opt" data-fam="leave">Leave family</button></div>
       <div class="fam-status" id="fam-status"><i></i>Connecting…</div>
+      <div id="fam-mem"></div>
       <span class="lbl lbl-sub">Your name</span>
       <input class="f-date" id="fam-name" maxlength="24" placeholder="e.g. Sam" autocomplete="given-name" enterkeyhint="done" aria-label="Your name" value="${esc(myName())}">
       <div class="rep-hint">Shown to your family when you add, change or tick off a shared job, so they know who it came from.</div>
       ${NATIVE?`<span class="lbl lbl-sub">Tell me when my family changes something</span>
       <div class="seg" id="s-shn" style="grid-template-columns:repeat(3,1fr)"><button data-shn="sound"${shareNotif()==='sound'?' class="on"':''}>Sound</button><button data-shn="quiet"${shareNotif()==='quiet'?' class="on"':''}>Quiet</button><button data-shn="off"${shareNotif()==='off'?' class="on"':''}>Off</button></div>
       <div class="rep-hint" id="shn-hint"></div>`:''}${FAM_HOW}`;
-    paintShareHint();
+    paintShareHint();paintMembers();
     const fn=el.querySelector('#fam-name');
-    const keepName=()=>{const v=fn.value.trim().slice(0,24);if(v!==myName()){state.prefs.myName=v;save();}};
+    const keepName=()=>{const v=fn.value.trim().slice(0,24);if(v!==myName()){state.prefs.myName=v;save();memName();}};
     fn.addEventListener('change',keepName);fn.addEventListener('blur',keepName);
     fn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();fn.blur();}});
     if(famStatus==='ok')setFamStatus('ok','Connected. Shared jobs are scrambled before they leave your phone.');
@@ -1595,6 +1782,13 @@ document.getElementById('s-family').addEventListener('click',async e=>{
   const sn=e.target.closest('[data-shn]');
   if(sn){state.prefs.shN=sn.dataset.shn;save();
     document.querySelectorAll('[data-shn]').forEach(x=>x.classList.toggle('on',x===sn));paintShareHint();pushSetup(true);return;}
+  const mr=e.target.closest('[data-mem]');
+  if(mr){memOpen=memOpen===mr.dataset.mem?null:mr.dataset.mem;paintMembers();return;}
+  const ma=e.target.closest('[data-mact]');
+  if(ma){const uid=memOpen;if(!uid)return;
+    if(ma.dataset.mact==='role'){memOpen=null;memRole(uid);return;}
+    if(!ma.classList.contains('arm')){ma.classList.add('arm');ma.textContent='Tap again to remove';return;}
+    memRemove(uid);return;}
   const b=e.target.closest('[data-fam]');if(!b)return;const a=b.dataset.fam;
   const showSt=()=>{const st=document.getElementById('fam-status');if(st)st.hidden=false;};
   if(a==='create'){showSt();createFamily();}
@@ -1878,7 +2072,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.8.0';
+const APPV='1.9.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
