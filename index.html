@@ -498,6 +498,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .fam-join input{flex:1;min-width:0;text-transform:uppercase;font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em}
 .fam-how{display:inline-flex;align-items:center;gap:7px;margin-top:14px;height:40px;padding:0 12px 0 11px;border-radius:12px;background:var(--accent-soft);color:var(--accent);font-size:14.5px;font-weight:600}
 .fam-how svg{flex:none}
+.help-col{display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.help-col .fam-how{margin-top:0}
 .fam-how .chev{margin-left:2px;opacity:.75}
 .fm-list{background:var(--bg);border-radius:12px;overflow:hidden}
 .fm-row{display:flex;align-items:center;gap:8px;width:100%;min-height:44px;padding:0 14px;font-size:15px;color:var(--ink);text-align:left;border-top:1px solid var(--line)}
@@ -961,7 +963,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="bk-confirm" id="bk-confirm" hidden></div>
     </div>
     <div class="field"><span class="lbl">Help</span>
-      <div class="row" style="flex-wrap:wrap;gap:8px"><button class="opt" id="ht-replay">Show me how it works</button><button class="opt" id="sh-replay">How sharing works</button><button class="opt" id="wl-replay">Show the welcome screens</button></div>
+      <div class="help-col"><button class="fam-how" id="ht-replay"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg>Show me how it works<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button><button class="fam-how" id="sh-replay"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg>How sharing works<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button><button class="fam-how" id="wl-replay"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg>Show the welcome screens<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button></div>
     </div>
   </div>
 </div>
@@ -2074,7 +2076,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.9.1';
+const APPV='1.9.2';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
