@@ -34,6 +34,12 @@ The live web app on GitHub Pages (`main`) is not affected.
    - Pieces: `families/{id}/events` (scrambled messages, deleted once sent), `families/{id}/devices` (each phone's Apple address + Sound/Quiet), the Cloud Function in `functions/` (London, europe-west2), `firestore.rules`.
    - Setup: Apple Push key (.p8) and App ID `com.gmoghul.mumbrainsorted.notify` (with the App Group); Firebase on the Blaze plan; GitHub secrets `FIREBASE_SA`, `APNS_KEY_P8`, `APNS_KEY_ID`; then run **Actions › Firebase setup**. Re-run it whenever `functions/` or `firestore.rules` change.
    - Online version: can't receive these (iPhone web apps can't get them reliably), but once merged into `main` its changes would notify the phone app users.
+8. **Family tester feedback (v1.8.0, 24 Oct 2026):**
+   - Shared jobs show who added them and who last changed or ticked them off (grey lines under the details in the job screen). Stored inside the scrambled job: `by`/`bd`/`bat` (added by: name, phone id, time) and `eby`/`ebd`/`eat`/`ek` (last change).
+   - Shared jobs can have a "Needs doing by" date (`due`, shown as a "By Mon 26 Oct" tag, red once overdue) and a "Who's doing it" (`own` = phone id, `ownN` = name). The choices are Anyone, Me, and anyone the shared list has heard from. In the phone app, whoever it's with (or everyone, if it's anyone's) gets a reminder the morning before the deadline, at the morning summary time.
+   - Changes to either show in the shared-change notification ("Needs doing by Fri 30 Oct", "Now with Sam").
+   - "Send code" message no longer mentions the online version.
+   - Two calmer, unisex themes: Navy and Stone (bottom row with Ink).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)

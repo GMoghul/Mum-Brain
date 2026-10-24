@@ -138,6 +138,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .chips:empty{display:none}
 .chip{display:inline-flex;align-items:center;gap:4px;font-size:calc(12.5px * var(--ts));font-weight:500;color:var(--muted);background:var(--bg);border-radius:8px;padding:2px 8px}
 .chip.late{color:#4C7DB3}
+.chip.c-due{color:var(--accent);background:var(--accent-soft)}
+.chip.c-due.late{color:var(--warn);background:color-mix(in srgb,var(--warn) 12%,var(--solid))}
 :root[data-theme="dark"] .chip.late{color:#93B6DE}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .chip.late{color:#93B6DE}}
 .todump{display:inline-flex;align-items:center;height:24px;padding:0 9px;border-radius:8px;font-size:12.5px!important;background:var(--accent-soft);color:var(--accent);font-weight:600}
@@ -263,6 +265,7 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .wdays button.on{background:var(--accent);color:#fff}
 :root[data-style="sharp"] .wdays button{border-radius:6px}
 .rep-hint{font-size:13.5px;color:var(--muted);margin-top:8px;min-height:1em}
+.f-who{font-size:13px;line-height:1.45;color:var(--muted);margin:8px 4px 0}
 .swatches{display:flex;flex-wrap:wrap;gap:10px}
 .sw{width:34px;height:34px;border-radius:50%;background:var(--c);display:grid;place-items:center;color:#fff}
 .sw svg{opacity:0}
@@ -722,6 +725,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="sheet-top"><h2 id="ed-h">New job</h2><button class="x" data-act="close">Cancel</button></div>
     <input class="f-title" id="f-title" placeholder="Type your job here, e.g. Book dentist" aria-label="Job" autocomplete="off" enterkeyhint="done">
     <textarea class="f-note" id="f-note" placeholder="Add details here (optional)" aria-label="Details"></textarea>
+    <div class="f-who" id="f-who" hidden></div>
 
     <div class="field">
       <span class="lbl">Checklist</span>
@@ -782,6 +786,22 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <span class="lbl">List</span>
       <div class="row" id="f-lists"></div>
       <div class="newlist" id="newlist" hidden><input class="f-date" id="nl-in" placeholder="New list name" autocomplete="off" enterkeyhint="done" aria-label="New list name"><button class="opt on" id="nl-add">Add list</button></div>
+    </div>
+
+    <div id="f-sharef" hidden>
+      <div class="field">
+        <span class="lbl" id="due-lbl">Needs doing by</span>
+        <div class="row">
+          <label class="pick" id="f-due-w"><input type="date" class="f-date" id="f-due" aria-labelledby="due-lbl"><span>Pick a date</span></label>
+          <button class="opt" data-due="none">No deadline</button>
+        </div>
+        <div class="rep-hint" id="due-hint"></div>
+      </div>
+      <div class="field">
+        <span class="lbl">Who's doing it</span>
+        <div class="row" id="f-own"></div>
+        <div class="rep-hint" id="own-hint"></div>
+      </div>
     </div>
 
     <div class="field" id="f-projf" hidden>
@@ -986,7 +1006,7 @@ const BRAND={
   egQuick:'Dentist Fri 3pm',           // Quick-add box example
   egProject:'Camping trip',            // New project name example
   egProjects:'a camping trip, moving house or baby prep', // empty Projects screen
-  webUrl:'https://gmoghul.github.io/Mum-Brain/', // online version (used in the iPhone app's "Send code" message)
+  webUrl:'https://gmoghul.github.io/Mum-Brain/', // online version (no longer in the iPhone app's "Send code" message; kept in case it's needed again)
   palette:'linen',                     // default theme for new users
   welcome:[                            // first-open welcome screens: Dump it, Sort it, Do it
     {h:'Dump it.',p:'Get every job out of your head, big or small. No dates, no sorting, just type it in.',eg:'e.g. “Nursery form”, “Book dentist Fri 3pm”',
@@ -1069,6 +1089,8 @@ const I={
   right:'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"/></svg>',
   list:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11M4.5 6h.01M4.5 12h.01M4.5 18h.01"/></svg>',
   folder:'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+  flag:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/></svg>',
+  person:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.8"/><path d="M4.5 20.5a7.5 7.5 0 0 1 15 0"/></svg>',
   people:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2A6.5 6.5 0 0 1 21.5 20"/></svg>',
   checks:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12l3 3 5-6"/></svg>',
   search:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
@@ -1085,7 +1107,10 @@ const PALETTES=[
   {id:'sage',name:'Sage',accent:'#3C8A63',bg:'#F6F9F6',w:['#B3DBC1','#DCE9B5','#A8D5D1'],wash:.45},
   {id:'sunrise',name:'Sunrise',accent:'#D2692F',bg:'#FBF8F5',w:['#F9C69A','#F5DD92','#F1B0A6'],wash:.45},
   {id:'lavender',name:'Lavender',accent:'#7658C8',bg:'#F8F7FC',w:['#CDBDF2','#B8CEF3','#F0C3DC'],wash:.45},
-  {id:'black',name:'Ink',accent:'#1F2226',bg:'#F7F7F6',w:['#9EA1A6','#C9CBCE','#6F7378'],wash:.32}
+  {id:'black',name:'Ink',accent:'#1F2226',bg:'#F7F7F6',w:['#9EA1A6','#C9CBCE','#6F7378'],wash:.32},
+  // calmer, unisex options (asked for by a family tester), sitting with Ink as a neutral bottom row
+  {id:'navy',name:'Navy',accent:'#23406F',bg:'#F5F7FA',w:['#A8BAD6','#C7D1E0','#B3C8C6'],wash:.4,ink:'#1C2230',muted:'#5C6575',line:'#E2E7EE',primary:'#1C2230'},
+  {id:'stone',name:'Stone',accent:'#5E5A47',bg:'#F7F6F2',w:['#D5CFBF','#C5CCBA','#E0D6C4'],wash:.45,ink:'#25231F',muted:'#69655B',line:'#E8E4DB',primary:'#25231F'}
 ];
 const SHARP=[
   {id:'blue',name:'Blue',c:'#2F5BD3'},{id:'red',name:'Red',c:'#D23A3A'},{id:'green',name:'Green',c:'#2E8B57'},
@@ -1178,12 +1203,47 @@ let shPend={};try{shPend=JSON.parse(localStorage.getItem(KEY+'-pend')||'{}')||{}
 const inflight=new Set();
 function savePend(){try{localStorage.setItem(KEY+'-pend',JSON.stringify(shPend));}catch(e){}}
 function clearPend(){shPend={};inflight.clear();savePend();}
+/* Who added a shared job, and who last changed or ticked it off, travels with the job (scrambled like the rest),
+   so everyone can see it on the job itself, not just in the notification.
+   by/bd/bat = added by (name, phone, when); eby/ebd/eat/ek = last change by (name, phone, when, 'edit' or 'tick'). */
+function stampShared(t,prevJ){
+  const me=myName(),d=devId(),now=Date.now();
+  if(!prevJ){if(t.bd)return false;t.by=me;t.bd=d;t.bat=now;return true;}
+  let n=null;try{n=noteText(JSON.parse(prevJ),t,'');}catch(e){return false;}
+  if(!n)return false; // reordering or a colour change isn't worth a "changed by"
+  t.eby=me;t.ebd=d;t.eat=now;t.ek=/^Ticked/.test(n.s)?'tick':'edit';return true;
+}
+function whoAgo(ts){
+  if(!ts)return'';const d=new Date(ts),k=ymd(d),t0=today();
+  const hm=fmtTime(pad(d.getHours())+':'+pad(d.getMinutes()));
+  return k===t0?'today, '+hm:k===addDays(t0,-1)?'yesterday, '+hm:absDay(k);
+}
+function whoLines(t){
+  if(!t||t.list!==SHARED)return'';
+  const who=(dev,name)=>dev===devId()?'you':(name||'someone in your family');
+  const L=[];
+  if(t.bd)L.push('Added by '+who(t.bd,t.by)+' · '+whoAgo(t.bat));
+  if(t.ebd)L.push((t.ek==='tick'?'Ticked off by ':'Last changed by ')+who(t.ebd,t.eby)+' · '+whoAgo(t.eat));
+  return L.map(esc).join('<br>');
+}
+/* Who's doing a shared job (optional): own = their phone, ownN = their name at the time it was given to them.
+   The choices are you plus everyone the shared list has heard from (anyone who has added or changed a shared job). */
+function famMembers(){
+  const me=devId(),m={};
+  const see=(d,n,at)=>{if(!d||d===me)return;if(!m[d]||(at||0)>=m[d].at)m[d]={d,n:n||(m[d]&&m[d].n)||'',at:at||0};};
+  for(const t of state.tasks){if(t.list!==SHARED)continue;see(t.bd,t.by,t.bat);see(t.ebd,t.eby,t.eat);see(t.own,t.ownN,0);}
+  return Object.values(m).filter(x=>x.n).sort((a,b)=>a.n.localeCompare(b.n));
+}
+const ownerName=t=>t.own===devId()?'You':(t.ownN||'Someone');
 function syncShared(){
   if(!SHARING&&!sharedCol)return;
   // every shared add, edit or delete is queued, connected or not
-  const ids=new Set();let changed=false;
-  for(const t of state.tasks){if(t.list!==SHARED)continue;ids.add(t.id);const j=JSON.stringify(t);
-    if(sharedSeen[t.id]!==j){noteChange(t.id,sharedSeen[t.id],j);sharedSeen[t.id]=j;shPend[t.id]={op:'set',j,title:t.title};changed=true;}}
+  const ids=new Set();let changed=false,stamped=false;
+  for(const t of state.tasks){if(t.list!==SHARED)continue;ids.add(t.id);let j=JSON.stringify(t);
+    if(sharedSeen[t.id]!==j){
+      if(stampShared(t,sharedSeen[t.id])){j=JSON.stringify(t);stamped=true;}
+      noteChange(t.id,sharedSeen[t.id],j);sharedSeen[t.id]=j;shPend[t.id]={op:'set',j,title:t.title};changed=true;}}
+  if(stamped)cache();
   for(const id in sharedSeen)if(!ids.has(id)){let title='';try{title=JSON.parse(sharedSeen[id]).title;}catch(e){}noteChange(id,sharedSeen[id],null);delete sharedSeen[id];shPend[id]={op:'del',title};changed=true;}
   if(!changed)return;
   savePend();saveSeen();
@@ -1361,6 +1421,8 @@ function noteText(b,a,name){
   if(!b){
     const L=[];const w=whenOf(a);L.push(w||'No day yet');
     if(a.starred)L.push('Marked as important');
+    if(a.due)L.push('Needs doing by '+absDay(a.due));
+    if(a.own)L.push('With '+(a.ownN||'someone'));
     if(a.note)L.push('Note: '+clip(a.note,120));
     if(a.checklist&&a.checklist.length)L.push('Checklist: '+clip(a.checklist.map(x=>x.text).join(', '),120));
     return {t:a.title||'Untitled job',s:name?'Added by '+name:'Added to the shared list',b:L.join('\n')};
@@ -1382,6 +1444,8 @@ function noteText(b,a,name){
     if(wb!==wa)L.push('When: '+wb+' → '+wa);
   }
   if(alarmOf(a)!==alarmOf(b))L.push('Alarm: '+alarmOf(b)+' → '+alarmOf(a));
+  if((a.due||'')!==(b.due||''))L.push(a.due?'Needs doing by '+absDay(a.due)+(b.due?' (was '+absDay(b.due)+')':''):'No deadline now');
+  if((a.own||'')!==(b.own||''))L.push(a.own?'Now with '+(a.ownN||'someone'):'Back to anyone');
   if(!!a.starred!==!!b.starred)L.push(a.starred?'Marked as important':'No longer marked as important');
   if((a.note||'')!==(b.note||''))L.push(a.note?(b.note?'Note changed: ':'Note added: ')+clip(a.note,160):'Note removed');
   const cB=b.checklist||[],cA=a.checklist||[],byId=x=>Object.fromEntries(x.map(i=>[i.id,i]));
@@ -1538,7 +1602,7 @@ document.getElementById('s-family').addEventListener('click',async e=>{
   else if(a==='share'){
     const web=NATIVE?BRAND.webUrl:location.origin+location.pathname;
     const text=NATIVE
-      ?`Join our family list in ${BRAND.name}. In the app, tap the settings icon ⚙️, then Family sharing, and enter this code: ${fmtCode(family.code)}\n\nUsing the online version instead? Open ${web}, add it to your home screen and enter the same code.`
+      ?`Join our family list in ${BRAND.name}. In the app, tap the settings icon ⚙️, then Family sharing, and enter this code: ${fmtCode(family.code)}`
       :`Join our family list in ${BRAND.name}. Open ${web}, add it to your home screen, then tap the settings icon ⚙️, Family sharing, and enter this code: ${fmtCode(family.code)}`;
     try{if(navigator.share){await navigator.share({title:BRAND.name,text});return;}}catch(err){return;}
     try{await navigator.clipboard.writeText(text);b.textContent='Copied';setTimeout(()=>b.textContent='Send code',1500);}catch(err){}
@@ -1796,6 +1860,10 @@ function row(t,o){
   if(isRep(t))chips+=`<span class="chip c-ico" title="${esc(repLabel(t))}">${I.rep}<span class="ct">${esc(repLabel(t))}</span></span>`;
   if(t.checklist&&t.checklist.length)chips+=`<span class="chip">${I.checks}<span class="ct">${t.checklist.filter(x=>x.done).length}/${t.checklist.length}</span></span>`;
   if(t.proj&&!o.inProj){const p=projOf(t.proj);if(p)chips+=`<span class="chip c-proj" style="--pc:${hex(p.color)}"><i class="pdot"></i><span class="ct">${esc(p.name)}</span></span>`;}
+  if(t.list===SHARED){
+    if(t.due&&!done){const late=t.due<today();chips+=`<span class="chip c-due${late?' late':''}">${I.flag}<span class="ct">${late?'Overdue, ':'By '}${esc(dayLabel(t.due))}</span></span>`;}
+    if(t.own)chips+=`<span class="chip c-own">${I.person}<span class="ct">${esc(ownerName(t))}</span></span>`;
+  }
   if((!ui.filter||ui.filter===STAR)&&t.list&&listName(t.list))chips+=`<span class="chip c-list">${t.list===SHARED?I.people:I.list}<span class="ct">${esc(listName(t.list))}</span></span>`;
   const tail=`<button class="star${t.starred?' on':''}" data-act="star" data-id="${t.id}" aria-label="${t.starred?'Unmark as important':'Mark as important'}">${I.star}</button>`;
   return `<li class="task${done?' done':''}" data-open="${t.id}"${o.wdrag?` data-wdrag="${t.id}"`:''}${o.drag?` data-drag="${t.id}" data-g="${o.dg?o.dg(t):(t.starred?1:0)}"`:''}>
@@ -1810,7 +1878,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.7.0';
+const APPV='1.8.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2158,6 +2226,7 @@ function openEditor(id,defaults){
   document.getElementById('ed-h').textContent=isNew?'New job':'Edit job';
   fDel.style.display=isNew?'none':'';
   const c=draft.color||'';setMore(!!c&&c[0]==='#');newlist.hidden=true;clIn.value='';paintCl();fDel.classList.remove('arm');fDel.textContent='Delete';
+  const fw=document.getElementById('f-who'),wl=isNew?'':whoLines(t);fw.innerHTML=wl;fw.hidden=!wl;
   paint();
   ed.querySelector('.sheet').scrollTop=0; // always open at the top, not where the last job was left
   ed.classList.add('open');ed.setAttribute('aria-hidden','false');
@@ -2215,9 +2284,26 @@ function paint(){
   document.querySelector('[data-time="none"]').classList.toggle('on',!draft.time);
   document.querySelectorAll('[data-alarm]').forEach(b=>{b.disabled=!draft.time;b.classList.toggle('on',!!draft.time&&b.dataset.alarm===(draft.alarm||'none'));});
   document.getElementById('alarm-hint').textContent=(!draft.time?'Set a time to add an alarm. ':'')+(NATIVE?'Alarms arrive as a notification, even when '+BRAND.short+' is closed. If your phone is on silent, it won\'t make a sound.':'Alarms only sound while '+BRAND.short+' is open on your screen.');
+  paintShareFields();
   fStar.classList.toggle('on',!!draft.starred);
   document.getElementById('f-star-txt').textContent=draft.starred?'Marked as important':'Mark as important';
 }
+const fShareF=document.getElementById('f-sharef'),fDue=document.getElementById('f-due'),fOwn=document.getElementById('f-own');
+function paintShareFields(){
+  const on=draft.list===SHARED;fShareF.hidden=!on;if(!on)return;
+  fDue.value=draft.due||'';fDue.parentNode.classList.toggle('unset',!draft.due);
+  document.querySelector('[data-due="none"]').classList.toggle('on',!draft.due);
+  document.getElementById('due-hint').textContent=draft.due
+    ?(NATIVE?'Whoever is doing it gets a reminder the morning before.':'Shows on the job so everyone knows when it needs doing.')
+    :'Optional. Handy for jobs with a cut-off, like a form or a payment.';
+  const me=devId(),opts=[['','Anyone'],[me,'Me']].concat(famMembers().map(x=>[x.d,x.n]));
+  if(draft.own&&!opts.some(o=>o[0]===draft.own))opts.push([draft.own,draft.ownN||'Someone']);
+  fOwn.innerHTML=opts.map(([d,n])=>`<button class="opt${(draft.own||'')===d?' on':''}" data-own="${esc(d)}">${esc(n)}</button>`).join('');
+  document.getElementById('own-hint').textContent=!myName()
+    ?'Add your name in Settings › Family sharing so your family can see who a job is with.'
+    :opts.length<3?'Your family appear here once they\u2019ve added or changed a shared job.':'';
+}
+fDue.addEventListener('change',()=>{draft.due=fDue.value||null;paintShareFields();});
 function closeEditor(){ed.classList.remove('open');ed.setAttribute('aria-hidden','true');draft=null;}
 function commit(){
   draft.title=fTitle.value.trim();draft.note=fNote.value.trim();if(clIn.value.trim())addCl();draft.checklist=(draft.checklist||[]).filter(x=>x.text.trim());draft.time=fTime.value||null;if(!draft.time)draft.alarm='none';
@@ -2245,8 +2331,15 @@ ed.addEventListener('click',e=>{
     if(cb.dataset.cli){const x=cl.find(i=>i.id===cb.dataset.cli);if(x)x.done=!x.done;}
     else draft.checklist=cl.filter(i=>i.id!==cb.dataset.cld);
     paintCl();return;}
+  const db=e.target.closest('[data-due]');
+  if(db){draft.due=null;paintShareFields();return;}
+  const ob=e.target.closest('[data-own]');
+  if(ob){const d=ob.dataset.own;if(!d){draft.own=null;draft.ownN=null;}
+    else if(d===devId()){draft.own=d;draft.ownN=myName();}
+    else{const m=famMembers().find(x=>x.d===d);draft.own=d;draft.ownN=m?m.n:(draft.ownN||'');}
+    paintShareFields();return;}
   const lb=e.target.closest('button[data-list],button[data-newlist]');
-  if(lb){if(lb.dataset.newlist){newlist.hidden=!newlist.hidden;if(!newlist.hidden)nlIn.focus();}else{draft.list=lb.dataset.list||null;if(draft.list===SHARED)draft.proj=null;paintLists();paintProjs();}return;}
+  if(lb){if(lb.dataset.newlist){newlist.hidden=!newlist.hidden;if(!newlist.hidden)nlIn.focus();}else{draft.list=lb.dataset.list||null;if(draft.list===SHARED)draft.proj=null;paintLists();paintProjs();paintShareFields();}return;}
   const pb=e.target.closest('button[data-proj]');
   if(pb){draft.proj=pb.dataset.proj||null;paintProjs();return;}
   const wd=e.target.closest('[data-wd]');
@@ -2646,6 +2739,7 @@ const mornPick=()=>(state.prefs&&state.prefs.mornPick)==1?1:0;
 const mornJobsOn=()=>(state.prefs&&state.prefs.mornJobs)!=='off';
 // Brain dump reminder: a gentle daily nudge at a time that suits (off until switched on).
 var BDR_ID=700000,BDR_DAYS=7;
+var DUE_ID=600000,DUE_MAX=8;
 const BDR_TIMES={am:'09:30',pm:'21:00'};
 const bdrMode=()=>['am','pm','own'].includes(state.prefs&&state.prefs.bdr)?state.prefs.bdr:'off';
 const bdrTime=()=>bdrMode()==='own'?((state.prefs&&state.prefs.bdrAt)||'21:00'):BDR_TIMES[bdrMode()];
@@ -2682,6 +2776,16 @@ function planNotifs(){
       const day=addDays(t0,i),at=parse(day);at.setHours(h,m,0,0);
       if(at.getTime()<=now+30000)continue;
       out.push({id:BDR_ID+i,title:'',body:BRAND.dumpNudge,sound:'default',schedule:{at,allowWhileIdle:true},extra:{kind:'bdump'}});
+    }
+  }
+  // shared jobs with a deadline: a reminder the morning before, for whoever is doing it (or everyone if it's anyone's)
+  if(SHARING){
+    const[h,m]=morningTime().split(':').map(Number);let k=0;
+    for(const t of state.tasks){
+      if(t.list!==SHARED||!t.due||t.done||isRep(t)||(t.own&&t.own!==devId())||k>=DUE_MAX)continue;
+      const day=addDays(t.due,-1),at=parse(day);at.setHours(h,m,0,0);
+      if(at.getTime()<=now+30000)continue;
+      out.push({id:DUE_ID+k,title:t.title,body:'Needs doing by tomorrow, '+absDay(t.due),sound:'default',actionTypeId:'job',schedule:{at:new Date(at.getTime()+90000),allowWhileIdle:true},extra:{kind:'due',id:t.id,day:t.due}});k++;
     }
   }
   const al=[];
@@ -2728,7 +2832,7 @@ async function clearDoneNotifs(){
   try{
     const d=await LN.getDeliveredNotifications(),gone=[];
     for(const n of (d&&d.notifications)||[]){
-      const x=n.extra||{};if(x.kind!=='mjob'&&x.kind!=='alarm')continue;
+      const x=n.extra||{};if(x.kind!=='mjob'&&x.kind!=='alarm'&&x.kind!=='due')continue;
       const t=find(x.id);if(!t||archivedJob(t)||isDone(t,x.day))gone.push({id:n.id});
     }
     if(gone.length)await LN.removeDeliveredNotifications({notifications:gone});
@@ -2750,8 +2854,9 @@ if(LN){
   try{LN.registerActionTypes({types:[{id:'job',actions:[{id:'done',title:'Done'}]}]});}catch(e){}
   LN.addListener('localNotificationActionPerformed',r=>{
     const x=(r&&r.notification&&r.notification.extra)||{};
-    if(r.actionId==='done'&&(x.kind==='alarm'||x.kind==='mjob')){const t=find(x.id);if(t&&!isDone(t,x.day))toggle(x.id,x.day);return;}
+    if(r.actionId==='done'&&(x.kind==='alarm'||x.kind==='mjob'||x.kind==='due')){const t=find(x.id);if(t&&!isDone(t,x.day))toggle(x.id,x.day);return;}
     if(x.kind==='bdump'){ui.searching=false;ui.tab='dump';ui.proj=null;render();return;}
+    if(x.kind==='due'){ui.searching=false;ui.tab='dump';ui.proj=null;ui.filter=SHARED;window.scrollTo(0,0);render();return;}
     if(x.day){ui.searching=false;ui.tab='today';ui.day=x.day;render();}
   });
   document.addEventListener('visibilitychange',()=>{if(!document.hidden)syncNotifs(true);});
