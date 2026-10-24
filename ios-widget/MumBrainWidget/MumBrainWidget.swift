@@ -242,16 +242,17 @@ struct Row: View {
     let job: WJob
     let p: Palette
     let size: CGFloat
+    var plain: Bool = false   // small widget: ink-coloured rings, no stars
     var body: some View {
         HStack(spacing: 7) {
-            Tick(color: Color(hex: job.c), done: job.done, size: size + 1)
+            Tick(color: plain ? p.ink : Color(hex: job.c), done: job.done, size: size + 1)
             Text(job.t)
                 .font(F.body(size))
                 .foregroundColor(job.done ? p.muted : p.ink)
                 .strikethrough(job.done, color: p.muted)
                 .lineLimit(1)
             Spacer(minLength: 2)
-            if job.star && !job.done {
+            if job.star && !job.done && !plain {
                 Image(systemName: "star.fill")
                     .font(.system(size: size * 0.7))
                     .foregroundColor(starColor)
@@ -273,12 +274,13 @@ struct JobList: View {
     let limit: Int
     let size: CGFloat
     let spacing: CGFloat
+    var plain: Bool = false
     var body: some View {
         // show every job if they all fit, otherwise leave a line for "+N more"
         let shown = e.jobs.count <= limit ? e.jobs : Array(e.jobs.prefix(limit - 1))
         VStack(alignment: .leading, spacing: spacing) {
             ForEach(shown) { j in
-                Row(job: j, p: p, size: size)
+                Row(job: j, p: p, size: size, plain: plain)
             }
             if e.jobs.count > shown.count {
                 Text("+\(e.jobs.count - shown.count) more")
@@ -438,7 +440,7 @@ struct SmallView: View {
             if e.open.isEmpty {
                 Message(e: e, p: p, size: 12.5)
             } else {
-                JobList(e: e, p: p, limit: 4, size: 12.5, spacing: 6)
+                JobList(e: e, p: p, limit: 4, size: 11.5, spacing: 6, plain: true)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
