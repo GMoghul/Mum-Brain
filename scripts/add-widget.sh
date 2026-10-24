@@ -2,6 +2,7 @@
 # Run on GitHub's Mac after `npx cap sync ios`: copies the widget files in and wires them up.
 set -euo pipefail
 cp -R ios-widget/MumBrainWidget ios/App/MumBrainWidget
+cp -R ios-widget/MumBrainNotify ios/App/MumBrainNotify
 cp ios-widget/App/*.swift ios-widget/App/App.entitlements ios/App/App/
 
 # Main screen uses MainViewController (registers the widget bridge plugin)
@@ -20,3 +21,4 @@ PLIST=ios/App/App/Info.plist
 
 ruby -e "require 'xcodeproj'" 2>/dev/null || sudo gem install xcodeproj --no-document
 ruby scripts/add-widget.rb
+ruby scripts/add-notify.rb

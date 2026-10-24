@@ -1,0 +1,11 @@
+{
+  "name": "mum-brain-functions",
+  "private": true,
+  "description": "Sends shared-list notifications to the other phones in a family.",
+  "main": "index.js",
+  "engines": { "node": "22" },
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^6.0.0"
+  }
+}

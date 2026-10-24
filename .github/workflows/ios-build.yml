@@ -160,7 +160,11 @@ jobs:
         run: |
           APP="$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app"
           for f in "$APP"/Frameworks/*; do [ -e "$f" ] && codesign -f -s - "$f"; done
-          for x in "$APP"/PlugIns/*.appex; do [ -e "$x" ] && codesign -f -s - --entitlements ios/App/MumBrainWidget/MumBrainWidget.entitlements "$x"; done
+          for x in "$APP"/PlugIns/*.appex; do
+            [ -e "$x" ] || continue
+            N=$(basename "$x" .appex)
+            codesign -f -s - --entitlements "ios/App/$N/$N.entitlements" "$x"
+          done
           codesign -f -s - --entitlements ios/App/App/App.entitlements "$APP"
           ls "$APP/PlugIns"
           codesign -d --entitlements - "$APP" 2>/dev/null | tail -n 8
@@ -195,11 +199,12 @@ jobs:
         run: |
           cd "$RUNNER_TEMP/export" && ls && unzip -q -o *.ipa -d ipa
           A=ipa/Payload/App.app
-          for B in "$A" "$A/PlugIns/MumBrainWidget.appex"; do
+          for B in "$A" "$A/PlugIns/MumBrainWidget.appex" "$A/PlugIns/MumBrainNotify.appex"; do
             E=$(codesign -d --entitlements - --xml "$B" 2>/dev/null | plutil -convert json -o - - 2>/dev/null || true)
             echo "::notice::$(basename "$B"): $E"
             echo "$E" | grep -q "group.com.gmoghul.mumbrainsorted" || { echo "::error::$(basename "$B") is missing the App Group"; exit 1; }
           done
+          codesign -d --entitlements - --xml "$A" 2>/dev/null | grep -q "aps-environment" || { echo "::error::App.app is missing Push Notifications (aps-environment)"; exit 1; }
 
       - name: Remove the key
         if: always()

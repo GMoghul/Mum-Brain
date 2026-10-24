@@ -1,0 +1,70 @@
+rules_version = '2';
+// Mum Brain, Sorted – database rules (deployed by the "Firebase setup" workflow)
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isFamilyId(f) { return f.matches('^[0-9a-f]{64}$'); }
+    function isOldCode(f) { return f.matches('^[A-Z0-9]{12}$'); }
+
+    match /families/{fam}/tasks/{taskId} {
+      allow read: if isFamilyId(fam) || isOldCode(fam);
+      allow delete: if isFamilyId(fam) || isOldCode(fam);
+      allow create, update: if isFamilyId(fam)
+        && taskId.size() <= 40
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'updatedAt'])
+        && request.resource.data.v == 2
+        && request.resource.data.iv is string && request.resource.data.iv.size() <= 32
+        && request.resource.data.ct is string && request.resource.data.ct.size() <= 200000
+        && request.resource.data.updatedAt is int;
+    }
+
+    match /families/{fam}/meta/{docId} {
+      allow read: if isFamilyId(fam) || isOldCode(fam);
+      allow delete: if isOldCode(fam);
+      allow create, update: if isFamilyId(fam) && docId == 'info'
+        && request.resource.data.keys().hasOnly(['v', 'created'])
+        && request.resource.data.v == 2
+        && request.resource.data.created is int;
+    }
+
+    // Shared-change notifications: each phone leaves a scrambled message here; the server sends it on and deletes it.
+    match /families/{fam}/events/{eid} {
+      allow create: if isFamilyId(fam)
+        && request.resource.data.keys().hasOnly(['v', 'iv', 'ct', 'from', 'at'])
+        && request.resource.data.v == 1
+        && request.resource.data.iv is string && request.resource.data.iv.size() <= 32
+        && request.resource.data.ct is string && request.resource.data.ct.size() <= 3000
+        && request.resource.data.from is string && request.resource.data.from.size() <= 40
+        && request.resource.data.at is int;
+      allow read, update, delete: if false;
+    }
+
+    // Phones that want shared-change notifications: Apple's address for the phone, and Sound or Quiet.
+    match /families/{fam}/devices/{dev} {
+      allow create, update: if isFamilyId(fam)
+        && dev.size() <= 40
+        && request.resource.data.keys().hasOnly(['v', 't', 'm', 'at'])
+        && request.resource.data.v == 1
+        && request.resource.data.t is string && request.resource.data.t.size() <= 200
+        && request.resource.data.m in ['sound', 'quiet']
+        && request.resource.data.at is int;
+      allow delete: if isFamilyId(fam);
+      allow read: if false;
+    }
+
+    match /feedback/{id} {
+      allow create: if request.resource.data.keys().hasOnly(['recommend', 'stuck', 'change', 'add', 'name', 'at', 'v'])
+        && request.resource.data.recommend in ['', 'yes', 'maybe', 'no']
+        && request.resource.data.stuck is string && request.resource.data.stuck.size() <= 2000
+        && request.resource.data.change is string && request.resource.data.change.size() <= 2000
+        && request.resource.data.add is string && request.resource.data.add.size() <= 2000
+        && request.resource.data.name is string && request.resource.data.name.size() <= 60
+        && request.resource.data.at is int;
+      allow read, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

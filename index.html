@@ -1183,8 +1183,8 @@ function syncShared(){
   // every shared add, edit or delete is queued, connected or not
   const ids=new Set();let changed=false;
   for(const t of state.tasks){if(t.list!==SHARED)continue;ids.add(t.id);const j=JSON.stringify(t);
-    if(sharedSeen[t.id]!==j){sharedSeen[t.id]=j;shPend[t.id]={op:'set',j,title:t.title};changed=true;}}
-  for(const id in sharedSeen)if(!ids.has(id)){let title='';try{title=JSON.parse(sharedSeen[id]).title;}catch(e){}delete sharedSeen[id];shPend[id]={op:'del',title};changed=true;}
+    if(sharedSeen[t.id]!==j){noteChange(t.id,sharedSeen[t.id],j);sharedSeen[t.id]=j;shPend[t.id]={op:'set',j,title:t.title};changed=true;}}
+  for(const id in sharedSeen)if(!ids.has(id)){let title='';try{title=JSON.parse(sharedSeen[id]).title;}catch(e){}noteChange(id,sharedSeen[id],null);delete sharedSeen[id];shPend[id]={op:'del',title};changed=true;}
   if(!changed)return;
   savePend();saveSeen();
   if(sharedCol)flushPending();
@@ -1292,6 +1292,7 @@ async function connectFamily(){
       flushPending();
       setFamStatus('ok','Connected. Shared jobs are scrambled before they leave your phone.');
       if(!draft)render();
+      noteFlush();pushSetup();
     },err=>{sharedCol=null;sharedReady=false;setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');});
   }catch(e){setFamStatus('err',e&&e.message==='nocrypto'?'This browser can\'t scramble shared jobs. Open the app from your home screen.':'Can\'t reach the family list right now. Check your internet connection.');}
 }
@@ -1301,7 +1302,7 @@ async function createFamily(){
   setFamStatus('wait','Creating your family…');
   try{const [{fs,db},{fid}]=await Promise.all([fbLoad(),famKeys(code)]);await fs.setDoc(fs.doc(db,'families',fid,'meta','info'),{v:2,created:Date.now()});}
   catch(e){setFamStatus('err','Couldn\'t create a family. Check your internet connection and try again.');return;}
-  family={code};saveFamily();clearPend();sharedSeen={};saveSeen();syncShared();// your existing shared jobs go up to the new family
+  family={code};saveFamily();clearPend();sharedSeen={};saveSeen();noteMute=true;syncShared();noteMute=false;// your existing shared jobs go up to the new family (no notifications: nobody else has joined yet)
   paintFamily();render();connectFamily();
 }
 async function joinFamily(raw){
@@ -1317,11 +1318,185 @@ async function joinFamily(raw){
   family={code};saveFamily();sharedSeen={};saveSeen();paintFamily();render();connectFamily();
 }
 function leaveFamily(){
+  pushForget();noteQ={};saveNoteQ();
   if(famUnsub){try{famUnsub();}catch(e){}famUnsub=null;}
   sharedCol=null;sharedReady=false;sharedSeen={};clearPend();
   state.tasks=state.tasks.filter(t=>t.list!==SHARED);
   if(ui.filter===SHARED)ui.filter=null;
   family=null;saveFamily();cache();paintFamily();render();
+}
+/* ---------- shared list notifications ----------
+   When you add, change, tick off or remove a shared job, everyone else in the family gets a notification
+   saying exactly what changed (e.g. "Dentist · Changed by Sam · When: Fri 30 Oct · 3 pm → Mon 2 Nov · 4 pm").
+   - Each job gets its own notification; they're grouped together on the other phones.
+   - Quick edits to the same job are gathered for a few seconds, so typing doesn't send five notifications.
+   - The wording is written and scrambled on this phone. The server only passes the scrambled message on;
+     the other phone unscrambles it (with a key made from the family code) just before showing it. */
+const NOTE_WAIT=6000;
+let noteQ={},noteTimer=null,noteMute=false,noteBusy=false;
+try{noteQ=JSON.parse(localStorage.getItem(KEY+'-noteq')||'{}')||{};}catch(e){}
+function saveNoteQ(){try{localStorage.setItem(KEY+'-noteq',JSON.stringify(noteQ));}catch(e){}}
+const myName=()=>((state.prefs&&state.prefs.myName)||'').trim();
+function noteChange(id,beforeJ,afterJ){
+  if(noteMute)return;
+  const q=noteQ[id];
+  // keep the job as it was before this run of edits, so the notification shows the overall change
+  noteQ[id]={b:q?q.b:(beforeJ==null?null:beforeJ),a:afterJ,at:Date.now()};
+  saveNoteQ();
+  clearTimeout(noteTimer);noteTimer=setTimeout(()=>noteFlush(),NOTE_WAIT+200);
+}
+const absDay=s=>{if(!s)return'';const d=parse(s),yr=d.getFullYear()!==new Date().getFullYear();return DAYS[d.getDay()].slice(0,3)+' '+d.getDate()+' '+MONTHS[d.getMonth()].slice(0,3)+(yr?' '+d.getFullYear():'');};
+function whenOf(t){
+  if(!t)return'';
+  if(isRep(t))return repLabel(t)+(t.time?' · '+fmtTime(t.time):'');
+  if(!t.date)return t.time?fmtTime(t.time):'';
+  return absDay(t.date)+(t.time?' · '+fmtTime(t.time):'');
+}
+const alarmOf=t=>hasAlarm(t)?(ALARMS[t.alarm]||'On'):'None';
+const clip=(s,n)=>{s=String(s||'').replace(/\s+/g,' ').trim();return s.length>n?s.slice(0,n-1)+'…':s;};
+/* Works out the notification for one job: title = the job, subtitle = what happened and who, body = the details. */
+function noteText(b,a,name){
+  const by=name?' by '+name:'';
+  if(!b&&!a)return null;
+  if(!b){
+    const L=[];const w=whenOf(a);L.push(w||'No day yet');
+    if(a.starred)L.push('Marked as important');
+    if(a.note)L.push('Note: '+clip(a.note,120));
+    if(a.checklist&&a.checklist.length)L.push('Checklist: '+clip(a.checklist.map(x=>x.text).join(', '),120));
+    return {t:a.title||'Untitled job',s:name?'Added by '+name:'Added to the shared list',b:L.join('\n')};
+  }
+  if(!a){const w=whenOf(b);return {t:b.title||'Untitled job',s:name?'Removed by '+name:'Removed from the shared list',b:w?'Was '+w:'No longer on the shared list'};}
+  const L=[];let ticked=null;
+  if(isRep(a)||isRep(b)){
+    const t0=today(),cb=b.completions||{},ca=a.completions||{};
+    const on=Object.keys(ca).filter(k=>!cb[k]),off=Object.keys(cb).filter(k=>!ca[k]&&k>=t0);
+    if(on.length)ticked=on.sort().map(absDay).join(', ');
+    if(off.length)L.push('Un-ticked for '+off.sort().map(absDay).join(', '));
+  }else{
+    if(a.done&&!b.done)ticked='';
+    else if(!a.done&&b.done)L.push('Un-ticked, back on the list');
+  }
+  if((a.title||'')!==(b.title||''))L.push('Renamed from “'+clip(b.title,60)+'”');
+  if(a.date!==b.date||a.time!==b.time||((isRep(a)||isRep(b))&&(a.repeat!==b.repeat||JSON.stringify(a.days||null)!==JSON.stringify(b.days||null)))){
+    const wb=whenOf(b)||'No day',wa=whenOf(a)||'No day';
+    if(wb!==wa)L.push('When: '+wb+' → '+wa);
+  }
+  if(alarmOf(a)!==alarmOf(b))L.push('Alarm: '+alarmOf(b)+' → '+alarmOf(a));
+  if(!!a.starred!==!!b.starred)L.push(a.starred?'Marked as important':'No longer marked as important');
+  if((a.note||'')!==(b.note||''))L.push(a.note?(b.note?'Note changed: ':'Note added: ')+clip(a.note,160):'Note removed');
+  const cB=b.checklist||[],cA=a.checklist||[],byId=x=>Object.fromEntries(x.map(i=>[i.id,i]));
+  const mB=byId(cB),mA=byId(cA);
+  const added=cA.filter(i=>!mB[i.id]).map(i=>i.text),gone=cB.filter(i=>!mA[i.id]).map(i=>i.text);
+  const tk=cA.filter(i=>mB[i.id]&&i.done&&!mB[i.id].done).map(i=>i.text),utk=cA.filter(i=>mB[i.id]&&!i.done&&mB[i.id].done).map(i=>i.text);
+  const ren=cA.filter(i=>mB[i.id]&&i.text!==mB[i.id].text).map(i=>i.text);
+  if(added.length)L.push('Added to checklist: '+clip(added.join(', '),120));
+  if(gone.length)L.push('Taken off checklist: '+clip(gone.join(', '),120));
+  if(tk.length)L.push('Ticked on checklist: '+clip(tk.join(', '),120));
+  if(utk.length)L.push('Un-ticked on checklist: '+clip(utk.join(', '),120));
+  if(ren.length)L.push('Checklist item changed: '+clip(ren.join(', '),120));
+  if(ticked!==null){
+    if(!L.length)L.push(ticked?'Done for '+ticked:(whenOf(a)||'Done'));
+    else if(ticked)L.unshift('Done for '+ticked);
+    return {t:a.title||'Untitled job',s:name?'Ticked off by '+name+' ✓':'Ticked off ✓',b:L.join('\n')};
+  }
+  if(!L.length)return null; // nothing the family needs to know (e.g. reordering or a colour change)
+  return {t:a.title||'Untitled job',s:name?'Changed by '+name:'Changed on the shared list',b:L.join('\n')};
+}
+async function noteKey(code){
+  const c=famCrypto[code]||(famCrypto[code]={});
+  if(c.note)return c.note;
+  const base=await crypto.subtle.importKey('raw',enc.encode(code),'PBKDF2',false,['deriveBits']);
+  const bits=await crypto.subtle.deriveBits({name:'PBKDF2',salt:enc.encode('mum-brain/family-note/v1'),iterations:200000,hash:'SHA-256'},base,256);
+  const key=await crypto.subtle.importKey('raw',bits,'AES-GCM',false,['encrypt']);
+  return c.note={key,raw:b64(bits)};
+}
+const devId=()=>{let d=null;try{d=localStorage.getItem(KEY+'-dev');}catch(e){}
+  if(!d){d=[...crypto.getRandomValues(new Uint8Array(12))].map(x=>x.toString(16).padStart(2,'0')).join('');try{localStorage.setItem(KEY+'-dev',d);}catch(e){}}return d;};
+async function noteFlush(all){
+  if(noteBusy||!SHARING||!sharedReady)return;
+  const now=Date.now(),ids=Object.keys(noteQ).filter(id=>all||now-noteQ[id].at>=NOTE_WAIT);
+  if(!ids.length)return;
+  noteBusy=true;
+  try{
+    const code=family.code,[{fs,db},{fid},nk]=await Promise.all([fbLoad(),famKeys(code),noteKey(code)]);
+    for(const id of ids){
+      const q=noteQ[id];if(!q)continue;
+      let n=null;try{n=noteText(q.b?JSON.parse(q.b):null,q.a?JSON.parse(q.a):null,myName());}catch(e){}
+      if(n){
+        n.id=id;n.t=clip(n.t,90);if(n.b.length>900)n.b=n.b.slice(0,899)+'…';
+        const iv=crypto.getRandomValues(new Uint8Array(12));
+        const ct=await crypto.subtle.encrypt({name:'AES-GCM',iv,additionalData:enc.encode('mb-note')},nk.key,enc.encode(JSON.stringify(n)));
+        await fs.addDoc(fs.collection(db,'families',fid,'events'),{v:1,iv:b64(iv),ct:b64(ct),from:devId(),at:Date.now()});
+      }
+      if(noteQ[id]===q){delete noteQ[id];saveNoteQ();}
+    }
+  }catch(e){setTimeout(()=>noteFlush(),20000);}
+  finally{noteBusy=false;}
+  if(Object.keys(noteQ).length){clearTimeout(noteTimer);noteTimer=setTimeout(()=>noteFlush(),NOTE_WAIT+200);}
+}
+// closing the app sends straight away, so a quick change isn't left waiting on the phone
+document.addEventListener('visibilitychange',()=>{if(document.hidden)noteFlush(true);});
+window.addEventListener('online',()=>noteFlush());
+
+/* Receiving (phone app only): this phone registers with Apple for notifications and tells the family list
+   where to send them, plus whether to make a sound. The phone's own settings (Focus, silent) always apply. */
+var PN=NATIVE?((window.Capacitor.Plugins&&window.Capacitor.Plugins.PushNotifications)||(window.Capacitor.registerPlugin&&window.Capacitor.registerPlugin('PushNotifications'))):null;
+let pushToken=null,pushPerm=null,pushDoneFor='';
+const shareNotif=()=>['sound','quiet','off'].includes(state.prefs&&state.prefs.shN)?state.prefs.shN:'sound';
+async function pushSetup(force){
+  if(!PN||!SHARING)return;
+  const sig=family.code+'|'+shareNotif();
+  if(!force&&pushDoneFor===sig)return;
+  pushDoneFor=sig;
+  try{
+    const {raw}=await noteKey(family.code);
+    if(WB&&WB.setNotify)await WB.setNotify({key:shareNotif()==='off'?'':raw});
+  }catch(e){}
+  if(shareNotif()==='off'){pushForget(true);return;}
+  try{
+    let p=await PN.checkPermissions();
+    if(p.receive==='prompt'||p.receive==='prompt-with-rationale')p=await PN.requestPermissions();
+    pushPerm=p.receive;paintShareHint();
+    if(p.receive!=='granted')return;
+    if(pushToken)deviceSave();
+    await PN.register();
+  }catch(e){}
+}
+async function deviceSave(){
+  if(!pushToken||!SHARING||shareNotif()==='off')return;
+  try{const [{fs,db},{fid}]=await Promise.all([fbLoad(),famKeys(family.code)]);
+    await fs.setDoc(fs.doc(db,'families',fid,'devices',devId()),{v:1,t:pushToken,m:shareNotif(),at:Date.now()});
+  }catch(e){}
+}
+// stop notifications to this phone (leaving the family, or choosing Off)
+async function pushForget(keepKey){
+  const code=family&&family.code;
+  if(!keepKey&&WB&&WB.setNotify){try{WB.setNotify({key:''}).catch(()=>{});}catch(e){}}
+  if(!code)return;
+  try{const [{fs,db},{fid}]=await Promise.all([fbLoad(),famKeys(code)]);
+    await fs.deleteDoc(fs.doc(db,'families',fid,'devices',devId()));}catch(e){}
+  pushDoneFor='';
+}
+if(PN){
+  PN.addListener('registration',t=>{pushToken=t&&t.value;deviceSave();});
+  PN.addListener('registrationError',()=>{});
+  // tapping a shared-change notification opens the Shared list
+  PN.addListener('pushNotificationActionPerformed',()=>{
+    if(!SHARING)return;
+    ui.searching=false;ui.tab='dump';ui.proj=null;ui.filter=SHARED;window.scrollTo(0,0);render();
+  });
+  // the phone can change its notification address now and then, so check in each time the app opens
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden&&SHARING&&sharedReady)pushSetup(true);});
+}
+function paintShareHint(){
+  const el=document.getElementById('shn-hint');if(!el)return;
+  const m=shareNotif();
+  el.textContent=pushPerm==='denied'&&m!=='off'
+    ?'Notifications are turned off for '+BRAND.short+'. Turn on Allow Notifications in iPhone Settings › Notifications › '+BRAND.short+'.'
+    :({sound:'Each change your family makes arrives as its own notification, showing exactly what changed. They’re grouped together so they don’t take over your screen.',
+       quiet:'Each change still arrives as its own notification, but silently, straight into your notification list with no sound or banner.',
+       off:'You won’t be told about changes, but they still show in your Shared list.'}[m])
+     +(m==='off'?'':' Your iPhone’s own settings, like Focus and silent mode, still apply.');
 }
 const FAM_HOW='<button class="fam-how" data-fam="how">How sharing works</button>';
 function paintFamily(){
@@ -1330,7 +1505,18 @@ function paintFamily(){
     el.innerHTML=`<p class="fam-p">Anything in the <b>Shared</b> list is shared with everyone who joins using this code. It's scrambled on your phone first, so only people with the code can read it.</p>
       <div class="fam-code">${fmtCode(family.code)}</div>
       <div class="row"><button class="opt on" data-fam="share">Send code</button><button class="opt" data-fam="leave">Leave family</button></div>
-      <div class="fam-status" id="fam-status"><i></i>Connecting…</div>${FAM_HOW}`;
+      <div class="fam-status" id="fam-status"><i></i>Connecting…</div>
+      <span class="lbl lbl-sub">Your name</span>
+      <input class="f-date" id="fam-name" maxlength="24" placeholder="e.g. Sam" autocomplete="given-name" enterkeyhint="done" aria-label="Your name" value="${esc(myName())}">
+      <div class="rep-hint">Shown to your family when you add, change or tick off a shared job, so they know who it came from.</div>
+      ${NATIVE?`<span class="lbl lbl-sub">Tell me when my family changes something</span>
+      <div class="seg" id="s-shn" style="grid-template-columns:repeat(3,1fr)"><button data-shn="sound"${shareNotif()==='sound'?' class="on"':''}>Sound</button><button data-shn="quiet"${shareNotif()==='quiet'?' class="on"':''}>Quiet</button><button data-shn="off"${shareNotif()==='off'?' class="on"':''}>Off</button></div>
+      <div class="rep-hint" id="shn-hint"></div>`:''}${FAM_HOW}`;
+    paintShareHint();
+    const fn=el.querySelector('#fam-name');
+    const keepName=()=>{const v=fn.value.trim().slice(0,24);if(v!==myName()){state.prefs.myName=v;save();}};
+    fn.addEventListener('change',keepName);fn.addEventListener('blur',keepName);
+    fn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();fn.blur();}});
     if(famStatus==='ok')setFamStatus('ok','Connected. Shared jobs are scrambled before they leave your phone.');
     else if(famStatus==='err')setFamStatus('err','Can\'t reach the family list right now. Check your internet connection.');
   }else{
@@ -1342,6 +1528,9 @@ function paintFamily(){
   }
 }
 document.getElementById('s-family').addEventListener('click',async e=>{
+  const sn=e.target.closest('[data-shn]');
+  if(sn){state.prefs.shN=sn.dataset.shn;save();
+    document.querySelectorAll('[data-shn]').forEach(x=>x.classList.toggle('on',x===sn));paintShareHint();pushSetup(true);return;}
   const b=e.target.closest('[data-fam]');if(!b)return;const a=b.dataset.fam;
   const showSt=()=>{const st=document.getElementById('fam-status');if(st)st.hidden=false;};
   if(a==='create'){showSt();createFamily();}
@@ -1621,7 +1810,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.6.1';
+const APPV='1.7.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;

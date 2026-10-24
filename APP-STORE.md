@@ -27,6 +27,13 @@ The live web app on GitHub Pages (`main`) is not affected.
    - The app sends the next 8 days of jobs to the App Group `group.com.gmoghul.mumbrainsorted` via its own `WidgetBridge` plugin (registered in `MainViewController`); the widget turns over at midnight by itself.
    - Apple side: App Group created and added to the app's App ID; widget App ID `com.gmoghul.mumbrainsorted.widget` with the same group.
    - The archive is unsigned, so the build gives the app and widget a placeholder signature carrying the App Group before the real signing. Run the workflow by hand with mode `check` to build and sign without uploading.
+7. **Shared list notifications (v1.7.0):** when someone adds, changes, ticks off or removes a shared job, everyone else in the family gets a notification showing exactly what changed (e.g. **Dentist** · *Changed by Sam* · When: Fri 30 Oct · 3 pm → Mon 2 Nov · 4 pm).
+   - One notification per job, grouped together on the phone. Quick edits to the same job are gathered for 6 seconds first, so one edit = one notification. Your own changes never notify you.
+   - Settings › Family sharing: **Your name** (shown to the family) and **Sound / Quiet / Off** (Quiet = silently into the notification list). The iPhone's own settings (Focus, silent, Notifications) always apply.
+   - Still private: the wording is written and scrambled on the sender's phone (key made from the family code, salt `mum-brain/family-note/v1`). The server only passes it on; the extension `ios-widget/MumBrainNotify` unscrambles it on the receiving phone. If it can't, the phone shows "A shared job has changed".
+   - Pieces: `families/{id}/events` (scrambled messages, deleted once sent), `families/{id}/devices` (each phone's Apple address + Sound/Quiet), the Cloud Function in `functions/` (London, europe-west2), `firestore.rules`.
+   - Setup: Apple Push key (.p8) and App ID `com.gmoghul.mumbrainsorted.notify` (with the App Group); Firebase on the Blaze plan; GitHub secrets `FIREBASE_SA`, `APNS_KEY_P8`, `APNS_KEY_ID`; then run **Actions › Firebase setup**. Re-run it whenever `functions/` or `firestore.rules` change.
+   - Online version: can't receive these (iPhone web apps can't get them reliably), but once merged into `main` its changes would notify the phone app users.
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)
