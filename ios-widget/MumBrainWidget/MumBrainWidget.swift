@@ -85,6 +85,7 @@ enum Fmt {
     static let dateLine = make("d MMMM")
     static let shortDate = make("d MMM")
     static let month = make("MMMM")
+    static let shortMonth = make("MMM")
 }
 
 // MARK: - Colours and fonts (match the app)
@@ -135,13 +136,27 @@ func palette(_ t: WTheme, scheme: ColorScheme) -> Palette {
                    w: t.w.map { Color(hex: $0) }, wash: 0)
 }
 
-// The phone's own font (SF Pro), unless the app is set to Soft (serif headings)
+// Fonts follow the app's font choice (v1.11.0):
+// Calm (default) = SF Rounded, Native = SF Pro, Editorial = Newsreader headings, Soft = Fraunces/Figtree.
+// The greeting is always a soft italic serif (Newsreader, or Fraunces for Soft).
 enum F {
-    static var serif: Bool { Store.load()?.theme.font == "clean" }
-    static func head(_ size: CGFloat) -> Font { serif ? .custom("Fraunces-SemiBold", size: size) : .system(size: size, weight: .bold) }
-    static func sub(_ size: CGFloat) -> Font { serif ? .custom("Fraunces-Italic", size: size) : .system(size: size, weight: .regular) }
-    static func body(_ size: CGFloat) -> Font { serif ? .custom("Figtree-Medium", size: size) : .system(size: size, weight: .regular) }
-    static func bold(_ size: CGFloat) -> Font { serif ? .custom("Figtree-SemiBold", size: size) : .system(size: size, weight: .semibold) }
+    static var font: String { Store.load()?.theme.font ?? "sfround" }
+    static func sys(_ size: CGFloat, _ w: Font.Weight) -> Font {
+        font == "native" || font == "news" ? .system(size: size, weight: w) : .system(size: size, weight: w, design: .rounded)
+    }
+    static func head(_ size: CGFloat) -> Font {
+        switch font {
+        case "clean": return .custom("Fraunces-SemiBold", size: size)
+        case "news": return .custom("Newsreader-Regular", size: size * 1.06)
+        default: return sys(size, .semibold)
+        }
+    }
+    static func greet(_ size: CGFloat) -> Font {
+        font == "clean" ? .custom("Fraunces-Italic", size: size) : .custom("Newsreader-Italic", size: size * 1.08)
+    }
+    static func sub(_ size: CGFloat) -> Font { font == "clean" ? .custom("Fraunces-Italic", size: size) : sys(size, .regular) }
+    static func body(_ size: CGFloat) -> Font { font == "clean" ? .custom("Figtree-Medium", size: size) : sys(size, .regular) }
+    static func bold(_ size: CGFloat) -> Font { font == "clean" ? .custom("Figtree-SemiBold", size: size) : sys(size, .medium) }
 }
 
 // Progress bar drawn as the icon's three rows (lilac, blue, teal)
@@ -182,6 +197,15 @@ struct DayEntry: TimelineEntry {
     var weekday: String { Fmt.weekday.string(from: date) }
     var dateLine: String { Fmt.dateLine.string(from: date) }
     var shortDate: String { Fmt.shortDate.string(from: date) }
+    // British, the way you'd say it: "It's Sunday", "25th October", "25th Oct"
+    var itsDay: String { "It\u{2019}s \(weekday)" }
+    var ordinal: String {
+        let n = Calendar.current.component(.day, from: date)
+        let suf = (11...13).contains(n % 100) ? "th" : ([1: "st", 2: "nd", 3: "rd"][n % 10] ?? "th")
+        return "\(n)\(suf)"
+    }
+    var spokenDate: String { "\(ordinal) \(Fmt.month.string(from: date))" }
+    var spokenShort: String { "\(ordinal) \(Fmt.shortMonth.string(from: date))" }
     var greeting: String {
         let h = Calendar.current.component(.hour, from: date)
         return h < 12 ? "Good morning" : (h < 17 ? "Good afternoon" : "Good evening")
@@ -336,22 +360,32 @@ struct Message: View {
     let e: DayEntry
     let p: Palette
     let size: CGFloat
+    var centred = false
+    var sub: String {
+        if e.jobs.isEmpty { return e.dump > 0 ? "\(e.dump) waiting in Brain dump" : "Enjoy your day" }
+        return e.doneCount == 1 ? "1 job ticked off" : "\(e.doneCount) jobs ticked off"
+    }
     var body: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            HStack(spacing: 6) {
+        if centred {
+            // all done / nothing planned: a calm resting state in the middle of the space
+            VStack(spacing: 5) {
                 if !e.jobs.isEmpty {
-                    Tick(color: p.accent, done: true, size: size + 2)
+                    Tick(color: p.accent, done: true, size: size + 8).padding(.bottom, 2)
                 }
                 Text(e.headline).font(F.bold(size)).foregroundColor(p.ink)
+                Text(sub).font(F.body(size - 1.5)).foregroundColor(p.muted)
             }
-            if e.jobs.isEmpty {
-                Text(e.dump > 0 ? "\(e.dump) waiting in Brain dump" : "Enjoy your day")
-                    .font(F.body(size - 1.5))
-                    .foregroundColor(p.muted)
-            } else {
-                Text(e.doneCount == 1 ? "1 job ticked off" : "\(e.doneCount) jobs ticked off")
-                    .font(F.body(size - 1.5))
-                    .foregroundColor(p.muted)
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        } else {
+            VStack(alignment: .leading, spacing: 3) {
+                HStack(spacing: 6) {
+                    if !e.jobs.isEmpty {
+                        Tick(color: p.accent, done: true, size: size + 2)
+                    }
+                    Text(e.headline).font(F.bold(size)).foregroundColor(p.ink)
+                }
+                Text(sub).font(F.body(size - 1.5)).foregroundColor(p.muted)
             }
         }
     }
@@ -476,7 +510,7 @@ struct SmallView: View {
                 .foregroundColor(p.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            Text(e.shortDate)
+            Text(e.spokenShort)
                 .font(F.sub(13))
                 .foregroundColor(p.muted)
             Spacer(minLength: 6)
@@ -493,34 +527,37 @@ struct SmallView: View {
 struct MediumView: View {
     let e: DayEntry
     let p: Palette
+    var resting: Bool { e.open.isEmpty }   // all done, or nothing planned
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 0) {
+                if resting { Spacer(minLength: 0) }
                 Text(e.greeting)
-                    .font(F.sub(12))
+                    .font(F.greet(13))
                     .foregroundColor(p.muted)
-                Text(e.weekday)
-                    .font(F.head(24))
+                    .padding(.bottom, 3)
+                Text(e.itsDay)
+                    .font(F.head(18))
                     .foregroundColor(p.ink)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
-                Text(e.dateLine)
-                    .font(F.sub(13))
+                    .minimumScaleFactor(0.7)
+                Text(e.spokenDate)
+                    .font(F.sub(14))
                     .foregroundColor(p.muted)
                     .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+                    .padding(.top, 1)
                 Spacer(minLength: 4)
-                if !e.jobs.isEmpty {
+                if !resting {
                     ProgressLine(e: e, p: p)
                 }
             }
-            .frame(width: 108, alignment: .leading)
+            .frame(width: 122, alignment: .leading)
             .frame(maxHeight: .infinity, alignment: .topLeading)
 
-            VStack(alignment: .leading, spacing: 0) {
-                if e.open.isEmpty {
-                    Spacer(minLength: 0)
-                    Message(e: e, p: p, size: 13)
-                    Spacer(minLength: 0)
+            Group {
+                if resting {
+                    Message(e: e, p: p, size: 14, centred: true)
                 } else {
                     // as many jobs as fit (6 at normal text size), fewer if the iPhone's text size is larger
                     if #available(iOS 16.0, *) {
@@ -548,27 +585,28 @@ struct LargeView: View {
             HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 0) {
                     Text(e.greeting)
-                        .font(F.sub(13))
+                        .font(F.greet(14))
                         .foregroundColor(p.muted)
-                    Text(e.weekday)
-                        .font(F.head(30))
+                        .padding(.bottom, 3)
+                    Text(e.itsDay)
+                        .font(F.head(24))
                         .foregroundColor(p.ink)
                         .lineLimit(1)
                         .minimumScaleFactor(0.6)
-                    Text(e.dateLine)
-                        .font(F.sub(15))
+                    Text(e.spokenDate)
+                        .font(F.sub(16))
                         .foregroundColor(p.muted)
                         .lineLimit(1)
                 }
                 Spacer(minLength: 6)
                 MiniMonth(e: e, p: p).frame(width: 124)
             }
-            if !e.jobs.isEmpty {
+            if !e.open.isEmpty {
                 ProgressLine(e: e, p: p).padding(.top, 8)
             }
             Group {
                 if e.open.isEmpty {
-                    Message(e: e, p: p, size: 14)
+                    Message(e: e, p: p, size: 15, centred: true)
                 } else {
                     JobList(e: e, p: p, limit: 6, size: 14, spacing: 8)
                 }

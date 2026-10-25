@@ -34,11 +34,11 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=Figtree:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Caveat:wght@500;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..500;1,6..72,300..500&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=Figtree:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Caveat:wght@500;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
   --ts:1; --sp:1;
-  --font-body:-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",Roboto,sans-serif; --font-head:var(--font-body); --font-sub:var(--font-body); --sub-style:normal; --hw:700; --hs:1; --hls:0;
+  --font-body:ui-rounded,"SF Pro Rounded",Nunito,system-ui,sans-serif; --font-head:var(--font-body); --font-sub:var(--font-body); --sub-style:normal; --hw:600; --hs:1; --hls:0;
   --accent-base:#3767AE; --bg-l:#F7F8FA; --w1:#A9C6F2; --w2:#C9B8EE; --w3:#BFE3E0; --wash-l:.6;
   --bg:var(--bg-l); --solid:#FFFFFF; --surface:rgba(255,255,255,.86); --ink:var(--ink-l,#1B1E23); --muted:var(--muted-l,#6E747D); --line:var(--line-l,#E4E7EB);
   --accent:var(--accent-base); --primary:var(--primary-l,var(--accent)); --accent-soft:color-mix(in srgb,var(--accent) 13%,var(--solid));
@@ -49,6 +49,8 @@
   padding-bottom:max(env(safe-area-inset-bottom,0px),var(--sab0,0px));
   color-scheme:light;
 }
+/* Classic theme (replaced Sharp in v1.11.0; internal id is still "sharp"): crisp white page, soft grey sections, slate text, no outlines */
+:root[data-style="sharp"]{--surface:#F4F4F6;--shadow:none}
 @media (prefers-color-scheme:dark){
   :root:not([data-theme="light"]){
     --bg:#131519; --solid:#1D2025; --surface:rgba(29,32,37,.88); --ink:#ECEEF1; --muted:#8C929B; --line:#2B2F36;
@@ -89,20 +91,25 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .wash{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:var(--wash-op);transition:opacity .3s;transform:translateZ(0);will-change:transform}
 .wash svg{width:100%;height:100%}
 .wash .b{transition:fill .4s}
+.wash svg{position:absolute;inset:0}
+:root[data-wash="band"] .w-full,:root:not([data-wash="band"]) .w-band{display:none}
+/* the painted band sits at the top of the page and scrolls away with it */
+:root[data-wash="band"] .wash{position:absolute;bottom:auto;height:270px}
 
 /* headers */
 .head{padding:0 4px 18px}
-.head h1{margin:0;font-size:calc(34px * var(--hs));font-weight:var(--hw);line-height:1.08}
+.head h1{margin:0;font-size:calc(36px * var(--hs));font-weight:var(--hw);line-height:1.08}
+.head.whd h1{font-size:calc(28px * var(--hs))}
 .head .sub{margin:6px 0 0;color:var(--muted);font-size:16.5px;font-family:var(--font-sub);font-style:var(--sub-style)}
 .today-head{padding:0 4px 22px}
-.today-head .dow{font-size:calc(50px * var(--hs));font-weight:var(--hw);line-height:1}
+.today-head .dow{font-size:calc(28px * var(--hs));font-weight:var(--hw);line-height:1}
 .today-head .date{margin-top:6px;font-size:17.5px;color:var(--muted);font-weight:500;font-family:var(--font-sub);font-style:var(--sub-style)}
 .progress{margin-top:18px;display:flex;align-items:center;gap:12px;font-size:14px;color:var(--muted)}
 .bar{flex:1;height:6px;border-radius:6px;background:var(--line);overflow:hidden}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:6px;transition:width .35s ease}
 /* brain-in-rows progress bar: the icon's lilac, blue and teal bands (not in Sharp style) */
-:root:not([data-style="sharp"]) .bar{height:10px;border-radius:2px;background:linear-gradient(to bottom,var(--line) 0 2.6px,transparent 2.6px 3.7px,var(--line) 3.7px 6.3px,transparent 6.3px 7.4px,var(--line) 7.4px 10px)}
-:root:not([data-style="sharp"]) .bar i{border-radius:2px;background:linear-gradient(to bottom,#B8A3E8 0 2.6px,transparent 2.6px 3.7px,#93B6EE 3.7px 6.3px,transparent 6.3px 7.4px,#9DD3CE 7.4px 10px)}
+.bar{height:10px;border-radius:2px;background:linear-gradient(to bottom,var(--line) 0 2.6px,transparent 2.6px 3.7px,var(--line) 3.7px 6.3px,transparent 6.3px 7.4px,var(--line) 7.4px 10px)}
+.bar i{border-radius:2px;background:linear-gradient(to bottom,#B8A3E8 0 2.6px,transparent 2.6px 3.7px,#93B6EE 3.7px 6.3px,transparent 6.3px 7.4px,#9DD3CE 7.4px 10px)}
 .progress .lighter{flex:none;display:inline-flex;align-items:center;gap:5px;margin:-6px 0}
 .progress .lighter svg{width:15px;height:15px}
 
@@ -152,7 +159,6 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .earlier-line{display:flex;align-items:center;gap:12px;width:100%;padding:12px 16px;margin:-6px 0 20px;border-radius:14px;background:var(--surface);box-shadow:var(--shadow);text-align:left}
 .earlier-line b{flex:1;min-width:0;font-size:15.5px;font-weight:600}
 .earlier-line span{flex:none;font-size:14px;font-weight:600;color:var(--accent)}
-:root[data-style="sharp"] .earlier-line{box-shadow:none;border:1.5px solid var(--line);border-radius:8px}
 .bk-empty{color:var(--warn)}
 .fb-row{display:flex;gap:10px;margin-top:12px}
 .lbl-sub{display:block;margin:14px 0 6px;font-size:13px;color:var(--muted)}
@@ -171,7 +177,7 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 
 /* month */
 .mhead{display:flex;align-items:center;gap:8px;padding:0 4px 18px}
-.mhead h1{flex:1;margin:0;font-size:calc(30px * var(--hs));font-weight:var(--hw);line-height:1.1;min-width:0}
+.mhead h1{flex:1;margin:0;font-size:calc(28px * var(--hs));font-weight:var(--hw);line-height:1.1;min-width:0}
 .mhead h1 span{color:var(--muted);font-weight:500}
 .mtitle{font:inherit;flex-wrap:wrap;letter-spacing:inherit;display:inline-flex;align-items:center;gap:6px;text-align:left}
 .mtitle svg{color:var(--muted);flex:none;transition:transform .2s}
@@ -188,24 +194,6 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .picker .pill.sm{box-shadow:none;background:var(--accent-soft)}
 .yrs button.on{background:var(--accent-soft);color:var(--accent);font-weight:700}
 
-/* sharp theme */
-:root[data-style="sharp"] .list,:root[data-style="sharp"] .quick,:root[data-style="sharp"] .cal,:root[data-style="sharp"] .empty,
-:root[data-style="sharp"] .picker,:root[data-style="sharp"] .iconbtn,:root[data-style="sharp"] .pill,:root[data-style="sharp"] .navbtn{
-  box-shadow:none;border:1.5px solid var(--accent);border-radius:8px;background:var(--solid)}
-:root[data-style="sharp"] .quick{padding-left:14px}
-:root[data-style="sharp"] .quick button,:root[data-style="sharp"] .fab{border-radius:10px}
-:root[data-style="sharp"] .fab{box-shadow:none}
-:root[data-style="sharp"] .task+.task::before{background:color-mix(in srgb,var(--accent) 30%,transparent)}
-:root[data-style="sharp"] .head h1,:root[data-style="sharp"] .today-head .dow,:root[data-style="sharp"] .mhead h1,
-:root[data-style="sharp"] .sec-h h2,:root[data-style="sharp"] .empty strong{color:var(--accent)}
-:root[data-style="sharp"] .chip{background:none;border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);border-radius:5px}
-:root[data-style="sharp"] .cell{border-radius:6px}
-:root[data-style="sharp"] .cell.sel .n{border-radius:6px}
-:root[data-style="sharp"] .bar,:root[data-style="sharp"] .bar i{border-radius:0}
-:root[data-style="sharp"] .tabs{background:var(--solid);border:1.5px solid var(--accent);border-radius:10px;box-shadow:none}
-:root[data-style="sharp"] .tab{border-radius:6px}
-.sharp-pv{display:grid!important;place-items:center;background:#fff;border-radius:6px!important;box-shadow:none!important}
-.sharp-pv b{font-size:22px;font-weight:700}
 .none-note{font-size:14px;color:var(--muted);background:var(--bg);border-radius:12px;padding:12px 14px}
 .iconbtn{width:40px;height:40px;border-radius:12px;background:var(--surface);box-shadow:var(--shadow);display:grid;place-items:center}
 .pill{height:40px;padding:0 14px;border-radius:12px;background:var(--surface);box-shadow:var(--shadow);font-size:14px;font-weight:600}
@@ -268,7 +256,6 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .wdays{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px;margin-top:10px}
 .wdays button{height:40px;border-radius:12px;background:var(--bg);font-weight:600;font-size:13.5px;color:var(--muted);padding:0}
 .wdays button.on{background:var(--accent);color:#fff}
-:root[data-style="sharp"] .wdays button{border-radius:6px}
 .rep-hint{font-size:13.5px;color:var(--muted);margin-top:8px;min-height:1em}
 .f-who{font-size:13px;line-height:1.45;color:var(--muted);margin:8px 4px 0}
 .swatches{display:flex;flex-wrap:wrap;gap:10px}
@@ -292,6 +279,14 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .theme.on{border-color:var(--accent);font-weight:600}
 .theme .pv{width:100%;aspect-ratio:1.6;border-radius:10px;position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)}
 .theme .pv i{position:absolute;right:8px;bottom:8px;width:14px;height:14px;border-radius:50%}
+.cswatches{display:grid;grid-template-columns:repeat(5,1fr);gap:12px 6px}
+.cs{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer}
+.cs i{width:38px;height:38px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px var(--solid),0 0 0 3.5px transparent;transition:box-shadow .15s}
+.cs.on i{box-shadow:0 0 0 3px var(--solid),0 0 0 5px var(--c)}
+.cs.on{color:var(--ink);font-weight:600}
+.cs.custom i{background:conic-gradient(from 90deg,#C46A6A,#C9A44F,#6E9C6A,#4F8C9A,#5E6FB0,#8A63A8,#C46A6A)}
+.cs.custom.on i{background:var(--c)}
+.cs input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer;border:0;padding:0}
 .fonts{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
 .font{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:14px;background:var(--bg);border:2px solid transparent;text-align:left}
 .font.on{border-color:var(--accent)}
@@ -331,8 +326,6 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .filters::-webkit-scrollbar{display:none}
 .fchip{flex:none;height:34px;padding:0 14px;border-radius:17px;background:var(--surface);box-shadow:var(--shadow);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
 .fchip.on{background:var(--primary);color:#fff;font-weight:600}
-:root[data-style="sharp"] .fchip{box-shadow:none;border:1.5px solid var(--accent);border-radius:6px;background:var(--solid)}
-:root[data-style="sharp"] .fchip.on{background:var(--accent)}
 /* checklist */
 .cl{list-style:none;margin:0 0 8px;padding:0}
 .cl li{display:flex;align-items:center;gap:10px;padding:4px 0}
@@ -353,8 +346,6 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .addslot span{flex:1}
 .addslot i{width:30px;height:30px;border-radius:9px;background:var(--surface);display:grid;place-items:center}
 .addslot i svg{width:16px;height:16px}
-:root[data-style="sharp"] .addslot{border-radius:8px;border-color:color-mix(in srgb,var(--accent) 45%,transparent)}
-:root[data-style="sharp"] .addslot i{border-radius:5px}
 /* compact: one line per job, tags on the right */
 :root[data-sp="compact"] .task{align-items:center}
 :root[data-sp="compact"] .task .body{display:flex;flex-wrap:wrap;align-items:center;column-gap:8px;row-gap:3px}
@@ -370,7 +361,6 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 :root[data-sp="compact"] .task+.task::before{left:49px}
 /* roll over + week */
 .roll{width:100%;height:46px;border-radius:14px;background:var(--surface);box-shadow:var(--shadow);font-weight:600;color:var(--accent);font-size:15px;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:24px}
-:root[data-style="sharp"] .roll{box-shadow:none;border:1.5px solid var(--accent);border-radius:8px}
 .wday{margin-bottom:calc(14px * var(--sp));border-radius:18px;transition:background .15s,box-shadow .15s}
 .wday.wover{background:var(--accent-soft);box-shadow:0 0 0 6px var(--accent-soft)}
 .wday.wover .sec-h h2{color:var(--accent)}
@@ -388,16 +378,13 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .wday .dot-today{width:7px;height:7px;border-radius:50%;background:var(--accent)}
 .wempty{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:10px 14px;color:var(--muted);font-size:14px}
 .wempty button{color:var(--accent);font-weight:600;font-size:14px}
-:root[data-style="sharp"] .wempty{box-shadow:none;border:1.5px solid color-mix(in srgb,var(--accent) 45%,transparent);border-radius:8px}
 .whead-sub{margin-top:6px;font-size:17.5px;color:var(--muted);font-weight:500}
 /* search */
 .sbar{display:flex;align-items:center;gap:12px;margin-bottom:20px}
 .calnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .calnav .navbtn{box-shadow:none;background:var(--bg)}
-:root[data-style="sharp"] .calnav .navbtn{border:1.5px solid var(--accent)}
 .sfield{flex:1;display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:0 12px;height:46px;color:var(--muted)}
 .sfield input{flex:1;min-width:0;border:0;background:none;outline:none;font-size:16px;color:var(--ink)}
-:root[data-style="sharp"] .sfield{box-shadow:none;border:1.5px solid var(--accent);border-radius:8px}
 .sbar .x{font-size:15px;font-weight:600;color:var(--accent)}
 /* settings lists */
 .lrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
@@ -556,7 +543,6 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .nudge .t{flex:1 1 100%;min-width:0;text-align:left;font-size:15.5px;line-height:1.35}
 .nudge .d{flex:none;height:32px;padding:0 11px;border-radius:9px;background:var(--solid);color:var(--accent);font-size:14px;font-weight:600}
 .nudge .go{height:36px;padding:0 14px;border-radius:10px;background:var(--solid);color:var(--accent);font-weight:600;font-size:14.5px;margin:4px 0 8px}
-:root[data-style="sharp"] .nudge{box-shadow:none;border:1.5px solid var(--accent);border-radius:8px;background:var(--solid)}
 .fb-q{font-size:15px;margin:0 0 8px}
 .fb-name{width:100%;margin-top:10px;height:42px;font-size:16px;padding:0 14px;border-radius:12px}
 .fb-send{margin-top:12px;width:100%;height:42px}
@@ -602,7 +588,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .pback{display:inline-flex;align-items:center;gap:4px;height:40px;font-size:15px;font-weight:500;color:var(--muted)}
 .pback svg{width:18px;height:18px}
 .phead{padding:0 4px 16px}
-.phead h1{margin:0;display:flex;align-items:center;gap:12px;font-family:var(--font-head);letter-spacing:var(--hls);font-size:calc(30px * var(--hs));font-weight:var(--hw);line-height:1.1}
+.phead h1{margin:0;display:flex;align-items:center;gap:12px;font-family:var(--font-head);letter-spacing:var(--hls);font-size:calc(28px * var(--hs));font-weight:var(--hw);line-height:1.1}
 .phead h1 i{width:14px;height:14px;border-radius:4px;background:var(--pc);flex:none}
 .phead h1 span{min-width:0;word-wrap:break-word}
 .pedit{flex:none;width:38px;height:38px;border-radius:12px;display:grid;place-items:center;color:var(--muted)}
@@ -681,12 +667,19 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 </head>
 <body>
 <div class="wash" aria-hidden="true">
-  <svg viewBox="0 0 400 820" preserveAspectRatio="xMidYMid slice">
+  <svg class="w-full" viewBox="0 0 400 820" preserveAspectRatio="xMidYMid slice">
     <defs>
       <filter id="wc" x="-40%" y="-40%" width="180%" height="180%">
         <feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="3" seed="4" result="n"/>
         <feDisplacementMap in="SourceGraphic" in2="n" scale="70" xChannelSelector="R" yChannelSelector="G" result="d"/>
-        <feGaussianBlur in="d" stdDeviation="10"/>
+        <feGaussianBlur in="d" stdDeviation="2.5" result="s"/>
+        <!-- watercolour "tide line": pigment collects at the edge of each wash -->
+        <feMorphology in="s" operator="erode" radius="5" result="e"/>
+        <feComposite in="s" in2="e" operator="out" result="rim"/>
+        <feGaussianBlur in="rim" stdDeviation="1.6" result="rb"/>
+        <feTurbulence type="fractalNoise" baseFrequency=".7" numOctaves="2" seed="9" result="g"/>
+        <feComposite in="s" in2="g" operator="arithmetic" k1=".6" k2=".7" k3="0" k4="0" result="gs"/>
+        <feMerge><feMergeNode in="gs"/><feMergeNode in="rb"/></feMerge>
       </filter>
       <filter id="bloom" x="-40%" y="-40%" width="180%" height="180%">
         <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="11" result="n"/>
@@ -707,6 +700,31 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <circle class="b" cx="330" cy="610" r="30" style="fill:var(--w1)"/>
     </g>
     <rect x="0" y="0" width="400" height="820" filter="url(#grain)"/>
+  </svg>
+  <!-- Painted band: three brushstrokes across the top, echoing the rows in the app icon -->
+  <svg class="w-band" viewBox="0 0 400 260" preserveAspectRatio="xMidYMin slice">
+    <defs>
+      <filter id="paint" x="-10%" y="-40%" width="120%" height="180%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012 0.05" numOctaves="2" seed="7" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="9" xChannelSelector="R" yChannelSelector="G" result="d"/>
+        <feGaussianBlur in="d" stdDeviation="1.6" result="s"/>
+        <feMorphology in="s" operator="erode" radius="2.5" result="e"/>
+        <feComposite in="s" in2="e" operator="out" result="rim"/>
+        <feGaussianBlur in="rim" stdDeviation=".9" result="rb"/>
+        <feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" seed="3" result="g"/>
+        <feComposite in="s" in2="g" operator="arithmetic" k1=".6" k2=".7" k3="0" k4="0" result="gs"/>
+        <feMerge><feMergeNode in="gs"/><feMergeNode in="rb"/></feMerge>
+      </filter>
+      <linearGradient id="bandfade" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#fff" stop-opacity="1"/><stop offset=".72" stop-color="#fff" stop-opacity=".9"/><stop offset="1" stop-color="#fff" stop-opacity=".25"/>
+      </linearGradient>
+      <mask id="bandmask"><rect x="0" y="0" width="400" height="260" fill="url(#bandfade)"/></mask>
+    </defs>
+    <g filter="url(#paint)" mask="url(#bandmask)">
+      <path class="b" style="fill:var(--w1)" d="M-12 22 C70 12 170 30 262 18 S372 10 414 20 L414 58 C340 66 250 52 160 62 S40 66 -12 58 Z"/>
+      <path class="b" style="fill:var(--w2)" opacity=".85" d="M-12 74 C80 66 160 82 250 72 S360 64 414 74 L414 106 C330 114 240 102 150 110 S50 114 -12 108 Z"/>
+      <path class="b" style="fill:var(--w3)" opacity=".75" d="M-12 122 C90 116 180 130 270 120 S370 114 414 122 L414 150 C320 158 230 146 140 154 S40 158 -12 152 Z"/>
+    </g>
   </svg>
 </div>
 <main>
@@ -914,7 +932,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="fam-status" id="fb-status" hidden><i></i></div>
     </div>
     <div class="field"><span class="lbl">Theme</span>
-      <div class="seg seg3" id="s-style"><button data-sty="wash">Watercolour</button><button data-sty="sharp">Sharp</button><button data-sty="none">No theme</button></div>
+      <div class="seg seg3" id="s-style"><button data-sty="wash">Watercolour</button><button data-sty="sharp">Classic</button><button data-sty="none">No theme</button></div>
       <div id="s-opts" style="margin-top:12px"></div>
     </div>
     <div class="field"><span class="lbl">Appearance</span>
@@ -1134,24 +1152,42 @@ const PALETTES=[
   {id:'navy',name:'Navy',accent:'#23406F',bg:'#F5F7FA',w:['#A8BAD6','#C7D1E0','#B3C8C6'],wash:.4,ink:'#1C2230',muted:'#5C6575',line:'#E2E7EE',primary:'#1C2230'},
   {id:'stone',name:'Stone',accent:'#5E5A47',bg:'#F7F6F2',w:['#D5CFBF','#C5CCBA','#E0D6C4'],wash:.45,ink:'#25231F',muted:'#69655B',line:'#E8E4DB',primary:'#25231F'}
 ];
+// Classic theme colours (replaced Sharp's bright colours in v1.11.0): muted, classic shades, plus a custom colour from the phone's colour wheel
 const SHARP=[
-  {id:'blue',name:'Blue',c:'#2F5BD3'},{id:'red',name:'Red',c:'#D23A3A'},{id:'green',name:'Green',c:'#2E8B57'},
-  {id:'orange',name:'Orange',c:'#DB6A1C'},{id:'purple',name:'Purple',c:'#7B4FC9'},{id:'pink',name:'Pink',c:'#CF437C'},
-  {id:'teal',name:'Teal',c:'#13877F'},{id:'black',name:'Black',c:'#1B1E23'}
+  {id:'slate',name:'Slate',c:'#46607F'},{id:'navy',name:'Navy',c:'#233A5E'},{id:'sage',name:'Sage',c:'#4F735C'},
+  {id:'teal',name:'Teal',c:'#2C6B68'},{id:'plum',name:'Plum',c:'#6F4766'},{id:'rose',name:'Rose',c:'#9A4D63'},
+  {id:'clay',name:'Terracotta',c:'#9C5235'},{id:'ochre',name:'Ochre',c:'#7D6420'},{id:'graphite',name:'Graphite',c:'#3B3F45'}
 ];
+const OLD_SHARP={blue:'slate',red:'rose',green:'sage',orange:'clay',purple:'plum',pink:'rose',black:'graphite'};
+// deepen a too-light custom colour until text and buttons in it stay readable on white (WCAG 4.5:1)
+function readable(hx){
+  let c=(String(hx||'').match(/^#?([0-9a-f]{6})$/i)||[,'46607F'])[1],r=parseInt(c.slice(0,2),16),g=parseInt(c.slice(2,4),16),b=parseInt(c.slice(4,6),16);
+  const L=(r,g,b)=>{const f=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)};return .2126*f(r)+.7152*f(g)+.0722*f(b)};
+  for(let i=0;i<40&&1.05/(L(r,g,b)+.05)<4.5;i++){r*=.93;g*=.93;b*=.93;}
+  return '#'+[r,g,b].map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
+}
+function classicAccent(P){if(P.sharp==='custom')return readable(P.custom);return (SHARP.find(x=>x.id===P.sharp)||SHARP[0]).c;}
+function stylePal(P,pal){
+  if(P.style==='sharp'){const c=classicAccent(P);return {accent:c,bg:'#FFFFFF',ink:'#262A31',muted:'#6B7079',line:'#E7E8EB',primary:c,w:pal.w,wash:0};}
+  if(P.style==='none')return {accent:'#2F343B',bg:'#F6F7F9',w:pal.w,wash:0};
+  return pal;
+}
 const FONTS=[
-  {id:'native',name:'Native',desc:'Your phone’s own',body:'-apple-system,BlinkMacSystemFont,system-ui,"Segoe UI",Roboto,sans-serif',head:null,hw:700,hs:1,hls:'0'},
+  {id:'sfround',name:'Calm',desc:'Soft and rounded',body:'ui-rounded,\"SF Pro Rounded\",Nunito,system-ui,sans-serif',head:null,hw:600,hs:1,hls:'0'},
+  {id:'native',name:'Native',desc:'Your phone’s own',body:'-apple-system,BlinkMacSystemFont,system-ui,\"Segoe UI\",Roboto,sans-serif',head:null,hw:500,hs:1,hls:'0'},
+  {id:'news',name:'Editorial',desc:'Light serif headings',body:'-apple-system,BlinkMacSystemFont,system-ui,\"Segoe UI\",Roboto,sans-serif',head:'Newsreader,Georgia,serif',sub:'Newsreader,Georgia,serif',subStyle:'italic',hw:400,hs:1.06,hls:'-.01em'},
   {id:'clean',name:'Soft',desc:'Serif headings',body:'Figtree,system-ui,sans-serif',head:'Fraunces,Georgia,serif',sub:'Fraunces,Georgia,serif',subStyle:'italic',hw:600,hs:1,hls:'-.02em'},
   {id:'simple',name:'Simple',desc:'Friendly sans',body:'Figtree,system-ui,sans-serif',head:null,hs:1,hls:'-.02em'},
-  {id:'rounded',name:'Rounded',desc:'Soft and round',body:'Nunito,system-ui,sans-serif',head:null,hs:1,hls:'-.01em'},
-  {id:'classic',name:'Classic',desc:'Bookish serif',body:'Lora,Georgia,serif',head:null,hs:1,hls:'-.01em'},
+  {id:'rounded',name:'Friendly',desc:'Round and bubbly',body:'Nunito,system-ui,sans-serif',head:null,hs:1,hls:'-.01em'},
+  {id:'classic',name:'Bookish',desc:'Book-style serif',body:'Lora,Georgia,serif',head:null,hs:1,hls:'-.01em'},
   {id:'elegant',name:'Elegant',desc:'Grand serif headings',body:'Figtree,system-ui,sans-serif',head:'"Playfair Display",Georgia,serif',hs:1.02,hls:'-.01em'},
   {id:'hand',name:'Handwritten',desc:'Script headings',body:'Nunito,system-ui,sans-serif',head:'Caveat,"Segoe Print",cursive',hs:1.3,hls:'0'}
 ];
-if(!state.prefs)state.prefs={palette:BRAND.palette,font:'native',mode:'light'};
-function fixPrefs(P){if(!P.style)P.style=P.palette==='plain'?'none':'wash';if(!P.palette||P.palette==='plain')P.palette='sky';if(!P.sharp)P.sharp='blue';return P;}
+if(!state.prefs)state.prefs={palette:BRAND.palette,font:'sfround',mode:'light'};
+function fixPrefs(P){if(!P.style)P.style=P.palette==='plain'?'none':'wash';if(!P.palette||P.palette==='plain')P.palette='sky';if(!P.sharp)P.sharp='slate';if(OLD_SHARP[P.sharp])P.sharp=OLD_SHARP[P.sharp];return P;}
 fixPrefs(state.prefs);
 if(!state.prefs.look2){state.prefs.look2=1;if(state.prefs.font==='clean')state.prefs.font='native';} // v1.10.0 new look: move Soft serif users onto the phone's own font once (Soft is still in Settings)
+if(!state.prefs.look3){state.prefs.look3=1;if(state.prefs.font==='native')state.prefs.font='sfround';} // v1.11.0: Calm (SF Rounded) is the new default
 if(!state.prefs.ts)state.prefs.ts='m';if(!state.prefs.tidy)state.prefs.tidy='off';if(!state.prefs.cel)state.prefs.cel='rabbit';if(!state.prefs.sp)state.prefs.sp='std';
 if(!Array.isArray(state.lists))state.lists=[{id:'home',name:'Home'},{id:'work',name:'Work'},{id:'family',name:'Family'}];
 if(!Array.isArray(state.projects))state.projects=[];
@@ -1163,9 +1199,8 @@ const listName=id=>id===SHARED?'Shared':((state.lists.find(l=>l.id===id)||{}).na
 function applyPrefs(){
   const P=state.prefs,r=document.documentElement;
   let pal=PALETTES.find(x=>x.id===P.palette)||PALETTES[0];
-  if(P.style==='sharp'){const sc=SHARP.find(x=>x.id===P.sharp)||SHARP[0];pal={accent:sc.c,bg:'#FFFFFF',w:pal.w,wash:0};}
-  else if(P.style==='none')pal={accent:'#2F343B',bg:'#F6F7F9',w:pal.w,wash:0};
-  r.setAttribute('data-style',P.style);
+  pal=stylePal(P,pal);
+  r.setAttribute('data-style',P.style);r.setAttribute('data-wash',P.washv||'band');
   const f=FONTS.find(x=>x.id===P.font)||FONTS[0];
   r.style.setProperty('--accent-base',pal.accent);r.style.setProperty('--bg-l',pal.bg);
   pal.w.forEach((c,i)=>r.style.setProperty('--w'+(i+1),c));r.style.setProperty('--wash-l',pal.wash);
@@ -2095,7 +2130,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.10.0';
+const APPV='1.11.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2381,7 +2416,7 @@ function renderWeek(){
   const t0=today(),w0=ui.week,w6=addDays(w0,6),a=parse(w0),b=parse(w6),thisW=w0===mondayOf(t0);
   const rel=thisW?'This week':w0===addDays(mondayOf(t0),7)?'Next week':w0===addDays(mondayOf(t0),-7)?'Last week':'Week of '+a.getDate()+' '+MONTHS[a.getMonth()].slice(0,3);
   const range=`${a.getDate()} ${MONTHS[a.getMonth()].slice(0,3)} – ${b.getDate()} ${MONTHS[b.getMonth()].slice(0,3)}${b.getFullYear()!==new Date().getFullYear()?' '+b.getFullYear():''}`;
-  let h=`<header class="head"><h1>${rel}</h1>
+  let h=`<header class="head whd"><h1>${rel}</h1>
     <div class="date-row"><div class="date whead-sub">${range}</div>
     ${thisW?'':`<button class="pill sm" data-act="wtoday">This week</button>`}
     <button class="navbtn" data-act="wprev" aria-label="Previous week">${I.left}</button>
@@ -3102,8 +3137,7 @@ var widgetTimer=null,widgetLast='';
 function widgetData(){
   const t0=today(),P=state.prefs||{},live=state.tasks.filter(t=>!archivedJob(t));
   let pal=PALETTES.find(x=>x.id===P.palette)||PALETTES[0];
-  if(P.style==='sharp'){const sc=SHARP.find(x=>x.id===P.sharp)||SHARP[0];pal={accent:sc.c,bg:'#FFFFFF',w:pal.w,wash:0};}
-  else if(P.style==='none')pal={accent:'#2F343B',bg:'#F6F7F9',w:pal.w,wash:0};
+  pal=stylePal(P,pal);
   const days=[];
   for(let i=0;i<8;i++){const d=addDays(t0,i);
     days.push({d,jobs:live.filter(t=>occurs(t,d)).sort((a,b)=>(isDone(a,d)-isDone(b,d))||byTime(a,b)).slice(0,14)
@@ -3114,7 +3148,7 @@ function widgetData(){
   return {v:1,days,marks,
     dump:live.filter(undatedJob).length,
     late:live.filter(t=>!isRep(t)&&t.date&&t.date<t0&&!t.done).length,
-    theme:{accent:pal.accent,bg:pal.bg,ink:pal.ink||'',muted:pal.muted||'',line:pal.line||'',w:pal.w,wash:pal.wash,mode:P.mode||'auto',font:P.font||'native'}};
+    theme:{accent:pal.accent,bg:pal.bg,ink:pal.ink||'',muted:pal.muted||'',line:pal.line||'',w:pal.w,wash:pal.wash,mode:P.mode||'auto',font:P.font||'sfround'}};
 }
 async function widgetSync(){
   if(!WB)return;
@@ -3142,8 +3176,15 @@ if(WB){
 const st=document.getElementById('settings');
 function renderOpts(){
   const P=state.prefs,el=document.getElementById('s-opts');
-  if(P.style==='wash')el.innerHTML='<div class="themes">'+PALETTES.map(p=>`<button class="theme" data-pal="${p.id}"><span class="pv" style="background:radial-gradient(60% 70% at 20% 25%,${p.w[0]},transparent 70%),radial-gradient(55% 60% at 85% 20%,${p.w[1]},transparent 70%),radial-gradient(60% 70% at 75% 95%,${p.w[2]},transparent 70%),${p.bg}"><i style="background:${p.accent}"></i></span>${p.name}</button>`).join('')+'</div>';
-  else if(P.style==='sharp')el.innerHTML='<div class="themes" style="grid-template-columns:repeat(4,1fr)">'+SHARP.map(p=>`<button class="theme" data-sharp="${p.id}"><span class="pv sharp-pv" style="border:2px solid ${p.c}"><b style="color:${p.c}">Aa</b></span>${p.name}</button>`).join('')+'</div>';
+  if(P.style==='wash')el.innerHTML='<div class="themes">'+PALETTES.map(p=>`<button class="theme" data-pal="${p.id}"><span class="pv" style="background:radial-gradient(60% 70% at 20% 25%,${p.w[0]},transparent 70%),radial-gradient(55% 60% at 85% 20%,${p.w[1]},transparent 70%),radial-gradient(60% 70% at 75% 95%,${p.w[2]},transparent 70%),${p.bg}"><i style="background:${p.accent}"></i></span>${p.name}</button>`).join('')+'</div>'
+    +`<div class="seg" style="grid-template-columns:1fr 1fr;margin-top:12px"><button data-washv="band"${(P.washv||'band')==='band'?' class="on"':''}>Painted band</button><button data-washv="full"${P.washv==='full'?' class="on"':''}>Full wash</button></div>`;
+  else if(P.style==='sharp'){const cu=P.sharp==='custom';
+    el.innerHTML='<div class="cswatches">'+SHARP.map(p=>`<button class="cs" data-sharp="${p.id}" style="--c:${p.c}"><i></i>${p.name}</button>`).join('')
+      +`<label class="cs custom" data-csw="custom" style="--c:${cu?readable(P.custom):'#888'}"><i></i>Custom<input type="color" id="s-custom" value="${readable(P.custom||'#46607F')}" aria-label="Pick your own colour"></label></div>`;
+    el.querySelectorAll('.cs').forEach(b=>b.classList.toggle('on',(b.dataset.sharp||b.dataset.csw)===P.sharp));
+    const ci=el.querySelector('#s-custom');
+    const pick=()=>{state.prefs.sharp='custom';state.prefs.custom=ci.value;applyPrefs();const c=el.querySelector('.cs.custom');c.style.setProperty('--c',readable(ci.value));el.querySelectorAll('.cs').forEach(b=>b.classList.toggle('on',b===c));};
+    ci.addEventListener('input',pick);ci.addEventListener('change',()=>{pick();save();});}
   else el.innerHTML='<div class="none-note">A plain, neutral look with no colour theme.</div>';
 }
 document.getElementById('s-fonts').innerHTML=FONTS.map(f=>`<button class="font" data-font="${f.id}"><span class="aa" style="font-family:${(f.head||f.body).replace(/"/g,'&quot;')};font-size:${Math.round(26*f.hs)}px">Aa</span><span class="nm" style="font-family:${f.body.replace(/"/g,'&quot;')}">${f.name}<small>${f.desc}</small></span></button>`).join('');
@@ -3216,9 +3257,10 @@ document.getElementById('fb-send').addEventListener('click',async()=>{
 });
 function closeSettings(){st.classList.remove('open');st.setAttribute('aria-hidden','true');}
 st.addEventListener('click',e=>{
-  const b=e.target.closest('[data-sact],button[data-pal],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-mstyle],button[data-mpick],button[data-mjobs],button[data-bdr],button[data-projs]');if(!b)return;
+  const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-mstyle],button[data-mpick],button[data-mjobs],button[data-bdr],button[data-projs]');if(!b)return;
   if(b.dataset.sact){closeSettings();return;}
   if(b.dataset.pal)state.prefs.palette=b.dataset.pal;
+  if(b.dataset.washv)state.prefs.washv=b.dataset.washv;
   if(b.dataset.sharp)state.prefs.sharp=b.dataset.sharp;
   if(b.dataset.sty)state.prefs.style=b.dataset.sty;
   if(b.dataset.font)state.prefs.font=b.dataset.font;

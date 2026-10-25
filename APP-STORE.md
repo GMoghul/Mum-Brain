@@ -54,6 +54,12 @@ The live web app on GitHub Pages (`main`) is not affected.
    - Flatter cards: a hairline edge instead of soft drop shadows; lighter shadow on the tab bar and + button.
    - Progress bar drawn as the icon's three rows (lilac, blue, teal), in the app and the medium widget. Sharp style keeps its plain bar.
    - Widget: plain white background in light mode (no theme colour or wash), dark in dark mode; phone's own font unless the app is on Soft (the app now sends `theme.font`).
+11. **Look, round two (v1.11.0, 25 Oct 2026):**
+   - Fonts: **Calm** (SF Rounded, `ui-rounded`; Nunito on other phones) is the new default, **Native** now has lighter (500) headings, **Editorial** = light Newsreader headings with an italic slogan. Old Lora "Classic" font renamed **Bookish**; Nunito "Rounded" renamed **Friendly**. Anyone on Native moves to Calm once (`prefs.look3`).
+   - Headings: Brain dump 36, Today / Week / Month (and projects) all 28.
+   - **Classic theme replaces Sharp** (internal id still `sharp`, so nothing breaks): white page, soft grey sections (#F4F4F6), slate text, no outlines or shadows. 9 muted colours (old Sharp colours map across) plus **Custom** (the phone's own colour wheel); a too-light custom colour is deepened until it reads at 4.5:1 on white.
+   - Watercolour has two versions (Settings › Theme, under the palettes): **Painted band** (default; three brushstrokes across the top, like the icon rows, scrolling away with the page) and **Full wash** (the old wash with painted edges, a tide line and paper grain instead of a heavy blur). `prefs.washv` = band / full.
+   - Widget: greeting in Newsreader italic (Fraunces italic on Soft), "It's Sunday" / "25th October" (small: "25th Oct"), lighter text, follows the app's font. When everything's done or nothing's planned, the medium and large widgets show a centred resting message (tick above the words) and drop the progress bar; the medium widget's left side centres too. Newsreader static Regular/Italic (OFL) added to the widget's fonts.
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)
