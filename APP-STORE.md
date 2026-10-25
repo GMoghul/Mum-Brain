@@ -47,6 +47,13 @@ The live web app on GitHub Pages (`main`) is not affected.
    - **Removing someone moves the family to a new code** (they already know the old one, so that's the only way to really shut them out): the admin's phone sets up a new family with the same people and roles (`meta/rotated`), copies the shared jobs across, leaves each remaining member a scrambled note with the new code in `families/{old}/moves/{uid}` (only that member's sign-in can read it), marks the old family `meta/moved` and clears its jobs. Other phones follow automatically; the removed person's phone sees the move with no note and leaves ("You're no longer in the family list"). The notification server ignores moved families.
    - Shared jobs themselves still work without sign-in (so the online version keeps working). People using the online version don't appear in the member list and aren't moved over when someone is removed.
    - Limitation: deleting and reinstalling the app (or clearing its data) gives the phone a new sign-in, so it rejoins as a new member and the old entry stays in the list. If that was the creator, they lose the creator spot.
+10. **New look (v1.10.0, 25 Oct 2026)** – after a tester said the app "looked AI-built":
+   - Font: new default **Native** (the phone's own font, SF Pro on iPhone). Soft (Fraunces/Figtree) is still in Settings › Font; anyone on Soft is moved to Native once (`prefs.look2`).
+   - Accents taken from the icon: Linen `#6548A8` (icon lilac, deeper), Sky `#3767AE` (icon blue, deeper).
+   - Section and group labels in normal case (no small capitals with wide spacing).
+   - Flatter cards: a hairline edge instead of soft drop shadows; lighter shadow on the tab bar and + button.
+   - Progress bar drawn as the icon's three rows (lilac, blue, teal), in the app and the medium widget. Sharp style keeps its plain bar.
+   - Widget: plain white background in light mode (no theme colour or wash), dark in dark mode; phone's own font unless the app is on Soft (the app now sends `theme.font`).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)

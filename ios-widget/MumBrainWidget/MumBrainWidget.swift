@@ -30,6 +30,7 @@ struct WTheme: Codable {
     let w: [String]
     let wash: Double
     let mode: String
+    var font: String? = nil   // the app's font choice (v1.10.0); "clean" = Soft serif
 }
 
 struct WData: Codable {
@@ -50,7 +51,7 @@ enum Store {
         return try? JSONDecoder().decode(WData.self, from: d)
     }
 
-    static let defaultTheme = WTheme(accent: "#5F52B0", bg: "#FAF7F2", ink: "#23201C", muted: "#6B645B",
+    static let defaultTheme = WTheme(accent: "#6548A8", bg: "#FAF7F2", ink: "#23201C", muted: "#6B645B",
                                      line: "#ECE5DA", w: ["#D9CDF4", "#F4D7C7", "#CFE2D3"], wash: 0.5, mode: "auto")
 
     // Shown in the widget gallery before the app has sent anything
@@ -123,21 +124,43 @@ func palette(_ t: WTheme, scheme: ColorScheme) -> Palette {
     if dark {
         return Palette(bg: Color(hex: "#131519"), ink: Color(hex: "#ECEEF1"), muted: Color(hex: "#8C929B"),
                        line: Color(hex: "#2B2F36"), accent: mixed(t.accent, "#FFFFFF", 0.68),
-                       w: t.w.map { Color(hex: $0) }, wash: t.wash * 0.3)
+                       w: t.w.map { Color(hex: $0) }, wash: 0)
     }
-    return Palette(bg: Color(hex: t.bg),
+    // v1.10.0: plain white background (no theme colour or wash), like Dawn
+    return Palette(bg: Color.white,
                    ink: Color(hex: t.ink.isEmpty ? "#1B1E23" : t.ink),
                    muted: Color(hex: t.muted.isEmpty ? "#6E747D" : t.muted),
                    line: Color(hex: t.line.isEmpty ? "#E4E7EB" : t.line),
                    accent: Color(hex: t.accent),
-                   w: t.w.map { Color(hex: $0) }, wash: t.wash)
+                   w: t.w.map { Color(hex: $0) }, wash: 0)
 }
 
+// The phone's own font (SF Pro), unless the app is set to Soft (serif headings)
 enum F {
-    static func head(_ size: CGFloat) -> Font { .custom("Fraunces-SemiBold", size: size) }
-    static func sub(_ size: CGFloat) -> Font { .custom("Fraunces-Italic", size: size) }
-    static func body(_ size: CGFloat) -> Font { .custom("Figtree-Medium", size: size) }
-    static func bold(_ size: CGFloat) -> Font { .custom("Figtree-SemiBold", size: size) }
+    static var serif: Bool { Store.load()?.theme.font == "clean" }
+    static func head(_ size: CGFloat) -> Font { serif ? .custom("Fraunces-SemiBold", size: size) : .system(size: size, weight: .bold) }
+    static func sub(_ size: CGFloat) -> Font { serif ? .custom("Fraunces-Italic", size: size) : .system(size: size, weight: .regular) }
+    static func body(_ size: CGFloat) -> Font { serif ? .custom("Figtree-Medium", size: size) : .system(size: size, weight: .regular) }
+    static func bold(_ size: CGFloat) -> Font { serif ? .custom("Figtree-SemiBold", size: size) : .system(size: size, weight: .semibold) }
+}
+
+// Progress bar drawn as the icon's three rows (lilac, blue, teal)
+struct RowsBar: View {
+    let frac: CGFloat
+    let track: Color
+    static let bands = [Color(hex: "#B8A3E8"), Color(hex: "#93B6EE"), Color(hex: "#9DD3CE")]
+    var body: some View {
+        GeometryReader { g in
+            VStack(spacing: 1.2) {
+                ForEach(0..<3, id: \.self) { i in
+                    ZStack(alignment: .leading) {
+                        RoundedRectangle(cornerRadius: 1).fill(track)
+                        RoundedRectangle(cornerRadius: 1).fill(RowsBar.bands[i]).frame(width: g.size.width * frac)
+                    }
+                }
+            }
+        }
+    }
 }
 
 let starColor = Color(hex: "#F2C14E")
@@ -347,13 +370,8 @@ struct ProgressLine: View {
                 .foregroundColor(p.muted)
         } else {
         VStack(alignment: .leading, spacing: 4) {
-            GeometryReader { g in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(p.line)
-                    Capsule().fill(p.accent).frame(width: g.size.width * frac)
-                }
-            }
-            .frame(height: 5)
+            RowsBar(frac: frac, track: p.line)
+                .frame(height: 7)
             Text("\(e.doneCount) of \(total) done")
                 .font(F.body(11))
                 .foregroundColor(p.muted)
