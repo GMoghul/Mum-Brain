@@ -120,6 +120,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .list{list-style:none;margin:0;padding:0;background:var(--surface);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
 .task{display:flex;align-items:flex-start;gap:12px;padding:calc(14px * var(--sp)) 12px calc(14px * var(--sp)) 14px;cursor:pointer;position:relative}
 .task+.task::before{content:"";position:absolute;top:0;left:52px;right:0;height:1px;background:var(--line)}
+.grp{padding:calc(12px * var(--sp)) 14px 2px;font-size:calc(11.5px * var(--ts));font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);position:relative}
+.grp:not(:first-child){margin-top:4px;border-top:1px solid var(--line)}
 .check{flex:none;width:calc(26px * var(--ts));height:calc(26px * var(--ts));border-radius:50%;border:2px solid var(--c);display:grid;place-items:center;margin-top:-1px;transition:background .15s}
 /* bigger tap areas without changing the look (Apple suggests at least 44pt) */
 .check,.sec-h button,.wempty button,.more,.lrow button:not(.pswitch){position:relative}
@@ -2070,13 +2072,18 @@ function row(t,o){
     ${tail}
   </li>`;
 }
+const GRP={time:'At a set time',imp:'Important',rest:'Everything else'};
 function section(title,items,o,extra){
   if(!items.length)return'';
-  return `<section class="sec"><div class="sec-h"><h2>${title}</h2>${extra||`<span class="count">${items.length}</span>`}</div><ul class="list">${items.map(t=>row(t,o)).join('')}</ul></section>`;
+  // o.split names the pinned group a job sits in; a small label shows where each group starts
+  // (only when there's more than one), so it's clear why a job won't drag past it.
+  const K=o.split?items.map(o.split):[],show=new Set(K.filter(Boolean)).size>1;let last=null;
+  const rows=items.map((t,i)=>{let lab='';if(show&&K[i]&&K[i]!==last)lab=`<li class="grp">${GRP[K[i]]}</li>`;if(K[i])last=K[i];return lab+row(t,o);}).join('');
+  return `<section class="sec"><div class="sec-h"><h2>${title}</h2>${extra||`<span class="count">${items.length}</span>`}</div><ul class="list">${rows}</ul></section>`;
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.9.3';
+const APPV='1.9.4';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2149,7 +2156,7 @@ function renderDump(){
   if(!undated.length&&!sched.length&&!reps.length&&!done.length){
     h+=`<div class="empty"><strong>Nothing here yet${ui.filter===STAR?' starred':ui.filter?' in '+esc(listName(ui.filter)):''}</strong>Type anything on your mind above. You can give it a day, a colour or a repeat whenever you like.</div>`;
   }
-  h+=section('No day yet',undated,{showDay:false,drag:undated.length>1},undated.length>1?`<span class="count"><span class="hint">Hold a job to move it · </span>${undated.length}</span>`:'');
+  h+=section('No day yet',undated,{showDay:false,drag:undated.length>1,split:t=>t.starred?'imp':'rest'},undated.length>1?`<span class="count"><span class="hint">Hold a job to move it · </span>${undated.length}</span>`:'');
   if(sched.length){
     const open=ui.showSched;
     h+=`<section class="sec"><div class="sec-h"><h2>Scheduled (${sched.length})</h2><button data-act="togsched" aria-expanded="${open}">${open?'Hide':'Show'}</button></div>${open?`<ul class="list">${sched.map(t=>row(t,{showDay:true})).join('')}</ul>`:''}</section>`;
@@ -2196,7 +2203,7 @@ function renderProject(p){
   if(st.total&&st.done===st.total)h+=`<div class="pfin"><span><b>All done!</b>Archive it now – you can use it again any time.</span><button data-act="parchive" data-id="${p.id}">Archive</button></div>`;
   h+=`<div class="quick"><input id="quick" placeholder="Add a job to ${esc(p.name)}…" autocomplete="off" enterkeyhint="done" aria-label="Add a job to ${esc(p.name)}"><button data-act="quick" aria-label="Add">${I.plus}</button></div>`;
   if(!J.length)h+=`<div class="empty"><strong>Nothing in here yet</strong>Add every job this needs above. Give each one a day when you're ready and it'll show on Today and Week with this project's tag.</div>`;
-  h+=section('No day yet',undated,{showDay:false,inProj:true,drag:undated.length>1},undated.length>1?`<span class="count"><span class="hint">Hold a job to move it · </span>${undated.length}</span>`:'');
+  h+=section('No day yet',undated,{showDay:false,inProj:true,drag:undated.length>1,split:t=>t.starred?'imp':'rest'},undated.length>1?`<span class="count"><span class="hint">Hold a job to move it · </span>${undated.length}</span>`:'');
   if(sched.length)h+=`<section class="sec"><div class="sec-h"><h2>Scheduled (${sched.length})</h2><button data-act="togsched" aria-expanded="${ui.showSched}">${ui.showSched?'Hide':'Show'}</button></div>${ui.showSched?`<ul class="list">${sched.map(t=>row(t,{showDay:true,inProj:true})).join('')}</ul>`:''}</section>`;
   if(reps.length)h+=`<section class="sec"><div class="sec-h"><h2>Repeating (${reps.length})</h2><button data-act="togrep" aria-expanded="${ui.showRep}">${ui.showRep?'Hide':'Show'}</button></div>${ui.showRep?`<ul class="list">${reps.map(t=>row(t,{ctx:occurs(t,t0)?t0:null,inProj:true})).join('')}</ul>`:''}</section>`;
   if(done.length)h+=`<section class="sec"><div class="sec-h"><h2>Done (${done.length})</h2><button data-act="showdone">${ui.showDone?'Hide':'Show'}</button></div>${ui.showDone?`<ul class="list">${done.map(t=>row(t,{showDay:true,inProj:true})).join('')}</ul>`:''}</section>`;
@@ -2314,7 +2321,7 @@ function renderToday(){
   // more than 3 old jobs fold to one line, so today's jobs come first
   if(overdue.length>3&&!ui.showEarlier)h+=`<button class="earlier-line" data-act="togearlier" aria-expanded="false"><b>${overdue.length} still to do from earlier</b><span>Show</span></button>`;
   else h+=section('Still to do from earlier',overdue,{showDay:true,back:true},overdue.length>3?`<button class="earlier-btn" data-act="togearlier" aria-expanded="true">Hide</button>`:'');
-  if(list.length)h+=section(isT?'Today':'Jobs',list,{ctx:dayS,drag:list.length>1,dg:t=>`${isDone(t,dayS)?1:0}${t.starred?1:0}${t.time||''}`},list.length>1?`<span class="count"><span class="hint">Hold a job to move it · </span>${list.length}</span>`:'');
+  if(list.length)h+=section(isT?'Today':'Jobs',list,{ctx:dayS,drag:list.length>1,dg:t=>`${isDone(t,dayS)?1:0}${t.starred?1:0}${t.time||''}`,split:t=>isDone(t,dayS)?null:t.time?'time':t.starred?'imp':'rest'},list.length>1?`<span class="count"><span class="hint">Hold a job to move it · </span>${list.length}</span>`:'');
   if(list.length)h+=`<button class="addslot" data-act="addto" data-date="${dayS}"><span>Add something for ${isT?'today':'this day'}</span><i>${I.plus}</i></button>`;
   const left=isT?overdue.length+list.filter(t=>!isRep(t)&&!t.done).length:0;
   if(left)h+=`<button class="roll" data-act="roll">${I.right}Move ${left} unfinished to tomorrow</button>`;
@@ -2715,7 +2722,7 @@ function begin(s){
   if(sw&&!sw.on)sw=null;
   const X=s.X;s.sc=scroller(s.el,X);s.st0=scTop(s.sc,X);
   const R=list.map(x=>x.getBoundingClientRect()),a=X?'left':'top',b=X?'right':'bottom';
-  Object.assign(s,{list,from,to:from,lo,hi,tops:R.map(r=>r[a]+s.st0),hs:R.map(r=>X?r.width:r.height),gap:list.length>1?Math.max(0,R[1][a]-R[0][b]):0});
+  Object.assign(s,{list,from,to:from,lo,hi,tops:R.map(r=>r[a]+s.st0),hs:R.map(r=>X?r.width:r.height),gap:list.length>1?Math.max(0,Math.min(...R.slice(1).map((r,i)=>r[a]-R[i][b]))):0});
   list.forEach(x=>{if(x!==s.el)x.classList.add('drag-shift');});
   s.el.classList.add('dragging');document.body.classList.add('is-dragging');
   if(navigator.vibrate)try{navigator.vibrate(12);}catch(e){}
