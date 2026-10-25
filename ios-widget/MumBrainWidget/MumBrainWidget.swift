@@ -285,6 +285,30 @@ struct JobList: View {
     }
 }
 
+// Medium widget list: up to `count` jobs, with "+N more" pinned to the bottom so it sits level with the job count on the left
+struct MediumJobs: View {
+    let e: DayEntry
+    let p: Palette
+    let count: Int
+    var body: some View {
+        let shown = Array(e.jobs.prefix(count))
+        VStack(alignment: .leading, spacing: 0) {
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(shown) { j in
+                    Row(job: j, p: p, size: 11.5)
+                }
+            }
+            Spacer(minLength: 4)
+            if e.jobs.count > shown.count {
+                Text("+\(e.jobs.count - shown.count) more")
+                    .font(F.body(11))
+                    .foregroundColor(p.muted)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+}
+
 struct Message: View {
     let e: DayEntry
     let p: Palette
@@ -480,8 +504,17 @@ struct MediumView: View {
                     Message(e: e, p: p, size: 13)
                     Spacer(minLength: 0)
                 } else {
-                    JobList(e: e, p: p, limit: 5, size: 11.5, spacing: 6)
-                    Spacer(minLength: 0)
+                    // as many jobs as fit (6 at normal text size), fewer if the iPhone's text size is larger
+                    if #available(iOS 16.0, *) {
+                        ViewThatFits(in: .vertical) {
+                            MediumJobs(e: e, p: p, count: 6)
+                            MediumJobs(e: e, p: p, count: 5)
+                            MediumJobs(e: e, p: p, count: 4)
+                            MediumJobs(e: e, p: p, count: 3)
+                        }
+                    } else {
+                        MediumJobs(e: e, p: p, count: 6)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)

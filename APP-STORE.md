@@ -27,6 +27,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - The app sends the next 8 days of jobs to the App Group `group.com.gmoghul.mumbrainsorted` via its own `WidgetBridge` plugin (registered in `MainViewController`); the widget turns over at midnight by itself.
    - Apple side: App Group created and added to the app's App ID; widget App ID `com.gmoghul.mumbrainsorted.widget` with the same group.
    - The archive is unsigned, so the build gives the app and widget a placeholder signature carrying the App Group before the real signing. Run the workflow by hand with mode `check` to build and sign without uploading.
+   - Medium widget (v1.9.6, 25 Oct 2026): up to 6 jobs, with "+N more" at the bottom level with the job count; drops to 5, 4 or 3 jobs if the iPhone's text size is larger so nothing gets cut off.
 7. **Shared list notifications (v1.7.0):** when someone adds, changes, ticks off or removes a shared job, everyone else in the family gets a notification showing exactly what changed (e.g. **Dentist** · *Changed by Sam* · When: Fri 30 Oct · 3 pm → Mon 2 Nov · 4 pm).
    - One notification per job, grouped together on the phone. Quick edits to the same job are gathered for 6 seconds first, so one edit = one notification. Your own changes never notify you.
    - Settings › Family sharing: **Your name** (shown to the family) and **Sound / Quiet / Off** (Quiet = silently into the notification list). The iPhone's own settings (Focus, silent, Notifications) always apply.
