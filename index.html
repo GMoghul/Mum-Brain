@@ -818,6 +818,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="field">
         <span class="lbl">Who's doing it</span>
         <div class="row" id="f-own"></div>
+        <div class="newlist" id="own-add" hidden><input class="f-date" id="own-in" maxlength="24" placeholder="Their name, e.g. Grandma" autocomplete="off" enterkeyhint="done" aria-label="Their name"><button class="opt on" id="own-ok">Add</button></div>
         <div class="rep-hint" id="own-hint"></div>
       </div>
     </div>
@@ -1251,9 +1252,15 @@ function famMembers(){
   const see=(d,n,at)=>{if(!d||d===me)return;if(!m[d]||(at||0)>=m[d].at)m[d]={d,n:n||(m[d]&&m[d].n)||'',at:at||0};};
   for(const t of state.tasks){if(t.list!==SHARED)continue;see(t.bd,t.by,t.bat);see(t.ebd,t.eby,t.eat);see(t.own,t.ownN,0);}
   for(const x of Object.values(famMem))if(x.name)see(x.d,x.name,Infinity);
-  return Object.values(m).filter(x=>x.n).sort((a,b)=>a.n.localeCompare(b.n));
+  const L=Object.values(m).filter(x=>x.n),real=new Set(L.filter(x=>!isTyped(x.d)).map(x=>x.n.toLowerCase()));
+  const mine=myName().toLowerCase();
+  return L.filter(x=>!isTyped(x.d)||(!real.has(x.n.toLowerCase())&&x.n.toLowerCase()!==mine)).sort((a,b)=>a.n.localeCompare(b.n));
 }
-const ownerName=t=>t.own===devId()?'You':(t.ownN||'Someone');
+/* A job can also be given to someone by typing their name (own = 'n:' + name), for anyone who hasn't joined yet
+   or isn't on the app at all. If they later join with that name, their phone treats it as theirs. */
+const isTyped=d=>typeof d==='string'&&d.slice(0,2)==='n:';
+const ownIsMe=t=>!!t.own&&(t.own===devId()||(isTyped(t.own)&&!!myName()&&t.own.slice(2)===myName().toLowerCase()));
+const ownerName=t=>ownIsMe(t)?'You':(t.ownN||'Someone');
 function syncShared(){
   if(!SHARING&&!sharedCol)return;
   // every shared add, edit or delete is queued, connected or not
@@ -1469,7 +1476,7 @@ async function memStart(fs,db,code,fid,key){
     await Promise.all(qs.docs.map(async x=>{const v=x.data()||{};
       m[x.id]={uid:x.id,name:((await unlockStr(key,'member:'+x.id,v.n))||'').trim(),role:v.role==='admin'?'admin':'member',creator:!!v.creator,d:v.d||'',at:v.at||0};}));
     if(!same())return;
-    famMem=m;paintMembers();
+    famMem=m;paintMembers();if(draft&&draft.list===SHARED)paintShareFields();
   },()=>{}));
   // an admin removed someone: follow the family to its new code (or, if it was you, step out)
   memUnsubs.push(fs.onSnapshot(P('meta','moved'),async s=>{
@@ -2083,7 +2090,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.9.4';
+const APPV='1.9.5';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2431,6 +2438,7 @@ function openEditor(id,defaults){
   document.getElementById('ed-h').textContent=isNew?'New job':'Edit job';
   fDel.style.display=isNew?'none':'';
   const c=draft.color||'';setMore(!!c&&c[0]==='#');newlist.hidden=true;clIn.value='';paintCl();fDel.classList.remove('arm');fDel.textContent='Delete';
+  document.getElementById('own-add').hidden=true;document.getElementById('own-in').value='';
   const fw=document.getElementById('f-who'),wl=isNew?'':whoLines(t);fw.innerHTML=wl;fw.hidden=!wl;
   paint();
   ed.querySelector('.sheet').scrollTop=0; // always open at the top, not where the last job was left
@@ -2501,14 +2509,25 @@ function paintShareFields(){
   document.getElementById('due-hint').textContent=draft.due
     ?(NATIVE?'Whoever is doing it gets a reminder the morning before.':'Shows on the job so everyone knows when it needs doing.')
     :'Optional. Handy for jobs with a cut-off, like a form or a payment.';
-  const me=devId(),opts=[['','Anyone'],[me,'Me']].concat(famMembers().map(x=>[x.d,x.n]));
-  if(draft.own&&!opts.some(o=>o[0]===draft.own))opts.push([draft.own,draft.ownN||'Someone']);
-  fOwn.innerHTML=opts.map(([d,n])=>`<button class="opt${(draft.own||'')===d?' on':''}" data-own="${esc(d)}">${esc(n)}</button>`).join('');
+  const me=devId(),mine=ownIsMe(draft),opts=[['','Anyone'],[me,'Me']].concat(famMembers().map(x=>[x.d,x.n]));
+  if(draft.own&&!mine&&!opts.some(o=>o[0]===draft.own))opts.push([draft.own,draft.ownN||'Someone']);
+  fOwn.innerHTML=opts.map(([d,n])=>`<button class="opt${(d===me?mine:(draft.own||'')===d)?' on':''}" data-own="${esc(d)}">${esc(n)}</button>`).join('')
+    +'<button class="opt" data-ownadd="1">+ Someone else</button>';
   document.getElementById('own-hint').textContent=!myName()
     ?'Add your name in Settings › Family sharing so your family can see who a job is with.'
-    :opts.length<3?'Your family appear here once they\u2019ve added or changed a shared job.':'';
+    :opts.length<3?'Everyone in your family shows here once they open the app. Or tap + Someone else to type a name now.':'';
 }
 fDue.addEventListener('change',()=>{draft.due=fDue.value||null;paintShareFields();});
+function ownAdd(){
+  const inp=document.getElementById('own-in'),v=inp.value.trim().slice(0,24);if(!v)return;
+  const lv=v.toLowerCase(),m=famMembers().find(x=>!isTyped(x.d)&&x.n.toLowerCase()===lv);
+  if(m){draft.own=m.d;draft.ownN=m.n;}
+  else if(myName()&&lv===myName().toLowerCase()){draft.own=devId();draft.ownN=myName();}
+  else{draft.own='n:'+lv;draft.ownN=v;}
+  inp.value='';document.getElementById('own-add').hidden=true;paintShareFields();
+}
+document.getElementById('own-ok').addEventListener('click',ownAdd);
+document.getElementById('own-in').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ownAdd();}});
 function closeEditor(){ed.classList.remove('open');ed.setAttribute('aria-hidden','true');draft=null;}
 function commit(){
   draft.title=fTitle.value.trim();draft.note=fNote.value.trim();if(clIn.value.trim())addCl();draft.checklist=(draft.checklist||[]).filter(x=>x.text.trim());draft.time=fTime.value||null;if(!draft.time)draft.alarm='none';
@@ -2538,6 +2557,7 @@ ed.addEventListener('click',e=>{
     paintCl();return;}
   const db=e.target.closest('[data-due]');
   if(db){draft.due=null;paintShareFields();return;}
+  if(e.target.closest('[data-ownadd]')){const a=document.getElementById('own-add');a.hidden=!a.hidden;if(!a.hidden)document.getElementById('own-in').focus();return;}
   const ob=e.target.closest('[data-own]');
   if(ob){const d=ob.dataset.own;if(!d){draft.own=null;draft.ownN=null;}
     else if(d===devId()){draft.own=d;draft.ownN=myName();}
@@ -2987,7 +3007,7 @@ function planNotifs(){
   if(SHARING){
     const[h,m]=morningTime().split(':').map(Number);let k=0;
     for(const t of state.tasks){
-      if(t.list!==SHARED||!t.due||t.done||isRep(t)||(t.own&&t.own!==devId())||k>=DUE_MAX)continue;
+      if(t.list!==SHARED||!t.due||t.done||isRep(t)||(t.own&&!ownIsMe(t))||k>=DUE_MAX)continue;
       const day=addDays(t.due,-1),at=parse(day);at.setHours(h,m,0,0);
       if(at.getTime()<=now+30000)continue;
       out.push({id:DUE_ID+k,title:t.title,body:'Needs doing by tomorrow, '+absDay(t.due),sound:'default',actionTypeId:'job',schedule:{at:new Date(at.getTime()+90000),allowWhileIdle:true},extra:{kind:'due',id:t.id,day:t.due}});k++;
