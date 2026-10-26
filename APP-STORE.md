@@ -71,6 +71,9 @@ The live web app on GitHub Pages (`main`) is not affected.
    - **+ button** (theme accent, purple on Linen / blue on Sky) bottom right of the medium and large widgets: opens Brain dump (`mumbrain://dump`).
    - The wash now sits behind the bottom line itself (job count, "+N more", + button), so the text is always in its middle. `BottomLine` / `WashBand` in the widget.
    - **Tick off from the widget** (iOS 17+): tap a job's circle. `ToggleJobIntent` flips the job in the widget's own copy straight away and adds it to `widgetTicks` in the App Group. The app collects them (`WidgetBridge.takeTicks`) when it opens or comes back to the front, and saves them properly (shared jobs then sync to the family). Tapping a ticked job again unticks it. Older iPhones: tapping just opens the app as before.
+14. **Corner washes (v1.14.0, 26 Oct 2026):**
+   - A third watercolour version, **Corners** (`prefs.washv` = corners), next to Band and Full wash in Settings › Theme. One colour pooled in the top left, a second in the bottom right, the middle left as paper: hard dried edges with a tide line, gentle mottling (pigment amount only, never its colour), a few loose speckles and paper grain. Made to look less like a typical AI/airbrushed wash. SVG `.w-corner`, filters `cw` / `cspeck` / `cgrain`.
+   - Four two-colour themes, shown first under "Corner washes": **Tide** (teal + lilac, matches the icon), **Mist** (soft blue + sage), **Apricot** (peach + sand), **Rosestone** (stone + dusty rose). Picking one switches the wash to Corners; the older palettes sit under "More colours" and work with Corners too.
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)
