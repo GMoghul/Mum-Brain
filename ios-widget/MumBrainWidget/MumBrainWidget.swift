@@ -5,6 +5,7 @@
 import WidgetKit
 import SwiftUI
 import UIKit
+import AppIntents
 
 // MARK: - Data from the app
 
@@ -70,6 +71,52 @@ enum Store {
     }
 }
 
+extension Store {
+    // Tick or untick a job from the widget (iOS 17+). The widget's own copy updates straight away;
+    // the app picks the tick up from "widgetTicks" the next time it opens and saves it properly.
+    static func toggle(id: String, day: String) {
+        guard let d = UserDefaults(suiteName: group) else { return }
+        var nowDone = true
+        if let s = d.string(forKey: "widget"), let data = s.data(using: .utf8),
+           var root = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+           var days = root["days"] as? [[String: Any]],
+           let di = days.firstIndex(where: { ($0["d"] as? String) == day }),
+           var jobs = days[di]["jobs"] as? [[String: Any]],
+           let ji = jobs.firstIndex(where: { ($0["id"] as? String) == id }) {
+            let was = (jobs[ji]["done"] as? Bool) ?? false
+            nowDone = !was
+            jobs[ji]["done"] = nowDone
+            days[di]["jobs"] = jobs
+            if let nd = days[di]["nd"] as? Int { days[di]["nd"] = max(0, nd + (nowDone ? 1 : -1)) }
+            root["days"] = days
+            if let out = try? JSONSerialization.data(withJSONObject: root), let str = String(data: out, encoding: .utf8) {
+                d.set(str, forKey: "widget")
+            }
+        }
+        var ticks = (d.array(forKey: "widgetTicks") as? [[String: Any]]) ?? []
+        ticks.removeAll { ($0["id"] as? String) == id && ($0["d"] as? String) == day }
+        ticks.append(["id": id, "d": day, "done": nowDone, "at": Date().timeIntervalSince1970])
+        d.set(ticks, forKey: "widgetTicks")
+    }
+}
+
+@available(iOSApplicationExtension 17.0, *)
+struct ToggleJobIntent: AppIntent {
+    static var title: LocalizedStringResource = "Tick off a job"
+    static var isDiscoverable: Bool = false
+    @Parameter(title: "Job") var id: String
+    @Parameter(title: "Day") var day: String
+    init() {}
+    init(id: String, day: String) {
+        self.id = id
+        self.day = day
+    }
+    func perform() async throws -> some IntentResult {
+        Store.toggle(id: id, day: day)
+        return .result()
+    }
+}
+
 enum Fmt {
     static func make(_ f: String) -> DateFormatter {
         let d = DateFormatter()
@@ -121,6 +168,7 @@ struct Palette {
     let accent: Color
     let w: [Color]
     let wash: Double
+    var dark = false
 }
 
 func palette(_ t: WTheme, scheme: ColorScheme) -> Palette {
@@ -128,7 +176,7 @@ func palette(_ t: WTheme, scheme: ColorScheme) -> Palette {
     if dark {
         return Palette(bg: Color(hex: "#131519"), ink: Color(hex: "#ECEEF1"), muted: Color(hex: "#8C929B"),
                        line: Color(hex: "#2B2F36"), accent: mixed(t.accent, "#FFFFFF", 0.68),
-                       w: t.w.map { Color(hex: $0) }, wash: 0)
+                       w: t.w.map { Color(hex: $0) }, wash: 0, dark: true)
     }
     // v1.10.0: plain white background (no theme colour or wash), like Dawn
     return Palette(bg: Color.white,
@@ -306,25 +354,62 @@ struct BrushRow: Shape {
     }
 }
 
-// The slim painted wash along the bottom: the icon's lilac, blue and teal rows, with white underneath
-struct BottomWash: View {
+// Purple/blue + in the bottom right: opens Brain dump, ready to add
+struct AddButton: View {
+    let p: Palette
+    var body: some View {
+        Link(destination: dumpURL) {
+            ZStack {
+                Circle().fill(p.accent)
+                Image(systemName: "plus")
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundColor(.white)
+            }
+            .frame(width: 26, height: 26)
+        }
+        .accessibilityLabel("Add to Brain dump")
+    }
+}
+
+// The three painted rows, filling whatever height they're given (sits behind the bottom line, edge to edge)
+struct WashBand: View {
     let dark: Bool
     var body: some View {
-        GeometryReader { g in
-            let band: CGFloat = 18, gap: CGFloat = 14, row = band / 3
-            let top = g.size.height - gap - band
-            ZStack(alignment: .topLeading) {
-                ForEach(0..<3, id: \.self) { i in
-                    BrushRow(seed: Double(i) * 1.9 + 0.7)
-                        .fill(RowsBar.bands[i])
-                        .frame(width: g.size.width, height: row + 0.8)
-                        .offset(y: top + CGFloat(i) * row)
+        VStack(spacing: 0) {
+            ForEach(0..<3, id: \.self) { i in
+                BrushRow(seed: Double(i) * 1.9 + 0.7).fill(RowsBar.bands[i])
+            }
+        }
+        .blur(radius: 0.7)
+        .opacity(dark ? 0.35 : 0.55)
+        .allowsHitTesting(false)
+    }
+}
+
+// The bottom line: job count on the left, "+N more", and the + button, with the wash centred behind it
+struct BottomLine<Left: View, Mid: View>: View {
+    let p: Palette
+    let style: WStyle
+    let leftWidth: CGFloat
+    @ViewBuilder let left: () -> Left
+    @ViewBuilder let mid: () -> Mid
+    var body: some View {
+        HStack(spacing: 14) {
+            if leftWidth > 0 {
+                left().frame(width: leftWidth, alignment: .leading)
+            }
+            mid()
+            Spacer(minLength: 4)
+            AddButton(p: p)
+        }
+        .frame(height: 26)
+        .background(
+            Group {
+                if style == .wash {
+                    WashBand(dark: p.dark).frame(height: 20).padding(.horizontal, -24)
                 }
             }
-            .blur(radius: 0.7)
-            .opacity(dark ? 0.35 : 0.55)
-        }
-        .allowsHitTesting(false)
+        )
     }
 }
 
@@ -352,9 +437,20 @@ struct Row: View {
     let job: WJob
     let p: Palette
     let size: CGFloat
+    var day: String = ""
+    var tick: some View { Tick(color: p.ink, done: job.done, size: size + 1, check: p.bg) }
     var body: some View {
         HStack(spacing: 7) {
-            Tick(color: p.ink, done: job.done, size: size + 1, check: p.bg)
+            if #available(iOSApplicationExtension 17.0, *), !day.isEmpty {
+                // tap the circle to tick the job off (bigger tap area than the circle itself)
+                Button(intent: ToggleJobIntent(id: job.id, day: day)) {
+                    tick.padding(6).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(-6)
+            } else {
+                tick
+            }
             Text(job.t)
                 .font(F.body(size))
                 .foregroundColor(job.done ? p.muted : p.ink)
@@ -383,7 +479,7 @@ struct JobList: View {
         let shown = e.total <= limit ? e.jobs : Array(e.jobs.prefix(limit - 1))
         VStack(alignment: .leading, spacing: spacing) {
             ForEach(shown) { j in
-                Row(job: j, p: p, size: size)
+                Row(job: j, p: p, size: size, day: e.key)
             }
             if e.total > shown.count {
                 Text("+\(e.total - shown.count) more")
@@ -394,25 +490,15 @@ struct JobList: View {
     }
 }
 
-// Medium widget list: up to `count` jobs, centred in the space, with "+N more" at the bottom (level with the job count)
+// Medium widget list: up to `count` jobs, centred in the space above the bottom line
 struct MediumJobs: View {
     let e: DayEntry
     let p: Palette
     let count: Int
     var body: some View {
-        let shown = Array(e.jobs.prefix(count))
-        VStack(alignment: .leading, spacing: 0) {
-            Spacer(minLength: 0)
-            VStack(alignment: .leading, spacing: 7) {
-                ForEach(shown) { j in
-                    Row(job: j, p: p, size: 12)
-                }
-            }
-            Spacer(minLength: 6)
-            if e.total > shown.count {
-                Text("+\(e.total - shown.count) more")
-                    .font(F.body(11.5))
-                    .foregroundColor(p.muted)
+        VStack(alignment: .leading, spacing: 7) {
+            ForEach(Array(e.jobs.prefix(count))) { j in
+                Row(job: j, p: p, size: 12, day: e.key)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
@@ -591,58 +677,82 @@ struct MediumView: View {
     let e: DayEntry
     let p: Palette
     let style: WStyle
-    var resting: Bool { e.open.isEmpty }   // all done, or nothing planned
     var body: some View {
-        HStack(alignment: .top, spacing: 14) {
-            VStack(alignment: .leading, spacing: 0) {
-                BrainIcon(size: 34).padding(.bottom, 7)
-                Text(e.greeting + "!")
-                    .font(F.greet(17))
-                    .foregroundColor(p.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Text(e.weekday)
-                    .font(F.sub(13.5))
-                    .foregroundColor(p.muted)
-                    .lineLimit(1)
-                    .padding(.top, 3)
-                Text(e.spokenDate)
-                    .font(F.sub(13.5))
-                    .foregroundColor(p.muted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                Spacer(minLength: 4)
+        // up to 5 jobs, fewer if the iPhone's text size is larger (so nothing gets cut off)
+        if #available(iOS 16.0, *) {
+            ViewThatFits(in: .vertical) {
+                MediumBody(e: e, p: p, style: style, count: 5)
+                MediumBody(e: e, p: p, style: style, count: 4)
+                MediumBody(e: e, p: p, style: style, count: 3)
+            }
+        } else {
+            MediumBody(e: e, p: p, style: style, count: 5)
+        }
+    }
+}
+
+struct MediumBody: View {
+    let e: DayEntry
+    let p: Palette
+    let style: WStyle
+    let count: Int
+    var resting: Bool { e.open.isEmpty }   // all done, or nothing planned
+    var more: Int { max(0, e.total - min(count, e.jobs.count)) }
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: 14) {
+                VStack(alignment: .leading, spacing: 0) {
+                    BrainIcon(size: 34).padding(.bottom, 7)
+                    Text(e.greeting + "!")
+                        .font(F.greet(17))
+                        .foregroundColor(p.ink)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                    Text(e.weekday)
+                        .font(F.sub(13.5))
+                        .foregroundColor(p.muted)
+                        .lineLimit(1)
+                        .padding(.top, 3)
+                    Text(e.spokenDate)
+                        .font(F.sub(13.5))
+                        .foregroundColor(p.muted)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .frame(width: 122, alignment: .topLeading)
+
+                Group {
+                    if resting {
+                        Message(e: e, p: p, size: 14, centred: true)
+                    } else {
+                        MediumJobs(e: e, p: p, count: count)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+
+            BottomLine(p: p, style: style, leftWidth: 122) {
                 if !resting {
                     if style == .wash || e.doneCount == 0 {
                         // on the wash the rows are already there, so just the words
                         Text(e.doneCount == 0 ? (e.total == 1 ? "1 job today" : "\(e.total) jobs today") : "\(e.doneCount) of \(e.total) done")
                             .font(F.body(11.5))
                             .foregroundColor(p.muted)
+                            .lineLimit(1)
                     } else {
                         ProgressLine(e: e, p: p)
                     }
                 }
-            }
-            .frame(width: 122, alignment: .leading)
-            .frame(maxHeight: .infinity, alignment: .topLeading)
-
-            Group {
-                if resting {
-                    Message(e: e, p: p, size: 14, centred: true)
-                } else {
-                    // up to 5 jobs, fewer if the iPhone's text size is larger
-                    if #available(iOS 16.0, *) {
-                        ViewThatFits(in: .vertical) {
-                            MediumJobs(e: e, p: p, count: 5)
-                            MediumJobs(e: e, p: p, count: 4)
-                            MediumJobs(e: e, p: p, count: 3)
-                        }
-                    } else {
-                        MediumJobs(e: e, p: p, count: 5)
-                    }
+            } mid: {
+                if !resting && more > 0 {
+                    Text("+\(more) more")
+                        .font(F.body(11.5))
+                        .foregroundColor(p.muted)
+                        .lineLimit(1)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .padding(.top, 6)
         }
     }
 }
@@ -685,16 +795,19 @@ struct LargeView: View {
             }
             .padding(.top, 12)
             Spacer(minLength: 4)
-            HStack {
-                if e.dump > 0 {
-                    BrainDumpChip(e: e, p: p)
-                }
-                Spacer(minLength: 4)
-                if e.late > 0 {
-                    Text("\(e.late) still to do from earlier")
-                        .font(F.body(11))
-                        .foregroundColor(p.muted)
-                        .lineLimit(1)
+            BottomLine(p: p, style: style, leftWidth: 0) {
+                EmptyView()
+            } mid: {
+                HStack(spacing: 10) {
+                    if e.dump > 0 {
+                        BrainDumpChip(e: e, p: p)
+                    }
+                    if e.late > 0 {
+                        Text("\(e.late) still to do from earlier")
+                            .font(F.body(11))
+                            .foregroundColor(p.muted)
+                            .lineLimit(1)
+                    }
                 }
             }
         }
@@ -765,7 +878,6 @@ struct WidgetBg: ViewModifier {
     func bg() -> some View {
         ZStack {
             Wash(p: p)
-            if wash { BottomWash(dark: dark) }
         }
     }
 
@@ -804,9 +916,8 @@ struct EntryView: View {
         let p = palette(e.data?.theme ?? Store.defaultTheme, scheme: scheme)
         let t = e.data?.theme ?? Store.defaultTheme
         let dark = t.mode == "dark" || (t.mode != "light" && scheme == .dark)
-        let washOn = style == .wash && e.data != nil && (family == .systemMedium || family == .systemLarge || family == .systemExtraLarge)
         content(p)
-            .modifier(WidgetBg(p: p, accessory: accessory, wash: washOn, dark: dark))
+            .modifier(WidgetBg(p: p, accessory: accessory, dark: dark))
             .widgetURL(todayURL)
     }
 

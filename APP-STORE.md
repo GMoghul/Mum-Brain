@@ -67,6 +67,10 @@ The live web app on GitHub Pages (`main`) is not affected.
    - Large: same header with the icon. Small: unchanged (3 jobs, no wash).
    - Fix: the app only sends the widget 14 jobs a day, so it now also sends the real totals (`n`, `nd` per day). The widget showed "14 jobs today" when there were 18.
    - Icon: `ios-widget/MumBrainWidget/BrainIcon.png` (copy of `icon-180.png`; refresh it if the icon changes), added to the widget's resources by `scripts/add-widget.rb`.
+13. **Widget + button and ticking off (v1.13.0, 26 Oct 2026):**
+   - **+ button** (theme accent, purple on Linen / blue on Sky) bottom right of the medium and large widgets: opens Brain dump (`mumbrain://dump`).
+   - The wash now sits behind the bottom line itself (job count, "+N more", + button), so the text is always in its middle. `BottomLine` / `WashBand` in the widget.
+   - **Tick off from the widget** (iOS 17+): tap a job's circle. `ToggleJobIntent` flips the job in the widget's own copy straight away and adds it to `widgetTicks` in the App Group. The app collects them (`WidgetBridge.takeTicks`) when it opens or comes back to the front, and saves them properly (shared jobs then sync to the family). Tapping a ticked job again unticks it. Older iPhones: tapping just opens the app as before.
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)

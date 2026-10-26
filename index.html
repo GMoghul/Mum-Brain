@@ -2130,7 +2130,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.12.0';
+const APPV='1.13.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3134,6 +3134,19 @@ if(LN){
    the next day by itself at midnight; it's refreshed whenever jobs change or the app is closed. */
 var WB=NATIVE?((window.Capacitor.Plugins&&window.Capacitor.Plugins.WidgetBridge)||(window.Capacitor.registerPlugin&&window.Capacitor.registerPlugin('WidgetBridge'))):null;
 var widgetTimer=null,widgetLast='';
+async function takeWidgetTicks(){
+  if(!WB||!WB.takeTicks)return;
+  try{
+    const r=await WB.takeTicks(),L=JSON.parse((r&&r.ticks)||'[]');let n=0;
+    L.sort((a,b)=>(a.at||0)-(b.at||0)).forEach(k=>{
+      const t=find(k.id);if(!t||!k.d||isDone(t,k.d)===!!k.done)return;
+      if(isRep(t)){t.completions=t.completions||{};if(k.done)t.completions[k.d]=true;else delete t.completions[k.d];}
+      else{t.done=!!k.done;t.doneAt=t.done?Date.now():null;}
+      n++;
+    });
+    if(n){widgetLast='';save();render();}
+  }catch(e){}
+}
 function widgetData(){
   const t0=today(),P=state.prefs||{},live=state.tasks.filter(t=>!archivedJob(t));
   let pal=PALETTES.find(x=>x.id===P.palette)||PALETTES[0];
@@ -3171,6 +3184,9 @@ if(CAPP){
 }
 if(WB){
   document.addEventListener('visibilitychange',()=>{if(document.hidden){clearTimeout(widgetTimer);widgetSync();}});
+  // Jobs ticked off on the widget (iOS 17+) are waiting in the shared space: apply them when the app opens
+  takeWidgetTicks();
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)takeWidgetTicks();});
   setTimeout(widgetSync,2000);
 }
 
