@@ -2130,7 +2130,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.11.0';
+const APPV='1.12.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3140,7 +3140,9 @@ function widgetData(){
   pal=stylePal(P,pal);
   const days=[];
   for(let i=0;i<8;i++){const d=addDays(t0,i);
-    days.push({d,jobs:live.filter(t=>occurs(t,d)).sort((a,b)=>(isDone(a,d)-isDone(b,d))||byTime(a,b)).slice(0,14)
+    const all=live.filter(t=>occurs(t,d)).sort((a,b)=>(isDone(a,d)-isDone(b,d))||byTime(a,b));
+    // only the first 14 jobs travel to the widget, so it also gets the real totals (n = all jobs, nd = done)
+    days.push({d,n:all.length,nd:all.filter(t=>isDone(t,d)).length,jobs:all.slice(0,14)
       .map(t=>({id:String(t.id),t:t.title||'',tm:t.time?fmtTime(t.time):'',c:hex(t.color),done:!!isDone(t,d),star:!!t.starred}))});}
   // dots on the large widget's month: days with something planned, this month and next
   const marks={},n0=new Date(),m0=new Date(n0.getFullYear(),n0.getMonth(),1),m2=new Date(n0.getFullYear(),n0.getMonth()+2,1);

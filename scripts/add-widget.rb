@@ -32,6 +32,8 @@ wg.new_reference('Info.plist')
 wg.new_reference('MumBrainWidget.entitlements')
 fonts = Dir['ios/App/MumBrainWidget/Fonts/*.ttf'].sort.map { |p| wg.new_reference("Fonts/#{File.basename(p)}") }
 w.add_resources(fonts)
+pngs = Dir['ios/App/MumBrainWidget/*.png'].sort.map { |p| wg.new_reference(File.basename(p)) }
+w.add_resources(pngs)
 
 w.build_configurations.each do |c|
   s = c.build_settings

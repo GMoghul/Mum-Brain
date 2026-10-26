@@ -4,6 +4,7 @@
 
 import WidgetKit
 import SwiftUI
+import UIKit
 
 // MARK: - Data from the app
 
@@ -19,6 +20,8 @@ struct WJob: Codable, Hashable, Identifiable {
 struct WDay: Codable {
     let d: String
     let jobs: [WJob]
+    var n: Int? = nil    // all jobs that day (the app sends at most 14 of them)
+    var nd: Int? = nil   // how many of those are done
 }
 
 struct WTheme: Codable {
@@ -184,14 +187,19 @@ let dumpURL = URL(string: "mumbrain://dump")!
 
 // MARK: - Timeline
 
+enum WStyle { case wash, plain }
+
 struct DayEntry: TimelineEntry {
     let date: Date
     let data: WData?
 
     var key: String { Fmt.ymd.string(from: date) }
-    var jobs: [WJob] { data?.days.first(where: { $0.d == key })?.jobs ?? [] }
+    var day: WDay? { data?.days.first(where: { $0.d == key }) }
+    var jobs: [WJob] { day?.jobs ?? [] }
     var open: [WJob] { jobs.filter { !$0.done } }
-    var doneCount: Int { jobs.filter { $0.done }.count }
+    var total: Int { max(day?.n ?? 0, jobs.count) }
+    var doneCount: Int { day?.nd ?? jobs.filter { $0.done }.count }
+    var openCount: Int { max(0, total - doneCount) }
     var dump: Int { data?.dump ?? 0 }
     var late: Int { data?.late ?? 0 }
     var weekday: String { Fmt.weekday.string(from: date) }
@@ -213,7 +221,7 @@ struct DayEntry: TimelineEntry {
     var headline: String {
         if jobs.isEmpty { return "Nothing planned" }
         if open.isEmpty { return "All done today" }
-        return open.count == 1 ? "1 to do today" : "\(open.count) to do today"
+        return openCount == 1 ? "1 to do today" : "\(openCount) to do today"
     }
 }
 
@@ -263,6 +271,60 @@ struct Wash: View {
     func blob(_ c: Color, _ at: UnitPoint, _ size: CGSize, _ r: CGFloat) -> some View {
         RadialGradient(gradient: Gradient(colors: [c.opacity(p.wash), c.opacity(0)]), center: at,
                        startRadius: 0, endRadius: max(size.width, size.height) * r)
+    }
+}
+
+// The app icon (brain in rows), shown top left
+struct BrainIcon: View {
+    let size: CGFloat
+    var body: some View {
+        Group {
+            if let ui = UIImage(named: "BrainIcon") {
+                Image(uiImage: ui).resizable().interpolation(.high)
+            } else {
+                RowsBar(frac: 1, track: .clear)
+            }
+        }
+        .frame(width: size, height: size)
+        .clipShape(RoundedRectangle(cornerRadius: size * 0.24, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: size * 0.24, style: .continuous).stroke(Color.black.opacity(0.06), lineWidth: 0.5))
+    }
+}
+
+// One soft, slightly wavy brushstroke row
+struct BrushRow: Shape {
+    let seed: Double
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        let w = r.width, h = r.height, steps = 24
+        func wob(_ x: Double, _ k: Double) -> CGFloat { CGFloat(sin(x * 0.045 + seed * k) * 0.6 + sin(x * 0.13 + seed * 2.1 * k) * 0.35) }
+        p.move(to: CGPoint(x: -4, y: r.minY + wob(0, 1)))
+        for i in 1...steps { let x = Double(w + 8) * Double(i) / Double(steps) - 4; p.addLine(to: CGPoint(x: CGFloat(x), y: r.minY + wob(x, 1))) }
+        for i in stride(from: steps, through: 0, by: -1) { let x = Double(w + 8) * Double(i) / Double(steps) - 4; p.addLine(to: CGPoint(x: CGFloat(x), y: r.minY + h + wob(x, 1.7))) }
+        p.closeSubpath()
+        return p
+    }
+}
+
+// The slim painted wash along the bottom: the icon's lilac, blue and teal rows, with white underneath
+struct BottomWash: View {
+    let dark: Bool
+    var body: some View {
+        GeometryReader { g in
+            let band: CGFloat = 18, gap: CGFloat = 14, row = band / 3
+            let top = g.size.height - gap - band
+            ZStack(alignment: .topLeading) {
+                ForEach(0..<3, id: \.self) { i in
+                    BrushRow(seed: Double(i) * 1.9 + 0.7)
+                        .fill(RowsBar.bands[i])
+                        .frame(width: g.size.width, height: row + 0.8)
+                        .offset(y: top + CGFloat(i) * row)
+                }
+            }
+            .blur(radius: 0.7)
+            .opacity(dark ? 0.35 : 0.55)
+        }
+        .allowsHitTesting(false)
     }
 }
 
@@ -318,13 +380,13 @@ struct JobList: View {
     let spacing: CGFloat
     var body: some View {
         // show every job if they all fit, otherwise leave a line for "+N more"
-        let shown = e.jobs.count <= limit ? e.jobs : Array(e.jobs.prefix(limit - 1))
+        let shown = e.total <= limit ? e.jobs : Array(e.jobs.prefix(limit - 1))
         VStack(alignment: .leading, spacing: spacing) {
             ForEach(shown) { j in
                 Row(job: j, p: p, size: size)
             }
-            if e.jobs.count > shown.count {
-                Text("+\(e.jobs.count - shown.count) more")
+            if e.total > shown.count {
+                Text("+\(e.total - shown.count) more")
                     .font(F.body(size - 1.5))
                     .foregroundColor(p.muted)
             }
@@ -332,7 +394,7 @@ struct JobList: View {
     }
 }
 
-// Medium widget list: up to `count` jobs, with "+N more" pinned to the bottom so it sits level with the job count on the left
+// Medium widget list: up to `count` jobs, centred in the space, with "+N more" at the bottom (level with the job count)
 struct MediumJobs: View {
     let e: DayEntry
     let p: Palette
@@ -340,19 +402,20 @@ struct MediumJobs: View {
     var body: some View {
         let shown = Array(e.jobs.prefix(count))
         VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 6) {
+            Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 7) {
                 ForEach(shown) { j in
-                    Row(job: j, p: p, size: 11.5)
+                    Row(job: j, p: p, size: 12)
                 }
             }
-            Spacer(minLength: 4)
-            if e.jobs.count > shown.count {
-                Text("+\(e.jobs.count - shown.count) more")
-                    .font(F.body(11))
+            Spacer(minLength: 6)
+            if e.total > shown.count {
+                Text("+\(e.total - shown.count) more")
+                    .font(F.body(11.5))
                     .foregroundColor(p.muted)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .topLeading)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }
 
@@ -395,7 +458,7 @@ struct ProgressLine: View {
     let e: DayEntry
     let p: Palette
     var body: some View {
-        let total = e.jobs.count
+        let total = e.total
         let frac = total > 0 ? CGFloat(e.doneCount) / CGFloat(total) : 0
         if e.doneCount == 0 {
             // nothing ticked yet: no empty bar or zero, just the count
@@ -527,29 +590,37 @@ struct SmallView: View {
 struct MediumView: View {
     let e: DayEntry
     let p: Palette
+    let style: WStyle
     var resting: Bool { e.open.isEmpty }   // all done, or nothing planned
     var body: some View {
         HStack(alignment: .top, spacing: 14) {
             VStack(alignment: .leading, spacing: 0) {
-                if resting { Spacer(minLength: 0) }
-                Text(e.greeting)
-                    .font(F.greet(13))
-                    .foregroundColor(p.muted)
-                    .padding(.bottom, 3)
-                Text(e.itsDay)
-                    .font(F.head(18))
+                BrainIcon(size: 34).padding(.bottom, 7)
+                Text(e.greeting + "!")
+                    .font(F.greet(17))
                     .foregroundColor(p.ink)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.7)
+                    .minimumScaleFactor(0.8)
+                Text(e.weekday)
+                    .font(F.sub(13.5))
+                    .foregroundColor(p.muted)
+                    .lineLimit(1)
+                    .padding(.top, 3)
                 Text(e.spokenDate)
-                    .font(F.sub(14))
+                    .font(F.sub(13.5))
                     .foregroundColor(p.muted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                    .padding(.top, 1)
                 Spacer(minLength: 4)
                 if !resting {
-                    ProgressLine(e: e, p: p)
+                    if style == .wash || e.doneCount == 0 {
+                        // on the wash the rows are already there, so just the words
+                        Text(e.doneCount == 0 ? (e.total == 1 ? "1 job today" : "\(e.total) jobs today") : "\(e.doneCount) of \(e.total) done")
+                            .font(F.body(11.5))
+                            .foregroundColor(p.muted)
+                    } else {
+                        ProgressLine(e: e, p: p)
+                    }
                 }
             }
             .frame(width: 122, alignment: .leading)
@@ -559,16 +630,15 @@ struct MediumView: View {
                 if resting {
                     Message(e: e, p: p, size: 14, centred: true)
                 } else {
-                    // as many jobs as fit (6 at normal text size), fewer if the iPhone's text size is larger
+                    // up to 5 jobs, fewer if the iPhone's text size is larger
                     if #available(iOS 16.0, *) {
                         ViewThatFits(in: .vertical) {
-                            MediumJobs(e: e, p: p, count: 6)
                             MediumJobs(e: e, p: p, count: 5)
                             MediumJobs(e: e, p: p, count: 4)
                             MediumJobs(e: e, p: p, count: 3)
                         }
                     } else {
-                        MediumJobs(e: e, p: p, count: 6)
+                        MediumJobs(e: e, p: p, count: 5)
                     }
                 }
             }
@@ -580,21 +650,23 @@ struct MediumView: View {
 struct LargeView: View {
     let e: DayEntry
     let p: Palette
+    let style: WStyle
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 0) {
-                    Text(e.greeting)
-                        .font(F.greet(14))
-                        .foregroundColor(p.muted)
-                        .padding(.bottom, 3)
-                    Text(e.itsDay)
-                        .font(F.head(24))
+                    BrainIcon(size: 38).padding(.bottom, 8)
+                    Text(e.greeting + "!")
+                        .font(F.greet(21))
                         .foregroundColor(p.ink)
                         .lineLimit(1)
-                        .minimumScaleFactor(0.6)
+                        .minimumScaleFactor(0.7)
+                    Text(e.weekday)
+                        .font(F.sub(15))
+                        .foregroundColor(p.muted)
+                        .padding(.top, 3)
                     Text(e.spokenDate)
-                        .font(F.sub(16))
+                        .font(F.sub(15))
                         .foregroundColor(p.muted)
                         .lineLimit(1)
                 }
@@ -658,10 +730,10 @@ struct AccessoryView: View {
                     Image(systemName: "checkmark").font(.system(size: 18, weight: .semibold))
                 }
             } else {
-                Gauge(value: Double(e.doneCount), in: 0...Double(e.jobs.count)) {
+                Gauge(value: Double(e.doneCount), in: 0...Double(max(1, e.total))) {
                     Text("Done")
                 } currentValueLabel: {
-                    Text("\(e.open.count)")
+                    Text("\(e.openCount)")
                 }
                 .gaugeStyle(.accessoryCircularCapacity)
             }
@@ -686,6 +758,16 @@ struct AccessoryView: View {
 struct WidgetBg: ViewModifier {
     let p: Palette
     let accessory: Bool
+    var wash = false
+    var dark = false
+
+    @ViewBuilder
+    func bg() -> some View {
+        ZStack {
+            Wash(p: p)
+            if wash { BottomWash(dark: dark) }
+        }
+    }
 
     @ViewBuilder
     func body(content: Content) -> some View {
@@ -693,13 +775,13 @@ struct WidgetBg: ViewModifier {
             if accessory {
                 content.containerBackground(for: .widget) { Color.clear }
             } else {
-                content.containerBackground(for: .widget) { Wash(p: p) }
+                content.containerBackground(for: .widget) { bg() }
             }
         } else {
             if accessory {
                 content
             } else {
-                content.padding(16).background(Wash(p: p))
+                content.padding(16).background(bg())
             }
         }
     }
@@ -707,6 +789,7 @@ struct WidgetBg: ViewModifier {
 
 struct EntryView: View {
     let e: DayEntry
+    var style: WStyle = .wash
     @Environment(\.widgetFamily) var family
     @Environment(\.colorScheme) var scheme
 
@@ -719,8 +802,11 @@ struct EntryView: View {
 
     var body: some View {
         let p = palette(e.data?.theme ?? Store.defaultTheme, scheme: scheme)
+        let t = e.data?.theme ?? Store.defaultTheme
+        let dark = t.mode == "dark" || (t.mode != "light" && scheme == .dark)
+        let washOn = style == .wash && e.data != nil && (family == .systemMedium || family == .systemLarge || family == .systemExtraLarge)
         content(p)
-            .modifier(WidgetBg(p: p, accessory: accessory))
+            .modifier(WidgetBg(p: p, accessory: accessory, wash: washOn, dark: dark))
             .widgetURL(todayURL)
     }
 
@@ -733,9 +819,9 @@ struct EntryView: View {
             case .systemSmall:
                 SmallView(e: e, p: p)
             case .systemMedium:
-                MediumView(e: e, p: p)
+                MediumView(e: e, p: p, style: style)
             case .systemLarge, .systemExtraLarge:
-                LargeView(e: e, p: p)
+                LargeView(e: e, p: p, style: style)
             default:
                 if #available(iOSApplicationExtension 16.0, *) {
                     AccessoryView(e: e)
@@ -760,8 +846,22 @@ struct TodayWidget: Widget {
             EntryView(e: entry)
         }
         .configurationDisplayName("Today")
-        .description("Today's jobs at a glance. Tap to open Today.")
+        .description("Today's jobs at a glance, with a soft painted wash. Tap to open Today.")
         .supportedFamilies(families)
+    }
+}
+
+// The same widget without the painted wash (just the app icon), for a cleaner look
+struct TodaySimpleWidget: Widget {
+    let kind = "MumBrainTodaySimple"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: Provider()) { entry in
+            EntryView(e: entry, style: .plain)
+        }
+        .configurationDisplayName("Today · Simple")
+        .description("Today's jobs at a glance, clean and white. Tap to open Today.")
+        .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
@@ -769,5 +869,6 @@ struct TodayWidget: Widget {
 struct AppWidgets: WidgetBundle {
     var body: some Widget {
         TodayWidget()
+        TodaySimpleWidget()
     }
 }

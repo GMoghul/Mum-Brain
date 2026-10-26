@@ -60,6 +60,13 @@ The live web app on GitHub Pages (`main`) is not affected.
    - **Classic theme replaces Sharp** (internal id still `sharp`, so nothing breaks): white page, soft grey sections (#F4F4F6), slate text, no outlines or shadows. 9 muted colours (old Sharp colours map across) plus **Custom** (the phone's own colour wheel); a too-light custom colour is deepened until it reads at 4.5:1 on white.
    - Watercolour has two versions (Settings › Theme, under the palettes): **Painted band** (default; three brushstrokes across the top, like the icon rows, scrolling away with the page) and **Full wash** (the old wash with painted edges, a tide line and paper grain instead of a heavy blur). `prefs.washv` = band / full.
    - Widget: greeting in Newsreader italic (Fraunces italic on Soft), "It's Sunday" / "25th October" (small: "25th Oct"), lighter text, follows the app's font. When everything's done or nothing's planned, the medium and large widgets show a centred resting message (tick above the words) and drop the progress bar; the medium widget's left side centres too. Newsreader static Regular/Italic (OFL) added to the widget's fonts.
+12. **Widget, round three (v1.12.0, 26 Oct 2026):**
+   - Two widgets in the gallery: **Today** (white, app icon top left, slim painted wash of the icon's three rows along the bottom with a white rim; the job count and "+N more" sit in the wash) and **Today · Simple** (the same without the wash). The lock screen widgets stay under Today.
+   - Wording: *Good morning!* (italic, larger), then "Monday" and "26th October" in softer grey, same size.
+   - Medium: up to 5 jobs, centred in the space (4 or 3 with larger iPhone text). On the wash, progress shows as "3 of 18 done" (the rows are already there); Simple keeps the three-row bar.
+   - Large: same header with the icon. Small: unchanged (3 jobs, no wash).
+   - Fix: the app only sends the widget 14 jobs a day, so it now also sends the real totals (`n`, `nd` per day). The widget showed "14 jobs today" when there were 18.
+   - Icon: `ios-widget/MumBrainWidget/BrainIcon.png` (copy of `icon-180.png`; refresh it if the icon changes), added to the widget's resources by `scripts/add-widget.rb`.
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)
