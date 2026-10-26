@@ -92,7 +92,7 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 /* v1.15.1: the wash is painted once into a picture (see paintWash) instead of being redrawn live by the phone on every scroll, which caused lag.
    The SVGs below are only the recipe; they're never shown directly. */
 .wash svg{display:none}
-.wash{background-size:cover;background-position:top center;background-repeat:no-repeat}
+.wash{inset:auto 0 calc(70px + max(env(safe-area-inset-bottom,0px),var(--sab0,0px))) 0;height:44px;background-size:100% 100%;background-repeat:no-repeat}
 /* v1.14.0 corner wash: paint gathered in two corners (top left, bottom right), white paper in the middle, hard dried edges and paper grain */
 
 /* headers */
@@ -276,8 +276,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .themes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .theme{display:flex;flex-direction:column;align-items:center;gap:7px;padding:10px 6px;border-radius:14px;background:var(--bg);font-size:14px;font-weight:500;border:2px solid transparent}
 .theme.on{border-color:var(--accent);font-weight:600}
-.theme .pv{width:100%;aspect-ratio:1.6;border-radius:10px;position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line);background-size:100% auto,135% auto;background-position:0 0;background-repeat:no-repeat}
-.theme .pv i{position:absolute;right:8px;bottom:8px;width:14px;height:14px;border-radius:50%}
+.theme .pv{width:100%;aspect-ratio:1.6;border-radius:10px;position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line);background-size:100% 100%,100% 22%;background-position:0 0,left 0 bottom 3px;background-repeat:no-repeat}
+.theme .pv i{position:absolute;right:8px;top:8px;width:14px;height:14px;border-radius:50%}
 .cswatches{display:grid;grid-template-columns:repeat(5,1fr);gap:12px 6px}
 .cs{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer}
 .cs i{width:38px;height:38px;border-radius:50%;background:var(--c);box-shadow:0 0 0 3px var(--solid),0 0 0 3.5px transparent;transition:box-shadow .15s}
@@ -666,58 +666,21 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 </head>
 <body>
 <div class="wash" aria-hidden="true">
-  <!-- Watercolour (v1.16.0), after premium stationery: one colour in varying strengths, pooled in the top corner behind the
-       heading only, a pale echo in the bottom corner, and clean paper everywhere else. Gentle edges that fade in places and
-       dry slightly darker in others, a soft bloom, a few droplets near the paint, and fine paper grain over the whole page.
-       w1 = main colour, w2 = deeper pigment, w3 = palest tint. -->
-  <svg class="w-corner" viewBox="0 0 400 820" preserveAspectRatio="xMidYMin slice">
+  <!-- Watercolour (v1.17.0): three slim painted brushstrokes along the bottom, just above the tabs, the same as the widget's wash
+       and the app icon's rows, in three shades of the theme colour (main, lighter, palest). The rest of the page is clean paper. -->
+  <svg class="w-corner" viewBox="0 0 400 44" preserveAspectRatio="none">
     <defs>
-      <filter id="sw" x="-30%" y="-30%" width="160%" height="160%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.009" numOctaves="3" seed="8" result="n"/>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="16" xChannelSelector="R" yChannelSelector="G" result="d"/>
-        <feGaussianBlur in="d" stdDeviation="2.2" result="s"/>
-        <feMorphology in="s" operator="erode" radius="2.5" result="e"/>
-        <feComposite in="s" in2="e" operator="out" result="rim"/>
-        <feGaussianBlur in="rim" stdDeviation="1.2" result="rb"/>
-        <feComponentTransfer in="rb" result="rb2"><feFuncA type="linear" slope=".8"/></feComponentTransfer>
-        <feMerge><feMergeNode in="s"/><feMergeNode in="rb2"/></feMerge>
+      <filter id="srow" x="-5%" y="-50%" width="110%" height="200%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.02 0.08" numOctaves="2" seed="7" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G" result="d"/>
+        <feGaussianBlur in="d" stdDeviation=".7"/>
       </filter>
-      <filter id="ssoft" x="-30%" y="-30%" width="160%" height="160%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="3" result="n"/>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="26" xChannelSelector="G" yChannelSelector="R" result="d"/>
-        <feGaussianBlur in="d" stdDeviation="9"/>
-      </filter>
-      <filter id="sdrop" x="-80%" y="-80%" width="260%" height="260%">
-        <feTurbulence type="fractalNoise" baseFrequency=".12" numOctaves="1" seed="2" result="n"/>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="3"/>
-      </filter>
-      <filter id="sgrain"><feTurbulence type="fractalNoise" baseFrequency=".95" numOctaves="3" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .4  0 0 0 0 .37  0 0 0 0 .33  0 0 0 .06 0"/></filter>
-      <linearGradient id="sfade" x1="0" y1="0" x2="1" y2=".6"><stop offset="0" stop-color="#fff"/><stop offset=".7" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity=".55"/></linearGradient>
-      <mask id="smask"><rect x="0" y="0" width="400" height="300" fill="url(#sfade)"/></mask>
     </defs>
-    <!-- soft underlayer: the wet edge the paint bled into -->
-    <g filter="url(#ssoft)" opacity=".5">
-      <path class="b" style="fill:var(--w3)" d="M-20 -20 H292 C300 26 268 58 236 82 C200 108 176 140 136 156 C96 172 58 200 -20 214 Z"/>
+    <g filter="url(#srow)" opacity=".75">
+      <path class="b" style="fill:var(--w1)" opacity="1" d="M-8.0 4.6 L9.3 5.1 L26.7 4.4 L44.0 4.9 L61.3 3.7 L78.7 2.7 L96.0 3.6 L113.3 3.3 L130.7 4.1 L148.0 5.4 L165.3 4.5 L182.7 4.5 L200.0 4.1 L217.3 2.6 L234.7 3.4 L252.0 3.7 L269.3 3.7 L286.7 5.3 L304.0 4.8 L321.3 4.1 L338.7 4.3 L356.0 2.9 L373.3 2.9 L390.7 4.0 L408.0 3.7 L408.0 16.1 L390.7 16.0 L373.3 15.7 L356.0 14.5 L338.7 15.7 L321.3 16.2 L304.0 16.2 L286.7 17.5 L269.3 16.5 L252.0 15.6 L234.7 15.9 L217.3 14.7 L200.0 15.2 L182.7 16.5 L165.3 16.2 L148.0 17.1 L130.7 17.0 L113.3 15.4 L96.0 15.7 L78.7 15.1 L61.3 14.8 L44.0 16.5 L26.7 16.5 L9.3 16.7 L-8.0 17.3 Z"/>
+      <path class="b" style="fill:var(--w1)" opacity="0.72" d="M-8.0 16.2 L9.3 16.3 L26.7 15.7 L44.0 14.5 L61.3 15.7 L78.7 15.9 L96.0 16.1 L113.3 17.5 L130.7 16.5 L148.0 15.9 L165.3 16.0 L182.7 14.6 L200.0 15.2 L217.3 16.2 L234.7 16.0 L252.0 17.2 L269.3 17.0 L286.7 15.7 L304.0 16.0 L321.3 15.0 L338.7 14.8 L356.0 16.3 L373.3 16.2 L390.7 16.8 L408.0 17.3 L408.0 27.0 L390.7 27.8 L373.3 29.2 L356.0 28.5 L338.7 28.8 L321.3 28.4 L304.0 26.8 L286.7 27.3 L269.3 27.5 L252.0 27.4 L234.7 29.1 L217.3 28.9 L200.0 28.4 L182.7 28.6 L165.3 27.0 L148.0 26.9 L130.7 27.8 L113.3 27.4 L96.0 28.7 L78.7 29.3 L61.3 28.2 L44.0 28.5 L26.7 27.5 L9.3 26.6 L-8.0 27.8 Z"/>
+      <path class="b" style="fill:var(--w3)" opacity="1" d="M-8.0 27.7 L9.3 26.5 L26.7 27.7 L44.0 28.5 L61.3 28.2 L78.7 29.4 L96.0 28.6 L113.3 27.4 L130.7 27.8 L148.0 26.8 L165.3 27.2 L182.7 28.7 L200.0 28.3 L217.3 29.0 L234.7 29.0 L252.0 27.3 L269.3 27.5 L286.7 27.3 L304.0 26.9 L321.3 28.6 L338.7 28.7 L356.0 28.5 L373.3 29.2 L390.7 27.6 L408.0 27.1 L408.0 40.7 L390.7 39.7 L373.3 39.9 L356.0 38.8 L338.7 39.0 L321.3 40.4 L304.0 40.1 L286.7 41.0 L269.3 41.2 L252.0 39.6 L234.7 39.7 L217.3 39.2 L200.0 38.7 L182.7 40.3 L165.3 40.5 L148.0 40.6 L130.7 41.3 L113.3 39.9 L96.0 39.3 L78.7 39.6 L61.3 38.7 L44.0 39.9 L26.7 40.9 L9.3 40.4 L-8.0 41.2 Z"/>
     </g>
-    <!-- the main wash: a rounded pool, with the deeper pigment gathered along its drying edge -->
-    <g filter="url(#sw)" mask="url(#smask)">
-      <path class="b" style="fill:var(--w1)" opacity=".72" d="M-12 -12 H262 C270 22 252 44 226 58 C204 70 206 96 182 112 C156 130 128 118 110 140 C92 162 70 178 40 180 C20 182 6 192 -12 200 Z"/>
-      <path class="b" style="fill:var(--w2)" opacity=".18" d="M-12 -12 H150 C150 24 126 44 98 58 C70 72 40 82 -12 96 Z"/>
-    </g>
-    <!-- pale echo in the bottom corner -->
-    <g filter="url(#ssoft)" opacity=".5">
-      <path class="b" style="fill:var(--w3)" d="M420 690 C390 704 360 720 344 750 C330 776 320 800 316 840 H420 Z"/>
-    </g>
-    <g filter="url(#sw)" opacity=".45">
-      <path class="b" style="fill:var(--w1)" d="M420 742 C398 752 380 770 372 794 C368 808 366 820 366 840 H420 Z"/>
-    </g>
-    <!-- a few droplets, only near the paint -->
-    <g filter="url(#sdrop)" opacity=".6">
-      <circle class="b" style="fill:var(--w1)" cx="238" cy="96" r="2.4"/><circle class="b" style="fill:var(--w1)" cx="262" cy="74" r="1.3"/>
-      <circle class="b" style="fill:var(--w2)" cx="206" cy="128" r="1.6"/><circle class="b" style="fill:var(--w1)" cx="58" cy="232" r="1.8"/>
-      <circle class="b" style="fill:var(--w1)" cx="344" cy="724" r="1.6"/>
-    </g>
-    <rect x="0" y="0" width="400" height="820" filter="url(#sgrain)"/>
   </svg>
 </div>
 <main>
@@ -1134,10 +1097,10 @@ const I={
 let state={tasks:[],updatedAt:0};
 try{const raw=localStorage.getItem(KEY);if(raw){const p=JSON.parse(raw);if(p&&Array.isArray(p.tasks))state=p;}}catch(e){}
 const PALETTES=[
-  // v1.16.0: six single-colour watercolours (one colour in three strengths: main, deeper, palest), after premium stationery
-  {id:'lilac',name:'Lilac',accent:'#6548A8',bg:'#FBFAF7',w:['#CDBFF0','#9C86DA','#E7E0F8'],wash:.75,ink:'#23201C',muted:'#6B645B',line:'#ECE7DF',primary:'#23201C'},
-  {id:'tide',name:'Tide',accent:'#2E6E74',bg:'#FAFBFA',w:['#A6D8D3','#5FA9A6','#D8EEEB'],wash:.75},
-  {id:'mist',name:'Mist',accent:'#3D6A92',bg:'#FAFBFC',w:['#B6CEE8','#7FA3CC','#DFE9F5'],wash:.75},
+  // v1.16.0: six single-colour watercolours; Lilac, Mist and Tide use the app icon's three row colours exactly (v1.16.1) (one colour in three strengths: main, deeper, palest), after premium stationery
+  {id:'lilac',name:'Lilac',accent:'#6548A8',bg:'#FBFAF7',w:['#B8A3E8','#957CD8','#E3DAF7'],wash:.75,ink:'#23201C',muted:'#6B645B',line:'#ECE7DF',primary:'#23201C'},
+  {id:'tide',name:'Tide',accent:'#2E6E74',bg:'#FAFBFA',w:['#9DD3CE','#62AAA5','#D9EFEC'],wash:.75},
+  {id:'mist',name:'Mist',accent:'#3D6A92',bg:'#FAFBFC',w:['#93B6EE','#6E93D2','#DCE7FA'],wash:.75},
   {id:'sage',name:'Sage',accent:'#4A7258',bg:'#FAFAF7',w:['#BFD5C2','#88AC92','#E1ECE2'],wash:.75},
   {id:'clay',name:'Clay',accent:'#A3593A',bg:'#FCFAF7',w:['#F0C9B1','#D9987A','#F8E5D9'],wash:.75},
   {id:'stone',name:'Stone',accent:'#5E5A47',bg:'#FAF9F6',w:['#D8D0C3','#B3A893','#ECE7DE'],wash:.8,ink:'#25231F',muted:'#69655B',line:'#E8E4DB',primary:'#25231F'}
@@ -1213,7 +1176,7 @@ const _washImg={};
 function washURL(c){
   const k=c.join();if(_washImg[k])return _washImg[k];
   const svg=document.querySelector('.wash svg.w-corner');if(!svg)return '';
-  const src=svg.outerHTML.replace(/var\(--w([123])\)/g,(m,i)=>c[i-1]).replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1640" ').replace('class="w-corner"','');
+  const src=svg.outerHTML.replace(/var\(--w([123])\)/g,(m,i)=>c[i-1]).replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" width="800" height="88" ').replace('class="w-corner"','');
   return _washImg[k]='url("data:image/svg+xml;charset=utf-8,'+encodeURIComponent(src)+'")';
 }
 function paintWash(){
@@ -2138,7 +2101,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.16.0';
+const APPV='1.17.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
