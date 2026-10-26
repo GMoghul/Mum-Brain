@@ -92,10 +92,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 /* v1.15.1: the wash is painted once into a picture (see paintWash) instead of being redrawn live by the phone on every scroll, which caused lag.
    The SVGs below are only the recipe; they're never shown directly. */
 .wash svg{display:none}
-.wash{background-size:cover;background-position:center;background-repeat:no-repeat}
+.wash{background-size:cover;background-position:top center;background-repeat:no-repeat}
 /* v1.14.0 corner wash: paint gathered in two corners (top left, bottom right), white paper in the middle, hard dried edges and paper grain */
-:root[data-wash="corners"] .w-full,:root:not([data-wash="corners"]) .w-corner{display:none}
-:root[data-wash="corners"] .wash{opacity:calc(var(--wash-op) * 1.1)}
 
 /* headers */
 .head{padding:0 4px 18px}
@@ -278,7 +276,7 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .themes{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
 .theme{display:flex;flex-direction:column;align-items:center;gap:7px;padding:10px 6px;border-radius:14px;background:var(--bg);font-size:14px;font-weight:500;border:2px solid transparent}
 .theme.on{border-color:var(--accent);font-weight:600}
-.theme .pv{width:100%;aspect-ratio:1.6;border-radius:10px;position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line)}
+.theme .pv{width:100%;aspect-ratio:1.6;border-radius:10px;position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px var(--line);background-size:100% auto,135% auto;background-position:0 0;background-repeat:no-repeat}
 .theme .pv i{position:absolute;right:8px;bottom:8px;width:14px;height:14px;border-radius:50%}
 .cswatches{display:grid;grid-template-columns:repeat(5,1fr);gap:12px 6px}
 .cs{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12.5px;font-weight:500;color:var(--muted);cursor:pointer}
@@ -668,91 +666,58 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 </head>
 <body>
 <div class="wash" aria-hidden="true">
-  <svg class="w-full" viewBox="0 0 400 820" preserveAspectRatio="xMidYMid slice">
+  <!-- Watercolour (v1.16.0), after premium stationery: one colour in varying strengths, pooled in the top corner behind the
+       heading only, a pale echo in the bottom corner, and clean paper everywhere else. Gentle edges that fade in places and
+       dry slightly darker in others, a soft bloom, a few droplets near the paint, and fine paper grain over the whole page.
+       w1 = main colour, w2 = deeper pigment, w3 = palest tint. -->
+  <svg class="w-corner" viewBox="0 0 400 820" preserveAspectRatio="xMidYMin slice">
     <defs>
-      <filter id="wc" x="-40%" y="-40%" width="180%" height="180%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.011" numOctaves="3" seed="4" result="n"/>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="70" xChannelSelector="R" yChannelSelector="G" result="d"/>
-        <feGaussianBlur in="d" stdDeviation="2.5" result="s"/>
-        <!-- watercolour "tide line": pigment collects at the edge of each wash -->
-        <feMorphology in="s" operator="erode" radius="5" result="e"/>
+      <filter id="sw" x="-30%" y="-30%" width="160%" height="160%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.009" numOctaves="3" seed="8" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="16" xChannelSelector="R" yChannelSelector="G" result="d"/>
+        <feGaussianBlur in="d" stdDeviation="2.2" result="s"/>
+        <feMorphology in="s" operator="erode" radius="2.5" result="e"/>
         <feComposite in="s" in2="e" operator="out" result="rim"/>
-        <feGaussianBlur in="rim" stdDeviation="1.6" result="rb"/>
-        <feTurbulence type="fractalNoise" baseFrequency=".7" numOctaves="2" seed="9" result="g"/>
-        <feComposite in="s" in2="g" operator="arithmetic" k1=".6" k2=".7" k3="0" k4="0" result="gs"/>
-        <feMerge><feMergeNode in="gs"/><feMergeNode in="rb"/></feMerge>
+        <feGaussianBlur in="rim" stdDeviation="1.2" result="rb"/>
+        <feComponentTransfer in="rb" result="rb2"><feFuncA type="linear" slope=".8"/></feComponentTransfer>
+        <feMerge><feMergeNode in="s"/><feMergeNode in="rb2"/></feMerge>
       </filter>
-      <filter id="bloom" x="-40%" y="-40%" width="180%" height="180%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.02" numOctaves="2" seed="11" result="n"/>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="40" xChannelSelector="G" yChannelSelector="R" result="d"/>
-        <feGaussianBlur in="d" stdDeviation="3"/>
+      <filter id="ssoft" x="-30%" y="-30%" width="160%" height="160%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.012" numOctaves="2" seed="3" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="26" xChannelSelector="G" yChannelSelector="R" result="d"/>
+        <feGaussianBlur in="d" stdDeviation="9"/>
       </filter>
-      <filter id="grain"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="2" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .35  0 0 0 0 .3  0 0 0 0 .25  0 0 0 .05 0"/></filter>
+      <filter id="sdrop" x="-80%" y="-80%" width="260%" height="260%">
+        <feTurbulence type="fractalNoise" baseFrequency=".12" numOctaves="1" seed="2" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="3"/>
+      </filter>
+      <filter id="sgrain"><feTurbulence type="fractalNoise" baseFrequency=".95" numOctaves="3" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .4  0 0 0 0 .37  0 0 0 0 .33  0 0 0 .06 0"/></filter>
+      <linearGradient id="sfade" x1="0" y1="0" x2="1" y2=".6"><stop offset="0" stop-color="#fff"/><stop offset=".7" stop-color="#fff" stop-opacity=".95"/><stop offset="1" stop-color="#fff" stop-opacity=".55"/></linearGradient>
+      <mask id="smask"><rect x="0" y="0" width="400" height="300" fill="url(#sfade)"/></mask>
     </defs>
-    <g filter="url(#wc)">
-      <ellipse class="b" cx="30" cy="40" rx="200" ry="135" style="fill:var(--w1)"/>
-      <ellipse class="b" cx="270" cy="-10" rx="160" ry="95" style="fill:var(--w2)" opacity=".75"/>
-      <ellipse class="b" cx="-30" cy="430" rx="80" ry="130" style="fill:var(--w3)" opacity=".5"/>
-      <ellipse class="b" cx="400" cy="720" rx="190" ry="150" style="fill:var(--w3)"/>
-      <ellipse class="b" cx="200" cy="850" rx="170" ry="90" style="fill:var(--w1)" opacity=".7"/>
+    <!-- soft underlayer: the wet edge the paint bled into -->
+    <g filter="url(#ssoft)" opacity=".5">
+      <path class="b" style="fill:var(--w3)" d="M-20 -20 H292 C300 26 268 58 236 82 C200 108 176 140 136 156 C96 172 58 200 -20 214 Z"/>
     </g>
-    <g filter="url(#bloom)" opacity=".55">
-      <circle class="b" cx="150" cy="120" r="38" style="fill:var(--w2)"/>
-      <circle class="b" cx="330" cy="610" r="30" style="fill:var(--w1)"/>
+    <!-- the main wash: a rounded pool, with the deeper pigment gathered along its drying edge -->
+    <g filter="url(#sw)" mask="url(#smask)">
+      <path class="b" style="fill:var(--w1)" opacity=".72" d="M-12 -12 H262 C270 22 252 44 226 58 C204 70 206 96 182 112 C156 130 128 118 110 140 C92 162 70 178 40 180 C20 182 6 192 -12 200 Z"/>
+      <path class="b" style="fill:var(--w2)" opacity=".18" d="M-12 -12 H150 C150 24 126 44 98 58 C70 72 40 82 -12 96 Z"/>
     </g>
-    <rect x="0" y="0" width="400" height="820" filter="url(#grain)"/>
-  </svg>
-  <!-- Corner wash (v1.14.0): one colour pooled in the top left, a second in the bottom right, the middle left as paper.
-       Hard dried edges with a darker tide line, a little mottling inside, a few loose speckles and paper grain, so it reads as painted, not airbrushed. -->
-  <svg class="w-corner" viewBox="0 0 400 820" preserveAspectRatio="xMidYMid slice">
-    <defs>
-      <filter id="cw" x="-20%" y="-20%" width="140%" height="140%">
-        <feTurbulence type="fractalNoise" baseFrequency="0.016" numOctaves="4" seed="21" result="n"/>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="34" xChannelSelector="R" yChannelSelector="G" result="d"/>
-        <feGaussianBlur in="d" stdDeviation=".8" result="s"/>
-        <feMorphology in="s" operator="erode" radius="3" result="e"/>
-        <feComposite in="s" in2="e" operator="out" result="rim"/>
-        <feGaussianBlur in="rim" stdDeviation=".7" result="rb"/>
-        <feTurbulence type="fractalNoise" baseFrequency=".011" numOctaves="2" seed="5" result="m0"/>
-        <!-- mottling changes only how much pigment there is, never its colour -->
-        <feColorMatrix in="m0" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  1 0 0 0 0" result="m"/>
-        <feComposite in="s" in2="m" operator="arithmetic" k1=".55" k2=".55" k3="0" k4="0" result="ms"/>
-        <feMerge><feMergeNode in="ms"/><feMergeNode in="rb"/><feMergeNode in="rb"/></feMerge>
-      </filter>
-      <filter id="cspeck" x="-50%" y="-50%" width="200%" height="200%">
-        <feTurbulence type="fractalNoise" baseFrequency=".09" numOctaves="2" seed="13" result="n"/>
-        <feDisplacementMap in="SourceGraphic" in2="n" scale="5" xChannelSelector="R" yChannelSelector="G"/>
-      </filter>
-      <filter id="cgrain"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="3" stitchTiles="stitch"/><feColorMatrix values="0 0 0 0 .35  0 0 0 0 .32  0 0 0 0 .28  0 0 0 .07 0"/></filter>
-    </defs>
-    <g filter="url(#cw)">
-      <path class="b" style="fill:var(--w1)" d="M-10 -10 H214 C228 22 196 46 218 74 C240 104 270 112 256 148 C242 180 200 166 186 198 C174 228 194 250 168 276 C146 298 118 286 104 320 C92 350 112 380 84 408 C64 430 38 424 24 462 C14 488 18 520 -10 540 Z"/>
-      <path class="b" style="fill:var(--w1)" opacity=".7" d="M-10 -10 H140 C150 30 120 70 132 110 C142 146 104 168 92 206 C80 244 46 250 26 292 C14 318 6 340 -10 352 Z"/>
-      <circle cx="150" cy="128" r="30" fill="#fff" opacity=".55"/>
-      <path class="b" style="fill:var(--w2)" d="M410 548 C384 574 356 584 344 618 C330 656 298 666 290 704 C282 742 254 762 258 830 H410 Z"/>
-      <path class="b" style="fill:var(--w2)" opacity=".7" d="M410 650 C392 672 372 690 366 724 C360 758 338 782 340 830 H410 Z"/>
+    <!-- pale echo in the bottom corner -->
+    <g filter="url(#ssoft)" opacity=".5">
+      <path class="b" style="fill:var(--w3)" d="M420 690 C390 704 360 720 344 750 C330 776 320 800 316 840 H420 Z"/>
     </g>
-    <g filter="url(#cspeck)">
-      <circle class="b" style="fill:var(--w1)" cx="262" cy="196" r="3.2"/><circle class="b" style="fill:var(--w1)" cx="300" cy="96" r="1.8"/>
-      <circle class="b" style="fill:var(--w1)" cx="214" cy="332" r="2.4"/><circle class="b" style="fill:var(--w1)" cx="142" cy="420" r="3.6"/>
-      <circle class="b" style="fill:var(--w1)" cx="70" cy="560" r="2.2"/><circle class="b" style="fill:var(--w1)" cx="118" cy="512" r="1.5"/>
-      <circle class="b" style="fill:var(--w1)" cx="236" cy="268" r="1.4"/><circle class="b" style="fill:var(--w1)" cx="46" cy="640" r="1.7"/>
-      <circle class="b" style="fill:var(--w2)" cx="268" cy="592" r="2.6"/><circle class="b" style="fill:var(--w2)" cx="320" cy="548" r="1.6"/>
-      <circle class="b" style="fill:var(--w2)" cx="226" cy="676" r="3"/><circle class="b" style="fill:var(--w2)" cx="246" cy="760" r="1.5"/>
-      <circle class="b" style="fill:var(--w2)" cx="362" cy="510" r="2.1"/><circle class="b" style="fill:var(--w2)" cx="298" cy="640" r="1.3"/>
-      <!-- v1.15.1: a few droplets and brush flicks drifting through the middle, faint so the list still sits on clean paper -->
-      <g opacity=".8">
-        <circle class="b" style="fill:var(--w2)" cx="384" cy="318" r="2.6"/><circle class="b" style="fill:var(--w1)" cx="388" cy="452" r="1.8"/>
-        <ellipse class="b" style="fill:var(--w2)" cx="378" cy="392" rx="8" ry="1.8" transform="rotate(-30 378 392)"/>
-        <circle class="b" style="fill:var(--w1)" cx="196" cy="372" r="3.9"/><circle class="b" style="fill:var(--w1)" cx="248" cy="430" r="2.1"/>
-        <circle class="b" style="fill:var(--w2)" cx="176" cy="486" r="2.7"/><circle class="b" style="fill:var(--w2)" cx="292" cy="402" r="3.4"/>
-        <circle class="b" style="fill:var(--w1)" cx="318" cy="300" r="2.2"/><circle class="b" style="fill:var(--w2)" cx="226" cy="548" r="1.8"/>
-        <ellipse class="b" style="fill:var(--w1)" cx="268" cy="352" rx="9.8" ry="2.2" transform="rotate(-28 268 352)"/>
-        <ellipse class="b" style="fill:var(--w2)" cx="152" cy="560" rx="8.4" ry="2.0" transform="rotate(-34 152 560)"/>
-        <ellipse class="b" style="fill:var(--w1)" cx="212" cy="456" rx="5.0" ry="1.5" transform="rotate(-24 212 456)"/>
-      </g>
+    <g filter="url(#sw)" opacity=".45">
+      <path class="b" style="fill:var(--w1)" d="M420 742 C398 752 380 770 372 794 C368 808 366 820 366 840 H420 Z"/>
     </g>
-    <rect x="0" y="0" width="400" height="820" filter="url(#cgrain)"/>
+    <!-- a few droplets, only near the paint -->
+    <g filter="url(#sdrop)" opacity=".6">
+      <circle class="b" style="fill:var(--w1)" cx="238" cy="96" r="2.4"/><circle class="b" style="fill:var(--w1)" cx="262" cy="74" r="1.3"/>
+      <circle class="b" style="fill:var(--w2)" cx="206" cy="128" r="1.6"/><circle class="b" style="fill:var(--w1)" cx="58" cy="232" r="1.8"/>
+      <circle class="b" style="fill:var(--w1)" cx="344" cy="724" r="1.6"/>
+    </g>
+    <rect x="0" y="0" width="400" height="820" filter="url(#sgrain)"/>
   </svg>
 </div>
 <main>
@@ -1075,7 +1040,7 @@ const BRAND={
   egProject:'Camping trip',            // New project name example
   egProjects:'a camping trip, moving house or baby prep', // empty Projects screen
   webUrl:'https://gmoghul.github.io/Mum-Brain/', // online version (no longer in the iPhone app's "Send code" message; kept in case it's needed again)
-  palette:'linen',                     // default theme for new users
+  palette:'lilac',                     // default theme for new users
   welcome:[                            // first-open welcome screens: Dump it, Sort it, Do it
     {h:'Dump it.',p:'Get every job out of your head, big or small. No dates, no sorting, just type it in.',eg:'e.g. “Nursery form”, “Book dentist Fri 3pm”',
      art:{type:'Book dentist Fri 3pm',jobs:['Nursery form','Birthday present','Socks that fit']}},
@@ -1169,22 +1134,16 @@ const I={
 let state={tasks:[],updatedAt:0};
 try{const raw=localStorage.getItem(KEY);if(raw){const p=JSON.parse(raw);if(p&&Array.isArray(p.tasks))state=p;}}catch(e){}
 const PALETTES=[
-  {id:'linen',name:'Linen',accent:'#6548A8',bg:'#FAF7F2',w:['#D9CDF4','#F4D7C7','#CFE2D3'],wash:.5,ink:'#23201C',muted:'#6B645B',line:'#ECE5DA',primary:'#23201C'},
-  {id:'sky',name:'Sky',accent:'#3767AE',bg:'#F6F8FB',w:['#A9C6F2','#C9B8EE','#BFE3E0'],wash:.45},
-  {id:'blush',name:'Blush',accent:'#C8507A',bg:'#FBF7F8',w:['#F4B6C6','#F7CDB4','#E3C4EA'],wash:.45},
-  {id:'sage',name:'Sage',accent:'#3C8A63',bg:'#F6F9F6',w:['#B3DBC1','#DCE9B5','#A8D5D1'],wash:.45},
-  {id:'sunrise',name:'Sunrise',accent:'#D2692F',bg:'#FBF8F5',w:['#F9C69A','#F5DD92','#F1B0A6'],wash:.45},
-  {id:'lavender',name:'Lavender',accent:'#7658C8',bg:'#F8F7FC',w:['#CDBDF2','#B8CEF3','#F0C3DC'],wash:.45},
-  {id:'black',name:'Ink',accent:'#1F2226',bg:'#F7F7F6',w:['#9EA1A6','#C9CBCE','#6F7378'],wash:.32},
-  // calmer, unisex options (asked for by a family tester), sitting with Ink as a neutral bottom row
-  {id:'navy',name:'Navy',accent:'#23406F',bg:'#F5F7FA',w:['#A8BAD6','#C7D1E0','#B3C8C6'],wash:.4,ink:'#1C2230',muted:'#5C6575',line:'#E2E7EE',primary:'#1C2230'},
-  {id:'stone',name:'Stone',accent:'#5E5A47',bg:'#F7F6F2',w:['#D5CFBF','#C5CCBA','#E0D6C4'],wash:.45,ink:'#25231F',muted:'#69655B',line:'#E8E4DB',primary:'#25231F'},
-  // v1.14.0 corner washes: two colours each, top left and bottom right, on near-white paper (corner:1 = picking one switches the wash to Corners)
-  {id:'tide',name:'Tide',corner:1,accent:'#2E6E74',bg:'#FBFCFC',w:['#86CFCB','#AEA8E6','#C9E6E3'],wash:.55},
-  {id:'mist',name:'Mist',corner:1,accent:'#3D6A92',bg:'#FBFBFB',w:['#A7C7E6','#B9D1B4','#D4E2EC'],wash:.55},
-  {id:'apricot',name:'Apricot',corner:1,accent:'#A85A36',bg:'#FDFBF8',w:['#F4C09E','#E6D2AB','#F3DCCB'],wash:.55},
-  {id:'rosestone',name:'Rosestone',corner:1,accent:'#8A5363',bg:'#FBF9F7',w:['#D3CABD','#E3B6BF','#E8DDD5'],wash:.6}
+  // v1.16.0: six single-colour watercolours (one colour in three strengths: main, deeper, palest), after premium stationery
+  {id:'lilac',name:'Lilac',accent:'#6548A8',bg:'#FBFAF7',w:['#CDBFF0','#9C86DA','#E7E0F8'],wash:.75,ink:'#23201C',muted:'#6B645B',line:'#ECE7DF',primary:'#23201C'},
+  {id:'tide',name:'Tide',accent:'#2E6E74',bg:'#FAFBFA',w:['#A6D8D3','#5FA9A6','#D8EEEB'],wash:.75},
+  {id:'mist',name:'Mist',accent:'#3D6A92',bg:'#FAFBFC',w:['#B6CEE8','#7FA3CC','#DFE9F5'],wash:.75},
+  {id:'sage',name:'Sage',accent:'#4A7258',bg:'#FAFAF7',w:['#BFD5C2','#88AC92','#E1ECE2'],wash:.75},
+  {id:'clay',name:'Clay',accent:'#A3593A',bg:'#FCFAF7',w:['#F0C9B1','#D9987A','#F8E5D9'],wash:.75},
+  {id:'stone',name:'Stone',accent:'#5E5A47',bg:'#FAF9F6',w:['#D8D0C3','#B3A893','#ECE7DE'],wash:.8,ink:'#25231F',muted:'#69655B',line:'#E8E4DB',primary:'#25231F'}
 ];
+// older themes move to the nearest of the six
+const OLD_PAL={linen:'lilac',sky:'mist',blush:'clay',sunrise:'clay',apricot:'clay',lavender:'lilac',black:'stone',navy:'mist',rosestone:'stone'};
 // Classic theme colours (replaced Sharp's bright colours in v1.11.0): muted, classic shades, plus a custom colour from the phone's colour wheel
 const SHARP=[
   {id:'slate',name:'Slate',c:'#46607F'},{id:'navy',name:'Navy',c:'#233A5E'},{id:'sage',name:'Sage',c:'#4F735C'},
@@ -1217,9 +1176,8 @@ const FONTS=[
   {id:'hand',name:'Handwritten',desc:'Script headings',body:'Nunito,system-ui,sans-serif',head:'Caveat,"Segoe Print",cursive',hs:1.3,hls:'0'}
 ];
 if(!state.prefs)state.prefs={palette:BRAND.palette,font:'sfround',mode:'light'};
-function fixPrefs(P){if(!P.style)P.style=P.palette==='plain'?'none':'wash';if(!P.palette||P.palette==='plain')P.palette='sky';if(!P.sharp)P.sharp='slate';if(OLD_SHARP[P.sharp])P.sharp=OLD_SHARP[P.sharp];return P;}
+function fixPrefs(P){if(!P.style)P.style=P.palette==='plain'?'none':'wash';if(!P.palette||P.palette==='plain')P.palette='mist';if(OLD_PAL[P.palette])P.palette=OLD_PAL[P.palette];P.washv='corners';if(!P.sharp)P.sharp='slate';if(OLD_SHARP[P.sharp])P.sharp=OLD_SHARP[P.sharp];return P;}
 fixPrefs(state.prefs);
-if(!state.prefs.washv||state.prefs.washv==='band')state.prefs.washv='corners'; // v1.15.0: Painted band removed; anyone on it moves to Corners
 if(!state.prefs.look2){state.prefs.look2=1;if(state.prefs.font==='clean')state.prefs.font='native';} // v1.10.0 new look: move Soft serif users onto the phone's own font once (Soft is still in Settings)
 if(!state.prefs.look3){state.prefs.look3=1;if(state.prefs.font==='native')state.prefs.font='sfround';} // v1.11.0: Calm (SF Rounded) is the new default
 if(!state.prefs.ts)state.prefs.ts='m';if(!state.prefs.tidy)state.prefs.tidy='off';if(!state.prefs.cel)state.prefs.cel='rabbit';if(!state.prefs.sp)state.prefs.sp='std';
@@ -1249,15 +1207,19 @@ function applyPrefs(){
   if(P.mode==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',P.mode==='dark'?'dark':'light');
   if(typeof paintWash==='function')paintWash();
 }
-// Paint the current wash into a still picture once, so scrolling doesn't make the phone recompute the watercolour filters every frame
-let _washKey='';
+// Paint the wash into a still picture once, so scrolling doesn't make the phone recompute the watercolour filters every frame.
+// The same picture (in each theme's colours) is used for the Settings previews.
+const _washImg={};
+function washURL(c){
+  const k=c.join();if(_washImg[k])return _washImg[k];
+  const svg=document.querySelector('.wash svg.w-corner');if(!svg)return '';
+  const src=svg.outerHTML.replace(/var\(--w([123])\)/g,(m,i)=>c[i-1]).replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1640" ').replace('class="w-corner"','');
+  return _washImg[k]='url("data:image/svg+xml;charset=utf-8,'+encodeURIComponent(src)+'")';
+}
 function paintWash(){
   const r=document.documentElement,el=document.querySelector('.wash');if(!el)return;
-  const v=r.getAttribute('data-wash')==='full'?'w-full':'w-corner',svg=el.querySelector('svg.'+v);if(!svg)return;
   const cs=getComputedStyle(r),c=[1,2,3].map(i=>cs.getPropertyValue('--w'+i).trim());
-  const key=v+c.join();if(key===_washKey)return;_washKey=key;
-  let src=svg.outerHTML.replace(/var\(--w([123])\)/g,(m,i)=>c[i-1]).replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1640" ').replace(/class="w-(corner|full)"/,'');
-  el.style.backgroundImage='url("data:image/svg+xml;charset=utf-8,'+encodeURIComponent(src)+'")';
+  const u=washURL(c);if(el.style.backgroundImage!==u)el.style.backgroundImage=u;
 }
 
 applyPrefs();paintWash();
@@ -2176,7 +2138,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.15.2';
+const APPV='1.16.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3240,12 +3202,7 @@ if(WB){
 const st=document.getElementById('settings');
 function renderOpts(){
   const P=state.prefs,el=document.getElementById('s-opts');
-  if(P.style==='wash'){const wv=P.washv||'corners',
-    pvC=p=>`<button class="theme" data-pal="${p.id}"><span class="pv" style="background:radial-gradient(85% 110% at 0% 0%,${p.w[0]} 0 42%,transparent 54%),radial-gradient(60% 80% at 100% 100%,${p.w[1]} 0 38%,transparent 50%),${p.bg}"><i style="background:${p.accent}"></i></span>${p.name}</button>`,
-    pvW=p=>`<button class="theme" data-pal="${p.id}"><span class="pv" style="background:radial-gradient(60% 70% at 20% 25%,${p.w[0]},transparent 70%),radial-gradient(55% 60% at 85% 20%,${p.w[1]},transparent 70%),radial-gradient(60% 70% at 75% 95%,${p.w[2]},transparent 70%),${p.bg}"><i style="background:${p.accent}"></i></span>${p.name}</button>`;
-    el.innerHTML='<div class="rep-hint" style="margin:0 0 8px">Corner washes</div><div class="themes">'+PALETTES.filter(p=>p.corner).map(pvC).join('')+'</div>'
-    +'<div class="rep-hint" style="margin:14px 0 8px">More colours</div><div class="themes">'+PALETTES.filter(p=>!p.corner).map(pvW).join('')+'</div>'
-    +`<div class="seg" style="grid-template-columns:1fr 1fr;margin-top:12px"><button data-washv="corners"${wv==='corners'?' class="on"':''}>Corners</button><button data-washv="full"${wv==='full'?' class="on"':''}>Full wash</button></div>`;}
+  if(P.style==='wash')el.innerHTML='<div class="themes">'+PALETTES.map(p=>`<button class="theme" data-pal="${p.id}"><span class="pv" style="background-color:${p.bg};background-image:linear-gradient(${p.bg}4D,${p.bg}4D),${washURL(p.w).replace(/"/g,'&quot;')}"><i style="background:${p.accent}"></i></span>${p.name}</button>`).join('')+'</div>';
   else if(P.style==='sharp'){const cu=P.sharp==='custom';
     el.innerHTML='<div class="cswatches">'+SHARP.map(p=>`<button class="cs" data-sharp="${p.id}" style="--c:${p.c}"><i></i>${p.name}</button>`).join('')
       +`<label class="cs custom" data-csw="custom" style="--c:${cu?readable(P.custom):'#888'}"><i></i>Custom<input type="color" id="s-custom" value="${readable(P.custom||'#46607F')}" aria-label="Pick your own colour"></label></div>`;
@@ -3327,7 +3284,7 @@ function closeSettings(){st.classList.remove('open');st.setAttribute('aria-hidde
 st.addEventListener('click',e=>{
   const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-mstyle],button[data-mpick],button[data-mjobs],button[data-bdr],button[data-projs]');if(!b)return;
   if(b.dataset.sact){closeSettings();return;}
-  if(b.dataset.pal){state.prefs.palette=b.dataset.pal;if((PALETTES.find(x=>x.id===b.dataset.pal)||{}).corner)state.prefs.washv='corners';}
+  if(b.dataset.pal)state.prefs.palette=b.dataset.pal;
   if(b.dataset.washv)state.prefs.washv=b.dataset.washv;
   if(b.dataset.sharp)state.prefs.sharp=b.dataset.sharp;
   if(b.dataset.sty)state.prefs.style=b.dataset.sty;
