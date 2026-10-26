@@ -559,6 +559,13 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .chip .pdot{width:7px;height:7px;border-radius:2px;background:var(--pc);flex:none}
 :root[data-sp="compact"] .task .c-proj .ct{max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fchip svg{flex:none}
+/* who's doing it (Shared list) */
+.whobar{display:flex;gap:6px;overflow-x:auto;margin:-8px -18px 16px;padding:2px 18px 2px;scrollbar-width:none}
+.whobar::-webkit-scrollbar{display:none}
+.wchip{flex:none;height:28px;padding:0 11px;border-radius:14px;border:1px solid var(--line);background:var(--solid);color:var(--muted);font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:5px}
+.wchip svg{flex:none;width:13px;height:13px}
+.wchip .wc{font-size:12px;opacity:.75}
+.wchip.on{border-color:var(--primary);color:var(--primary);background:color-mix(in srgb,var(--primary) 10%,var(--solid));font-weight:600}
 .pcards{list-style:none;margin:0;padding:0;background:var(--surface);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
 .pcard{position:relative}
 .pcard+.pcard::before,.pnew::before{content:"";position:absolute;top:0;left:14px;right:0;height:1px;background:var(--line)}
@@ -2035,8 +2042,27 @@ function projStats(id){
 const vis=t=>!archivedJob(t)&&(!ui.filter||(ui.filter===STAR?!!t.starred:ui.filter===PROJ?!!t.proj:(t.list||null)===ui.filter));
 const newDefaults=()=>{
   if(ui.tab==='dump'&&ui.proj){const p=projOf(ui.proj);if(p)return {proj:p.id,color:p.color||'grey'};}
+  if(ui.tab==='dump'&&ui.filter===SHARED&&ui.who&&ui.who!=='any'){
+    if(ui.who==='me')return {list:SHARED,own:devId(),ownN:myName()||null};
+    const s=state.tasks.find(t=>t.list===SHARED&&whoKey(t)===ui.who);if(s)return {list:SHARED,own:s.own,ownN:s.ownN};
+  }
   return ui.filter===STAR?{starred:true}:ui.filter===PROJ?{}:{list:ui.filter};
 };
+/* Who's doing it: on the Shared list, a row of small chips (Everyone · You · Fraz · Anyone) shows one person's jobs.
+   Jobs given to the same name (typed or picked from the family) count as one person. */
+const whoKey=t=>!t.own?'any':ownIsMe(t)?'me':'p:'+String(t.ownN||'Someone').trim().toLowerCase();
+function whoBar(){
+  if(ui.filter!==SHARED){ui.who=null;return'';}
+  const J=state.tasks.filter(t=>t.list===SHARED&&!t.proj&&!archivedJob(t)&&!(!isRep(t)&&t.done));
+  if(!J.some(t=>t.own)){ui.who=null;return'';}
+  const m=new Map();
+  for(const t of J){const k=whoKey(t);if(!m.has(k))m.set(k,{k,n:k==='me'?'You':k==='any'?'Anyone':(t.ownN||'Someone'),c:0});m.get(k).c++;}
+  if(ui.who&&!m.has(ui.who))ui.who=null;
+  const rank=x=>x.k==='me'?0:x.k==='any'?2:1;
+  const L=[{k:'',n:'Everyone',c:J.length}].concat([...m.values()].sort((a,b)=>rank(a)-rank(b)||a.n.localeCompare(b.n)));
+  return `<div class="whobar" role="tablist" aria-label="Who's doing it">${L.map(x=>{const on=(ui.who||'')===x.k;
+    return `<button class="wchip${on?' on':''}" data-act="who" data-w="${esc(x.k)}" role="tab" aria-selected="${on}">${x.k&&x.k!=='any'?I.person:''}${esc(x.n)}<span class="wc">${x.c}</span></button>`;}).join('')}</div>`;
+}
 const T=()=>state.tasks.filter(vis);
 // Shared and Projects are built-in tags: each remembers its own spot in the row.
 // Shared starts at the end; Projects starts first among your lists so it isn't scrolled off-screen.
@@ -2101,7 +2127,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.17.1';
+const APPV='1.18.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2164,12 +2190,13 @@ function fbMark(k){let m={};try{m=JSON.parse(localStorage.getItem(KEY+'-fb')||'{
 function renderDump(){
   if(ui.filter===PROJ){if(ui.proj&&projOf(ui.proj)&&!projOf(ui.proj).archived)return renderProject(projOf(ui.proj));ui.proj=null;return renderProjects();}
   ui.proj=null;
-  const T=state.tasks.filter(t=>vis(t)&&!t.proj),t0=today();
+  const wb=whoBar();
+  const T=state.tasks.filter(t=>vis(t)&&!t.proj&&(!ui.who||whoKey(t)===ui.who)),t0=today();
   const undated=T.filter(t=>!isRep(t)&&!t.date&&!t.done).sort(byStar);
   const sched=T.filter(t=>!isRep(t)&&t.date&&!t.done).sort((a,b)=>a.date.localeCompare(b.date)||byStar(a,b));
   const reps=T.filter(isRep).sort(byStar);
   const done=T.filter(t=>!isRep(t)&&t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
-  let h=`<header class="head"><h1>Brain dump</h1><p class="sub">${BRAND.slogan}</p></header>${filterBar()}
+  let h=`<header class="head"><h1>Brain dump</h1><p class="sub">${BRAND.slogan}</p></header>${filterBar()}${wb}
   <div class="quick"><input id="quick" placeholder="Add a job… e.g. ${BRAND.egQuick}" autocomplete="off" enterkeyhint="done" aria-label="Add a job"><button data-act="quick" aria-label="Add">${I.plus}</button></div>${homeCard()}${nudgeCard()}`;
   if(!undated.length&&!sched.length&&!reps.length&&!done.length){
     h+=`<div class="empty"><strong>Nothing here yet${ui.filter===STAR?' starred':ui.filter?' in '+esc(listName(ui.filter)):''}</strong>Type anything on your mind above. You can give it a day, a colour or a repeat whenever you like.</div>`;
@@ -2692,7 +2719,8 @@ view.addEventListener('click',e=>{
     if(act==='dprev'||act==='dnext'){shiftDay(act==='dnext'?1:-1);return;}
     if(act==='dtoday'){const f=ui.day>today();ui.day=today();render();anim(f?'in-r':'in-l');return;}
     if(act==='openday'){ui.day=a.dataset.date||ui.sel;ui.tab='today';window.scrollTo(0,0);render();return;}
-    if(act==='filter'){ui.filter=a.dataset.f||null;ui.proj=null;try{localStorage.setItem(KEY+'-filter',ui.filter||'');}catch(err){}render();return;}
+    if(act==='who'){ui.who=a.dataset.w||null;render();return;}
+    if(act==='filter'){ui.filter=a.dataset.f||null;ui.proj=null;ui.who=null;try{localStorage.setItem(KEY+'-filter',ui.filter||'');}catch(err){}render();return;}
     if(act==='roll'){const t0=today(),tm=addDays(t0,1);
       undoable(n=>`Moved ${n} to tomorrow`,()=>{let n=0;state.tasks.forEach(t=>{if(vis(t)&&!isRep(t)&&!t.done&&t.date&&t.date<=t0){t.date=tm;n++;}});return n;});return;}
     if(act==='lighter'){const tm=addDays(today(),1),L=lightJobs();
