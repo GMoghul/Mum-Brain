@@ -160,6 +160,11 @@ func mixed(_ a: String, _ b: String, _ k: Double) -> Color {
     return Color(red: x.0 * k + y.0 * (1 - k), green: x.1 * k + y.1 * (1 - k), blue: x.2 * k + y.2 * (1 - k))
 }
 
+// v1.15.2: the widget's tick, + button, progress bar and today circle use a deeper shade of the
+// app icon's blue (#A9C6F2) in every theme, so white shows up clearly on it
+let iconBlue = Color(hex: "#447DD4")
+let iconBlueDark = Color(hex: "#598CD9")
+
 struct Palette {
     let bg: Color
     let ink: Color
@@ -175,7 +180,7 @@ func palette(_ t: WTheme, scheme: ColorScheme) -> Palette {
     let dark = t.mode == "dark" || (t.mode != "light" && scheme == .dark)
     if dark {
         return Palette(bg: Color(hex: "#131519"), ink: Color(hex: "#ECEEF1"), muted: Color(hex: "#8C929B"),
-                       line: Color(hex: "#2B2F36"), accent: mixed(t.accent, "#FFFFFF", 0.68),
+                       line: Color(hex: "#2B2F36"), accent: iconBlueDark,
                        w: t.w.map { Color(hex: $0) }, wash: 0, dark: true)
     }
     // v1.10.0: plain white background (no theme colour or wash), like Dawn
@@ -183,7 +188,7 @@ func palette(_ t: WTheme, scheme: ColorScheme) -> Palette {
                    ink: Color(hex: t.ink.isEmpty ? "#1B1E23" : t.ink),
                    muted: Color(hex: t.muted.isEmpty ? "#6E747D" : t.muted),
                    line: Color(hex: t.line.isEmpty ? "#E4E7EB" : t.line),
-                   accent: Color(hex: t.accent),
+                   accent: iconBlue,
                    w: t.w.map { Color(hex: $0) }, wash: 0)
 }
 
