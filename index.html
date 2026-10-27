@@ -34,7 +34,7 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..500;1,6..72,300..500&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=Figtree:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Caveat:wght@500;700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..500;1,6..72,300..500&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=Figtree:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Caveat:wght@500;700&family=Playfair+Display:wght@500;600;700&family=Prata&family=Gilda+Display&family=Libre+Caslon+Display&family=Bodoni+Moda:opsz,wght@6..96,400..600&display=swap" rel="stylesheet">
 <style>
 :root{
   --ts:1; --sp:1;
@@ -1143,6 +1143,11 @@ const FONTS=[
   {id:'rounded',name:'Friendly',desc:'Round and bubbly',body:'Nunito,system-ui,sans-serif',head:null,hs:1,hls:'-.01em'},
   {id:'classic',name:'Bookish',desc:'Book-style serif',body:'Lora,Georgia,serif',head:null,hs:1,hls:'-.01em'},
   {id:'elegant',name:'Elegant',desc:'Grand serif headings',body:'Figtree,system-ui,sans-serif',head:'"Playfair Display",Georgia,serif',hs:1.02,hls:'-.01em'},
+  // v1.20.0 trial: premium serif headings to compare with Elegant (cap the list once one is chosen)
+  {id:'prata',name:'Boutique',desc:'Refined serif headings',body:'Figtree,system-ui,sans-serif',head:'Prata,Georgia,serif',hw:400,hs:1,hls:'-.01em'},
+  {id:'gilda',name:'Graceful',desc:'Light, delicate headings',body:'Figtree,system-ui,sans-serif',head:'"Gilda Display",Georgia,serif',hw:400,hs:1.06,hls:'0'},
+  {id:'caslon',name:'Timeless',desc:'Book-cover serif headings',body:'Figtree,system-ui,sans-serif',head:'"Libre Caslon Display",Georgia,serif',hw:400,hs:1.08,hls:'0'},
+  {id:'bodoni',name:'Magazine',desc:'Crisp, striking headings',body:'Figtree,system-ui,sans-serif',head:'"Bodoni Moda",Georgia,serif',hw:500,hs:1.02,hls:'-.01em'},
   {id:'hand',name:'Handwritten',desc:'Script headings',body:'Nunito,system-ui,sans-serif',head:'Caveat,"Segoe Print",cursive',hs:1.3,hls:'0'}
 ];
 if(!state.prefs)state.prefs={palette:BRAND.palette,font:'sfround',mode:'light'};
@@ -2127,7 +2132,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.19.0';
+const APPV='1.20.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;

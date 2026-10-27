@@ -81,6 +81,7 @@ The live web app on GitHub Pages (`main`) is not affected.
 19. **Clear gap under the brushstrokes (v1.17.1, 26 Oct 2026):** the strip now sits about 14px above the tab bar (like the white rim under the widget's wash) instead of running into it.
 20. **Who's doing it chips (v1.18.0, 26 Oct 2026):** on Brain dump › Shared, a row of small chips (Everyone · You · each person · Anyone, with counts) shows one person's jobs. Jobs given to the same name count as one person. A job added while a person's chip is picked is given to them. Only shows once at least one shared job has someone doing it.
 21. **Widget tidy-up (v1.19.0, 27 Oct 2026):** ticked-off jobs drop off the widget (all sizes) so the next jobs move up; the record stays in the app and the "x of y done" count. "+N more" now counts only jobs still to do. The large widget shows up to 7 jobs when they sit comfortably, otherwise 6 (or 5 with a larger iPhone text size).
+22. **Font trial (v1.20.0, 27 Oct 2026):** four premium serif-heading fonts added to Settings › Font to compare with Elegant: Boutique (Prata), Graceful (Gilda Display), Timeless (Libre Caslon Display) and Magazine (Bodoni Moda). Job text stays in Figtree. Widget unchanged. Once one is picked, trim the font list to a few.
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)
