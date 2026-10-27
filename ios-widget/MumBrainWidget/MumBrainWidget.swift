@@ -480,14 +480,15 @@ struct JobList: View {
     let size: CGFloat
     let spacing: CGFloat
     var body: some View {
-        // show every job if they all fit, otherwise leave a line for "+N more"
-        let shown = e.total <= limit ? e.jobs : Array(e.jobs.prefix(limit - 1))
+        // ticked-off jobs drop off the widget (the app keeps the record), so the next jobs move up.
+        // show every job still to do if they all fit, otherwise leave a line for "+N more"
+        let shown = e.openCount <= limit ? e.open : Array(e.open.prefix(limit - 1))
         VStack(alignment: .leading, spacing: spacing) {
             ForEach(shown) { j in
                 Row(job: j, p: p, size: size, day: e.key)
             }
-            if e.total > shown.count {
-                Text("+\(e.total - shown.count) more")
+            if e.openCount > shown.count {
+                Text("+\(e.openCount - shown.count) more")
                     .font(F.body(size - 1.5))
                     .foregroundColor(p.muted)
             }
@@ -502,7 +503,7 @@ struct MediumJobs: View {
     let count: Int
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            ForEach(Array(e.jobs.prefix(count))) { j in
+            ForEach(Array(e.open.prefix(count))) { j in
                 Row(job: j, p: p, size: 12, day: e.key)
             }
         }
@@ -702,7 +703,7 @@ struct MediumBody: View {
     let style: WStyle
     let count: Int
     var resting: Bool { e.open.isEmpty }   // all done, or nothing planned
-    var more: Int { max(0, e.total - min(count, e.jobs.count)) }
+    var more: Int { max(0, e.openCount - min(count, e.open.count)) }
     var body: some View {
         VStack(spacing: 0) {
             HStack(alignment: .top, spacing: 14) {
@@ -767,6 +768,28 @@ struct LargeView: View {
     let p: Palette
     let style: WStyle
     var body: some View {
+        // up to 7 jobs when they sit comfortably, otherwise 6 (or 5 with a larger iPhone text size)
+        Group {
+            if #available(iOS 16.0, *), !e.open.isEmpty {
+                ViewThatFits(in: .vertical) {
+                    LargeBody(e: e, p: p, style: style, limit: 7)
+                    LargeBody(e: e, p: p, style: style, limit: 6)
+                    LargeBody(e: e, p: p, style: style, limit: 5)
+                }
+            } else {
+                LargeBody(e: e, p: p, style: style, limit: 6)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+struct LargeBody: View {
+    let e: DayEntry
+    let p: Palette
+    let style: WStyle
+    let limit: Int
+    var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(alignment: .top, spacing: 10) {
                 VStack(alignment: .leading, spacing: 0) {
@@ -795,7 +818,7 @@ struct LargeView: View {
                 if e.open.isEmpty {
                     Message(e: e, p: p, size: 15, centred: true)
                 } else {
-                    JobList(e: e, p: p, limit: 6, size: 14, spacing: 8)
+                    JobList(e: e, p: p, limit: limit, size: 14, spacing: 8)
                 }
             }
             .padding(.top, 12)
@@ -816,7 +839,6 @@ struct LargeView: View {
                 }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 
