@@ -34,7 +34,7 @@
 <link rel="icon" type="image/png" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..500;1,6..72,300..500&family=Fraunces:ital,opsz,wght@0,9..144,400..700;1,9..144,400..600&family=Figtree:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Caveat:wght@500;700&family=Prata&family=Gilda+Display&family=Libre+Caslon+Display&family=Bodoni+Moda:opsz,wght@6..96,400..600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..500;1,6..72,300..500&family=Figtree:wght@400;500;600;700&family=Nunito:wght@400;500;600;700&family=Lora:wght@400;500;600;700&family=Caveat:wght@500;700&family=Prata&family=Gilda+Display&family=Libre+Caslon+Display&family=Bodoni+Moda:opsz,wght@6..96,400..600&display=swap" rel="stylesheet">
 <style>
 :root{
   --ts:1; --sp:1;
@@ -1141,7 +1141,6 @@ const FONTS=[
   {id:'prata',name:'Boutique',desc:'Refined serif headings',body:'Figtree,system-ui,sans-serif',head:'Prata,Georgia,serif',hw:400,hs:1,hls:'-.01em'},
   {id:'native',name:'Native',desc:'Your phone’s own',body:'-apple-system,BlinkMacSystemFont,system-ui,\"Segoe UI\",Roboto,sans-serif',head:null,hw:500,hs:1,hls:'0'},
   {id:'news',name:'Editorial',desc:'Light serif headings',body:'-apple-system,BlinkMacSystemFont,system-ui,\"Segoe UI\",Roboto,sans-serif',head:'Newsreader,Georgia,serif',sub:'Newsreader,Georgia,serif',subStyle:'italic',hw:400,hs:1.06,hls:'-.01em'},
-  {id:'clean',name:'Soft',desc:'Serif headings',body:'Figtree,system-ui,sans-serif',head:'Fraunces,Georgia,serif',sub:'Fraunces,Georgia,serif',subStyle:'italic',hw:600,hs:1,hls:'-.02em'},
   {id:'simple',name:'Simple',desc:'Friendly sans',body:'Figtree,system-ui,sans-serif',head:null,hs:1,hls:'-.02em'},
   {id:'rounded',name:'Friendly',desc:'Round and bubbly',body:'Nunito,system-ui,sans-serif',head:null,hs:1,hls:'-.01em'},
   {id:'classic',name:'Bookish',desc:'Book-style serif',body:'Lora,Georgia,serif',head:null,hs:1,hls:'-.01em'},
@@ -1157,6 +1156,7 @@ fixPrefs(state.prefs);
 if(!state.prefs.look2){state.prefs.look2=1;if(state.prefs.font==='clean')state.prefs.font='native';} // v1.10.0 new look: move Soft serif users onto the phone's own font once (Soft is still in Settings)
 if(!state.prefs.look3){state.prefs.look3=1;if(state.prefs.font==='native')state.prefs.font='sfround';} // v1.11.0: Calm (SF Rounded) is the new default
 if(!state.prefs.look4){state.prefs.look4=1;if(state.prefs.font==='sfround'||state.prefs.font==='elegant')state.prefs.font='prata';} // v1.22.0: Boutique is the new default (Calm and Elegant removed)
+if(!FONTS.some(f=>f.id===state.prefs.font))state.prefs.font='prata'; // a font that's been taken out of Settings falls back to Boutique
 if(!state.prefs.ts)state.prefs.ts='m';if(!state.prefs.tidy)state.prefs.tidy='off';if(!state.prefs.cel)state.prefs.cel='rabbit';if(!state.prefs.sp)state.prefs.sp='std';
 if(!Array.isArray(state.lists))state.lists=[{id:'home',name:'Home'},{id:'work',name:'Work'},{id:'family',name:'Family'}];
 if(!Array.isArray(state.projects))state.projects=[];
@@ -2137,7 +2137,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.22.0';
+const APPV='1.22.1';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3438,7 +3438,7 @@ document.getElementById('bk-confirm').addEventListener('click',e=>{
   const st=pendingBk;pendingBk=null;box.hidden=true;
   // keep the live family list exactly as it is; only your own jobs come from the backup
   if(SHARING)st.tasks=st.tasks.filter(t=>t.list!==SHARED).concat(state.tasks.filter(t=>t.list===SHARED));
-  state=st;fixPrefs(state.prefs=state.prefs||{palette:BRAND.palette,font:'clean',mode:'light'});
+  state=st;fixPrefs(state.prefs=state.prefs||{palette:BRAND.palette,font:'prata',mode:'light'});
   if(!Array.isArray(state.lists))state.lists=[];
   if(!Array.isArray(state.projects))state.projects=[];
   save();applyPrefs();paintSettings();render();
