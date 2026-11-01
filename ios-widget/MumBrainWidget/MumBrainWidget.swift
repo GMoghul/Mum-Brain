@@ -193,12 +193,12 @@ func palette(_ t: WTheme, scheme: ColorScheme) -> Palette {
 }
 
 // Fonts follow the app's font choice (v1.11.0):
-// Calm (default) = SF Rounded, Native = SF Pro, Editorial = Newsreader headings, Soft = Fraunces/Figtree.
+// The widget uses the standard iPhone font (SF Pro) whatever font is chosen in the app.
 // The greeting is always a soft italic serif (Newsreader, or Fraunces for Soft).
 enum F {
     static var font: String { Store.load()?.theme.font ?? "sfround" }
     static func sys(_ size: CGFloat, _ w: Font.Weight) -> Font {
-        font == "native" || font == "news" ? .system(size: size, weight: w) : .system(size: size, weight: w, design: .rounded)
+        .system(size: size, weight: w) // standard iPhone font for every app font (rounded dropped in v1.22.3)
     }
     static func head(_ size: CGFloat) -> Font {
         switch font {
