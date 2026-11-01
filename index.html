@@ -2135,7 +2135,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.21.1';
+const APPV='1.21.2';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2474,11 +2474,11 @@ function setMore(open){fMore.hidden=!open;moreBtn.setAttribute('aria-expanded',o
 moreBtn.addEventListener('click',()=>setMore(fMore.hidden));
 document.getElementById('f-custom').addEventListener('input',e=>{draft.color=e.target.value.toUpperCase();paint();});
 fTime.addEventListener('change',()=>{draft.time=fTime.value||null;if(!draft.time)draft.alarm='none';paint();});
-let draft=null,isNew=false;
+let draft=null,isNew=false,clTicked=new Set(); // checklist items ticked/unticked on this phone while the sheet is open
 
 function blank(o){return Object.assign({id:newId(),title:'',note:'',checklist:[],list:null,color:'grey',starred:false,date:null,time:null,alarm:'none',repeat:'none',done:false,completions:{},ts:Date.now(),created:today()},o||{});}
 function openEditor(id,defaults){
-  const t=id?find(id):null;isNew=!t;
+  const t=id?find(id):null;isNew=!t;clTicked=new Set();
   draft=t?JSON.parse(JSON.stringify(t)):blank(defaults);
   fTitle.value=draft.title;fNote.value=draft.note||'';fTitle.classList.remove('bad');
   document.getElementById('ed-h').textContent=isNew?'New job':'Edit job';
@@ -2575,9 +2575,12 @@ function ownAdd(){
 }
 document.getElementById('own-ok').addEventListener('click',ownAdd);
 document.getElementById('own-in').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ownAdd();}});
-function closeEditor(){ed.classList.remove('open');ed.setAttribute('aria-hidden','true');draft=null;}
+function closeEditor(){ed.classList.remove('open');ed.setAttribute('aria-hidden','true');draft=null;render();} // catches up with any family changes that arrived while the sheet was open
 function commit(){
-  draft.title=fTitle.value.trim();draft.note=fNote.value.trim();if(clIn.value.trim())addCl();draft.checklist=(draft.checklist||[]).filter(x=>x.text.trim());draft.time=fTime.value||null;if(!draft.time)draft.alarm='none';
+  draft.title=fTitle.value.trim();draft.note=fNote.value.trim();if(clIn.value.trim())addCl();draft.checklist=(draft.checklist||[]).filter(x=>x.text.trim());
+  // ticks that arrived from the family while the sheet was open aren't undone by saving it
+  {const cur=isNew?null:find(draft.id);if(cur)for(const x of draft.checklist){const y=(cur.checklist||[]).find(i=>i.id===x.id);if(y&&!clTicked.has(x.id))x.done=y.done;}}
+  draft.time=fTime.value||null;if(!draft.time)draft.alarm='none';
   if(!draft.title){fTitle.classList.add('bad','shake');setTimeout(()=>fTitle.classList.remove('shake'),520);fTitle.focus();return;}
   // a new job typed as "Dentist Fri 3pm" with no day or time chosen picks them up from the words
   let nl=null;const typed=draft.title;
@@ -2599,7 +2602,9 @@ fDel.addEventListener('click',()=>{
 ed.addEventListener('click',e=>{
   const cb=e.target.closest('[data-cli],[data-cld]');
   if(cb){const cl=draft.checklist||[];
-    if(cb.dataset.cli){const x=cl.find(i=>i.id===cb.dataset.cli);if(x)x.done=!x.done;}
+    if(cb.dataset.cli){const x=cl.find(i=>i.id===cb.dataset.cli);if(x){x.done=!x.done;clTicked.add(x.id);
+      // ticks on a saved job count straight away (and reach the family), even if the sheet is then closed with Cancel
+      const t=isNew?null:find(draft.id),y=t&&(t.checklist||[]).find(i=>i.id===x.id);if(y){y.done=x.done;save();render();}}}
     else draft.checklist=cl.filter(i=>i.id!==cb.dataset.cld);
     paintCl();return;}
   const db=e.target.closest('[data-due]');
