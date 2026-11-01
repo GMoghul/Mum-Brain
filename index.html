@@ -1204,7 +1204,10 @@ applyPrefs();paintWash();
 
 let ui={filter:null,searching:false,q:'',week:null,tab:'today',day:today(),month:null,mpick:false,pickYear:null,sel:today(),showDone:false,refocus:false};
 ui.tab='dump';ui.showSched=true;ui.showRep=true;try{ui.showSched=localStorage.getItem(KEY+'-sched')!=='hide';ui.showRep=localStorage.getItem(KEY+'-rep')!=='hide';}catch(e){} // always open on Brain dump, so there's somewhere to put the thought straight away
-try{const f=localStorage.getItem(KEY+'-filter');if(f&&f!=='projects')ui.filter=f;}catch(e){} // always open on the brain dump itself, never the project cards
+// the app always opens on Brain dump › All (the list tag chosen last time isn't brought back)
+/* coming back after 10+ minutes away also returns to Brain dump › All, unless a job sheet is open */
+{let hid=0;document.addEventListener('visibilitychange',()=>{if(document.hidden){hid=Date.now();return;}
+  if(hid&&Date.now()-hid>600000&&!draft&&!ui.searching){ui.tab='dump';ui.filter=null;ui.proj=null;ui.who=null;window.scrollTo(0,0);render();}});}
 
 let remote=null,timer=null;
 function save(){
@@ -2135,7 +2138,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.21.2';
+const APPV='1.21.3';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
