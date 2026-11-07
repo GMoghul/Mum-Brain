@@ -919,7 +919,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     </div>
     <div class="field"><span class="lbl">Open app on</span>
       <div class="seg" id="s-start" style="grid-template-columns:repeat(4,1fr)"><button data-start="dump">Brain dump</button><button data-start="today">Today</button><button data-start="week">Week</button><button data-start="month">Month</button></div>
-      <div class="rep-hint">Where the app opens, and where it goes back to after 10 minutes away. The widget and notifications still open the right place.</div>
+      <div class="rep-hint">Where the app opens, and where it goes back to after 10 minutes away. Tapping a notification or the widget still opens what it's about, e.g. the morning summary opens Today and the widget's + opens Brain dump.</div>
     </div>
     <div class="field"><span class="lbl">Week view</span>
       <div class="seg" id="s-wk" style="grid-template-columns:repeat(2,1fr)"><button data-wkv="cal">Mon – Sun</button><button data-wkv="roll">Next 7 days</button></div>
@@ -2147,7 +2147,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.24.0';
+const APPV='1.24.1';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
