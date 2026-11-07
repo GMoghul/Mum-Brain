@@ -367,6 +367,10 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .wday.wover{background:var(--accent-soft);box-shadow:0 0 0 6px var(--accent-soft)}
 .wday.wover .sec-h h2{color:var(--accent)}
 .whint{margin:-4px 0 12px;font-size:13px;color:var(--muted)}
+.wearly{display:flex;align-items:center;justify-content:space-between;width:100%;margin:0 0 calc(14px * var(--sp));padding:10px 14px;border-radius:14px;background:var(--surface);box-shadow:var(--shadow);color:var(--muted);font-size:14px;font-weight:600}
+.wearly svg{transition:transform .2s}
+.wearly[aria-expanded="true"] svg{transform:rotate(180deg)}
+.wday.wpast{opacity:.75}
 .list.wghost{position:fixed;left:0;top:0;z-index:60;pointer-events:none;box-shadow:0 14px 34px rgba(0,0,0,.22);scale:1.03;opacity:.97;border-radius:14px}
 .task.wsrc{opacity:.3}
 .wedge{position:fixed;top:0;bottom:0;width:30px;z-index:55;display:flex;align-items:center;justify-content:center;color:var(--accent);pointer-events:none;background:linear-gradient(to right,color-mix(in srgb,var(--accent) 16%,transparent),transparent);transition:background .15s}
@@ -911,6 +915,10 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="field"><span class="lbl">Spacing</span>
       <div class="seg seg3" id="s-sp"><button data-spc="compact">Compact</button><button data-spc="std">Standard</button><button data-spc="roomy">Roomy</button></div>
       <div class="rep-hint">Compact fits the most jobs on screen and hides note previews.</div>
+    </div>
+    <div class="field"><span class="lbl">Week view</span>
+      <div class="seg" id="s-wk" style="grid-template-columns:repeat(2,1fr)"><button data-wkv="cal">Mon – Sun</button><button data-wkv="roll">Next 7 days</button></div>
+      <div class="rep-hint">Mon – Sun shows the whole week, including days already passed. Next 7 days always starts from today, with earlier days folded at the top.</div>
     </div>
     <div class="field"><span class="lbl">Lists</span>
       <div id="s-lists"></div>
@@ -2133,7 +2141,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.22.3';
+const APPV='1.23.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2415,10 +2423,13 @@ function renderMonth(){
 }
 
 const mondayOf=s=>addDays(s,-((parse(s).getDay()+6)%7));
+/* Week view: 'cal' = Mon–Sun (default), 'roll' = 7 days from today with earlier days folded on top */
+const weekRoll=()=>state.prefs.wkv==='roll';
+const weekHome=()=>weekRoll()?today():mondayOf(today());
 function renderWeek(){
-  if(!ui.week)ui.week=mondayOf(today());
-  const t0=today(),w0=ui.week,w6=addDays(w0,6),a=parse(w0),b=parse(w6),thisW=w0===mondayOf(t0);
-  const rel=thisW?'This week':w0===addDays(mondayOf(t0),7)?'Next week':w0===addDays(mondayOf(t0),-7)?'Last week':'Week of '+a.getDate()+' '+MONTHS[a.getMonth()].slice(0,3);
+  if(!ui.week)ui.week=weekHome();
+  const t0=today(),home=weekHome(),w0=ui.week,w6=addDays(w0,6),a=parse(w0),b=parse(w6),thisW=w0===home;
+  const rel=thisW?'This week':w0===addDays(home,7)?'Next week':w0===addDays(home,-7)?'Last week':'Week of '+a.getDate()+' '+MONTHS[a.getMonth()].slice(0,3);
   const range=`${a.getDate()} ${MONTHS[a.getMonth()].slice(0,3)} – ${b.getDate()} ${MONTHS[b.getMonth()].slice(0,3)}${b.getFullYear()!==new Date().getFullYear()?' '+b.getFullYear():''}`;
   let h=`<header class="head whd"><h1>${rel}</h1>
     <div class="date-row"><div class="date whead-sub">${range}</div>
@@ -2426,6 +2437,16 @@ function renderWeek(){
     <button class="navbtn" data-act="wprev" aria-label="Previous week">${I.left}</button>
     <button class="navbtn" data-act="wnext" aria-label="Next week">${I.right}</button></div></header>${filterBar()}`;
   if(state.tasks.some(t=>vis(t)&&!isRep(t)&&t.date&&t.date>=w0&&t.date<=w6))h+=`<p class="whint">Hold a job to move it to another day</p>`;
+  if(weekRoll()&&thisW){
+    // the 6 days before today, so the full 7-day stretch (and what got ticked off) is still in reach
+    const past=[];let nd=0;
+    for(let i=6;i>=1;i--){const s=addDays(t0,-i),l=state.tasks.filter(t=>vis(t)&&occurs(t,s)).sort((x,y)=>(isDone(x,s)-isDone(y,s))||byTime(x,y));
+      if(l.length){past.push([s,l]);nd+=l.filter(t=>isDone(t,s)).length;}}
+    if(past.length){
+      h+=`<button class="wearly" data-act="wearly" aria-expanded="${!!ui.wEarly}"><span>Earlier${nd?` · ${nd} done`:''}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>`;
+      if(ui.wEarly)h+=past.map(([s,l])=>{const d=parse(s);return `<section class="sec wday wpast" data-wdate="${s}"><div class="sec-h"><h2>${DAYS[d.getDay()]} ${d.getDate()}</h2><button class="open-day" data-act="openday" data-date="${s}">Open</button></div><ul class="list">${l.map(t=>row(t,{ctx:s,wdrag:!isRep(t)})).join('')}</ul></section>`;}).join('');
+    }
+  }
   for(let i=0;i<7;i++){
     const s=addDays(w0,i),d=parse(s),isT=s===t0;
     const list=state.tasks.filter(t=>vis(t)&&occurs(t,s)).sort((x,y)=>(isDone(x,s)-isDone(y,s))||byTime(x,y));
@@ -2682,7 +2703,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&pdraft)closePSheet(
 
 /* ---------- main events ---------- */
 document.querySelector('.tabs').addEventListener('click',e=>{
-  const b=e.target.closest('.tab');if(!b)return;if(b.dataset.tab==='dump'&&ui.tab==='dump')ui.proj=null;ui.searching=false;ui.tab=b.dataset.tab;if(ui.tab==='today')ui.day=today();if(ui.tab==='week')ui.week=mondayOf(today());
+  const b=e.target.closest('.tab');if(!b)return;if(b.dataset.tab==='dump'&&ui.tab==='dump')ui.proj=null;ui.searching=false;ui.tab=b.dataset.tab;if(ui.tab==='today')ui.day=today();if(ui.tab==='week')ui.week=weekHome();
   try{localStorage.setItem(KEY+'-tab',ui.tab);}catch(err){}
   window.scrollTo(0,0);render();
 });
@@ -2738,7 +2759,8 @@ view.addEventListener('click',e=>{
     if(act==='lighter'){const tm=addDays(today(),1),L=lightJobs();
       undoable(n=>`Lighter day: ${n} moved to tomorrow`,()=>{L.forEach(t=>{t.date=tm;});return L.length;});return;}
     if(act==='wprev'||act==='wnext'){shiftWeek(act==='wnext'?1:-1);return;}
-    if(act==='wtoday'){const f=ui.week>mondayOf(today());ui.week=mondayOf(today());render();anim(f?'in-r':'in-l');return;}
+    if(act==='wtoday'){const f=ui.week>weekHome();ui.week=weekHome();render();anim(f?'in-r':'in-l');return;}
+    if(act==='wearly'){ui.wEarly=!ui.wEarly;render();return;}
     if(act==='addto'){openEditor(null,Object.assign({date:a.dataset.date},newDefaults()));return;}
     if(act==='popen'){ui.proj=a.dataset.id;ui.showDone=false;window.scrollTo(0,0);render();anim('in-l');return;}
     if(act==='pback'){ui.proj=null;window.scrollTo(0,0);render();anim('in-r');return;}
@@ -3249,6 +3271,7 @@ function paintSettings(){
   document.querySelectorAll('[data-cel]').forEach(b=>b.classList.toggle('on',b.dataset.cel===(P.cel||'rabbit')));
   document.querySelectorAll('[data-nudge]').forEach(b=>b.classList.toggle('on',b.dataset.nudge===(P.nudge||'on')));
   document.querySelectorAll('[data-spc]').forEach(b=>b.classList.toggle('on',b.dataset.spc===(P.sp||'std')));
+  document.querySelectorAll('[data-wkv]').forEach(b=>b.classList.toggle('on',b.dataset.wkv===(P.wkv||'cal')));
   document.getElementById('morn-field').hidden=!NATIVE;
   document.getElementById('bdr-field').hidden=!NATIVE;
   if(NATIVE){const bm=bdrMode();document.querySelectorAll('[data-bdr]').forEach(b=>b.classList.toggle('on',b.dataset.bdr===bm));
@@ -3285,7 +3308,7 @@ document.getElementById('fb-send').addEventListener('click',async()=>{
 });
 function closeSettings(){st.classList.remove('open');st.setAttribute('aria-hidden','true');}
 st.addEventListener('click',e=>{
-  const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-mstyle],button[data-mpick],button[data-mjobs],button[data-bdr],button[data-projs]');if(!b)return;
+  const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-mstyle],button[data-mpick],button[data-mjobs],button[data-bdr],button[data-projs],button[data-wkv]');if(!b)return;
   if(b.dataset.sact){closeSettings();return;}
   if(b.dataset.pal)state.prefs.palette=b.dataset.pal;
   if(b.dataset.washv)state.prefs.washv=b.dataset.washv;
@@ -3295,6 +3318,7 @@ st.addEventListener('click',e=>{
   if(b.dataset.mode)state.prefs.mode=b.dataset.mode;
   if(b.dataset.ts)state.prefs.ts=b.dataset.ts;
   if(b.dataset.spc)state.prefs.sp=b.dataset.spc;
+  if(b.dataset.wkv){state.prefs.wkv=b.dataset.wkv;ui.week=weekHome();render();}
   if(b.dataset.tidy){state.prefs.tidy=b.dataset.tidy;tidy();render();}
   if(b.dataset.nudge){state.prefs.nudge=b.dataset.nudge;render();}
   if(b.dataset.morn){state.prefs.morn=b.dataset.morn;syncNotifs(true);}
