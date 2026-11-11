@@ -617,7 +617,8 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .nudge.pask .row{margin-top:10px}
 .nudge.pask .go{margin:0}
 .pfoot{margin:30px 4px 8px;text-align:center;font-size:14px;color:var(--muted)}
-.pfoot p{margin:0 0 10px}
+.pfoot p{margin:0 0 14px}
+.pfoot .q{color:var(--ink);font-weight:600;font-size:15.5px;margin-bottom:12px}
 .pfoot button,.pfoot a{color:var(--accent);font-weight:600;font-size:14px;text-decoration:none}
 #w-text{margin-top:0;min-height:132px}
 #is-body p{margin:0 0 12px;font-size:15.5px;line-height:1.5}
@@ -2267,7 +2268,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.26.0';
+const APPV='1.26.1';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2393,7 +2394,7 @@ function renderPark(){
   if(G.length){
     h+=`<section class="sec"><div class="sec-h"><h2>Let go (${G.length})</h2><button data-act="pgone" aria-expanded="${!!ui.showGone}">${ui.showGone?'Hide':'Show'}</button></div>${ui.showGone?`<ul class="list">${G.map(w=>`<li class="worry gone"><div class="title">${esc(wFirst(w))}</div><div class="row wacts"><button class="opt" data-act="wback" data-id="${w.id}">Park again</button><button class="opt warnopt" data-act="wdel" data-id="${w.id}">Delete</button></div></li>`).join('')}</ul>`:''}</section>`;
   }
-  h+=`<div class="pfoot"><p>${B.tooBig} <button data-act="psupport">${B.supportBtn}</button></p><p><a href="${NHS_WORRY}" target="_blank" rel="noopener">NHS: Tackling your worries</a></p></div>`;
+  h+=`<div class="pfoot"><p class="q">${B.tooBig}</p><p><button data-act="psupport">${B.supportBtn}</button></p><p><a href="${NHS_WORRY}" target="_blank" rel="noopener">NHS: Tackling your worries</a></p></div>`;
   view.innerHTML=h;
   const q=document.getElementById('quick');
   q.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();parkAdd();}});
