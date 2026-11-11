@@ -2279,7 +2279,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.27.2';
+const APPV='1.27.3';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2350,7 +2350,7 @@ function renderDump(){
   const reps=T.filter(isRep).sort(byStar);
   const done=T.filter(t=>!isRep(t)&&t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   let h=`<header class="head"><h1>Brain dump</h1><p class="sub">${BRAND.slogan}</p></header>${filterBar()}${wb}
-  <div class="quick"><input id="quick" placeholder="Add a job… e.g. ${BRAND.egQuick}" autocomplete="off" enterkeyhint="done" aria-label="Add a job"><button data-act="quick" aria-label="Add">${I.plus}</button></div>${homeCard()}${nudgeCard()}${lookMini()}`;
+  <div class="quick"><input id="quick" placeholder="Add a job… e.g. ${BRAND.egQuick}" autocomplete="off" enterkeyhint="done" aria-label="Add a job"><button data-act="quick" aria-label="Add">${I.plus}</button></div>${homeCard()}${nudgeCard()}`;
   if(!undated.length&&!sched.length&&!reps.length&&!done.length){
     h+=`<div class="empty"><strong>Nothing here yet${ui.filter===STAR?' starred':ui.filter?' in '+esc(listName(ui.filter)):''}</strong>Type anything on your mind above. You can give it a day, a colour or a repeat whenever you like.</div>`;
   }
@@ -2372,10 +2372,6 @@ function renderDump(){
 }
 /* ---------- Park it: the list, the nudge card and the sheets ---------- */
 const NHS_WORRY='https://www.nhs.uk/every-mind-matters/mental-wellbeing-tips/self-help-cbt-techniques/tackling-your-worries/';
-function lookMini(){
-  const k=dueNow().length;if(!k)return'';
-  return `<section class="nudge mini" aria-label="Park it"><button class="nudge-line" data-act="plookgo"><b>${k===1?'A parked worry is':k+' parked worries are'} ready for another look</b><span>Open</span></button></section>`;
-}
 function askCard(){
   const w=ui.parkAsk&&worry(ui.parkAsk);if(!w){ui.parkAsk=null;return'';}
   return `<section class="nudge pask" aria-label="Support"><p class="pq">${esc(wFirst(w))}</p><p>${BRAND.park.kept3}</p>
@@ -3064,7 +3060,6 @@ view.addEventListener('click',e=>{
     if(act==='wjob'||act==='wkeep'||act==='wgo'||act==='wback'){parkAct(a.dataset.id,act.slice(1));return;}
     if(act==='wdel'){const w=worry(a.dataset.id);if(!w)return;ui.delWorry=w.id;
       openInfo({h:'Delete this worry?',body:`<p class="pq">${esc(wFirst(w))}</p><p>Once it's deleted it's gone for good and can't be brought back.</p>`,acts:[['Cancel','close','ghost'],['Delete','wdelgo','save warn']]});return;}
-    if(act==='plookgo'){goPark();return;}
     if(act==='plookskip'){const now=Date.now();dueNow().forEach(w=>{w.nDone=now;if(w.nudge.rep==='once')w.nudge=null;});ui.parkAsk=null;savePark();render();snack('No problem. They\'ll stay parked');return;}
     if(act==='pgone'){ui.showGone=!ui.showGone;render();return;}
     if(act==='psupport'){openSupport();return;}
