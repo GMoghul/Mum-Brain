@@ -609,9 +609,6 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .wask{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;font-size:14px;color:var(--muted)}
 .wask span{flex:1 1 100%}
 .wask button{flex:none;height:32px;padding:0 12px;border-radius:9px;background:var(--accent-soft);color:var(--accent);font-size:14px;font-weight:600}
-.plookrow{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:-6px 4px 26px;font-size:14px;color:var(--muted)}
-.plookrow button{flex:none;font-size:14px;font-weight:600;color:var(--accent);position:relative}
-.plookrow button::after{content:"";position:absolute;inset:-12px -6px}
 .nudge.plook,.nudge.pask{padding-bottom:12px}
 .nudge.pask .pq{color:var(--ink);font-size:15.5px;margin:6px 0 4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nudge.pask .row{margin-top:10px}
@@ -621,6 +618,10 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .pfoot .q{color:var(--ink);font-weight:600;font-size:15.5px;margin-bottom:12px}
 .pfoot button,.pfoot a{color:var(--accent);font-weight:600;font-size:14px;text-decoration:none}
 #w-text{margin-top:0;min-height:132px}
+.wnrow{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:15.5px}
+.wnrow button{flex:none;height:34px;padding:0 12px;border-radius:9px;background:var(--accent-soft);color:var(--accent);font-size:14px;font-weight:600}
+.nrow{display:flex;gap:22px}
+#is-body .rep-hint{margin-top:10px}
 #is-body p{margin:0 0 12px;font-size:15.5px;line-height:1.5}
 #is-body ul{margin:0 0 12px;padding-left:20px;font-size:15.5px;line-height:1.5}
 #is-body li{margin-bottom:10px}
@@ -905,9 +906,8 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="grab"></div>
     <div class="sheet-top"><h2 id="ws-h">Park a worry</h2><button class="x" data-wact="close">Cancel</button></div>
     <textarea class="f-note" id="w-text" placeholder="Type it however it comes out. It doesn't need to be tidy." aria-label="Your worry"></textarea>
-    <div class="field"><span class="lbl">Look back at this one later?</span>
-      <div class="seg" id="w-look" style="grid-template-columns:repeat(2,1fr)"><button data-wlk="1">Yes</button><button data-wlk="0">Just leave it</button></div>
-      <div class="rep-hint" id="w-lookhint"></div>
+    <div class="field" id="w-nf"><span class="lbl">Nudge</span>
+      <div class="wnrow"><span id="w-nudge"></span><button data-wact="nudge" id="w-nbtn"></button></div>
     </div>
     <div class="row" id="w-more" style="margin-top:20px"><button class="opt" data-wact="job">Make it a job</button><button class="opt" data-wact="go">Let it go</button></div>
     <div class="actions"><button class="save" id="w-save" data-wact="save">Park it</button></div>
@@ -2166,15 +2166,20 @@ const T=()=>state.tasks.filter(vis);
 /* ---------- Park it: a private place to park worries ----------
    Worries are kept apart from jobs, in their own space on this phone. They never go to the family list,
    the widget, search, feedback or any server. The only way they leave the phone is inside a backup file
-   the owner saves herself. */
+   the owner saves herself.
+   Each worry can have its own nudge: a day and time to look at it again, once or repeating. No nudge is the default. */
 const PARK='parkit';
 const parkOn=()=>(state.prefs&&state.prefs.park)!=='off';
+const NREPS=[['once','Once'],['day','Daily'],['week','Weekly'],['2week','2 weeks'],['month','Monthly']];
+const nudgeClean=n=>n&&/^\d{4}-\d\d-\d\d$/.test(n.date||'')&&/^\d\d:\d\d$/.test(n.time||'')&&NREPS.some(r=>r[0]===n.rep)?{date:n.date,time:n.time,rep:n.rep}:null;
 function parkClean(p){
+  // v1.26.0 had one weekly look-back shared by every worry; a worry that was in it keeps a weekly nudge at that day and time
+  const L=p&&p.look,old=L&&Number(L.day)>=0&&Number(L.day)<=6&&/^\d\d:\d\d$/.test(L.time||'')?L:null;
+  const oldDate=()=>{const d=new Date();d.setDate(d.getDate()+((Number(old.day)-d.getDay()+7)%7));return ymd(d);};
   const items=(Array.isArray(p&&p.items)?p.items:[]).filter(w=>w&&w.id&&typeof w.text==='string')
-    .map(w=>({id:String(w.id),text:w.text,ts:Number(w.ts)||Date.now(),look:!!w.look,kept:Number(w.kept)||0,asked:!!w.asked,gone:!!w.gone,goneAt:Number(w.goneAt)||0}));
-  const L=p&&p.look,look=L&&Number(L.day)>=0&&Number(L.day)<=6&&/^\d\d:\d\d$/.test(L.time||'')?{day:Number(L.day),time:L.time}:null;
-  const S=p&&p.sess;
-  return {items,look,seen:!!(p&&p.seen),done:Number(p&&p.done)||0,sess:S&&Array.isArray(S.ids)?{at:Number(S.at)||0,ids:S.ids.map(String)}:null};
+    .map(w=>{const n=nudgeClean(w.nudge)||(w.look&&old?{date:oldDate(),time:old.time,rep:'week'}:null);
+      return {id:String(w.id),text:w.text,ts:Number(w.ts)||Date.now(),nudge:w.gone?null:n,nDone:Number(w.nDone)||(w.nudge?0:Date.now()),kept:Number(w.kept)||0,asked:!!w.asked,gone:!!w.gone,goneAt:Number(w.goneAt)||0};});
+  return {items,seen:!!(p&&p.seen)};
 }
 let park=parkClean(null);
 try{const p=JSON.parse(localStorage.getItem(KEY+'-park')||'null');if(p)park=parkClean(p);}catch(e){}
@@ -2185,25 +2190,30 @@ function savePark(){
 const worry=id=>park.items.find(w=>w.id===id);
 const parkedNow=()=>park.items.filter(w=>!w.gone).sort((a,b)=>b.ts-a.ts);
 const wFirst=w=>(w.text.trim().split('\n')[0]||'').trim();
-const lookLabel=()=>park.look?DAYS[park.look.day]+'s at '+fmtTime(park.look.time):'';
-// the most recent moment the chosen look-back day and time came round
-function lookLast(){
-  if(!park.look)return 0;
-  const[h,m]=park.look.time.split(':').map(Number),d=new Date();d.setHours(h,m,0,0);
-  d.setDate(d.getDate()-((d.getDay()-park.look.day+7)%7));
-  if(d.getTime()>Date.now())d.setDate(d.getDate()-7);
-  return d.getTime();
+// when a nudge comes round: the first time, then every day / week / 2 weeks / month after it
+function nStep(n,k){
+  const s=parse(n.date),[h,m]=n.time.split(':').map(Number);s.setHours(h,m,0,0);
+  if(n.rep==='month'){const d=new Date(s.getFullYear(),s.getMonth()+k,1,h,m);d.setDate(Math.min(s.getDate(),new Date(d.getFullYear(),d.getMonth()+1,0).getDate()));return d.getTime();}
+  s.setDate(s.getDate()+k*({day:1,week:7,'2week':14}[n.rep]||0));return s.getTime();
 }
-// The look-back that's waiting, if any: only worries marked "look back later" come up, and each round
-// closes once every one has been made a job, kept parked or let go (or "Not this time" is tapped).
-function lookState(){
-  if(!parkOn()||!park.look)return null;
-  const at=lookLast();if(!at||park.done>=at)return null;
-  if(!park.sess||park.sess.at!==at)park.sess={at,ids:parkedNow().filter(w=>w.look).map(w=>w.id)};
-  const left=park.sess.ids.map(worry).filter(w=>w&&!w.gone&&w.look);
-  if(!left.length){park.done=at;park.sess=null;ui.parkAsk=null;savePark();return null;}
-  return {at,left};
+// how many times it has come round so far, minus one (-1 = not yet)
+function nIdx(n,now){
+  if(nStep(n,0)>now)return -1;
+  if(n.rep==='once')return 0;
+  let k=n.rep==='month'?0:Math.max(0,Math.floor((now-nStep(n,0))/({day:1,week:7,'2week':14}[n.rep]*864e5))-1);
+  while(nStep(n,k+1)<=now)k++;
+  return k;
 }
+const nLast=n=>{const k=nIdx(n,Date.now());return k<0?0:nStep(n,k);};
+const nNext=n=>{const k=nIdx(n,Date.now());return k<0?nStep(n,0):n.rep==='once'?0:nStep(n,k+1);};
+const nth=d=>d+(d>3&&d<21?'th':['th','st','nd','rd'][d%10]||'th');
+function nudgeText(n){
+  const d=parse(n.date),t=fmtTime(n.time);
+  return n.rep==='once'?absDay(n.date)+' · '+t:n.rep==='day'?'Every day · '+t:n.rep==='week'?'Every '+DAYS[d.getDay()]+' · '+t
+    :n.rep==='2week'?'Every 2 weeks · '+DAYS[d.getDay()].slice(0,3)+' '+t:'Every month · '+nth(d.getDate())+', '+t;
+}
+// worries whose nudge has come round and haven't been looked at since
+const dueNow=()=>parkOn()?parkedNow().filter(w=>w.nudge&&nLast(w.nudge)>(w.nDone||0)):[];
 // Shared and Projects are built-in tags: each remembers its own spot in the row.
 // Shared starts at the end; Projects starts first among your lists so it isn't scrolled off-screen.
 // Park it starts last in the row, where it's discreet.
@@ -2268,7 +2278,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.26.1';
+const APPV='1.27.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2359,11 +2369,11 @@ function renderDump(){
   q.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();quickAdd();}});
   if(ui.refocus){q.focus();ui.refocus=false;}
 }
-/* ---------- Park it: the list, the look-back and the sheets ---------- */
+/* ---------- Park it: the list, the nudge card and the sheets ---------- */
 const NHS_WORRY='https://www.nhs.uk/every-mind-matters/mental-wellbeing-tips/self-help-cbt-techniques/tackling-your-worries/';
 function lookMini(){
-  if(!lookState())return'';
-  return `<section class="nudge mini" aria-label="Park it look-back"><button class="nudge-line" data-act="plookgo"><b>Your Park it look-back is ready</b><span>Open</span></button></section>`;
+  const k=dueNow().length;if(!k)return'';
+  return `<section class="nudge mini" aria-label="Park it"><button class="nudge-line" data-act="plookgo"><b>${k===1?'A parked worry is':k+' parked worries are'} ready for another look</b><span>Open</span></button></section>`;
 }
 function askCard(){
   const w=ui.parkAsk&&worry(ui.parkAsk);if(!w){ui.parkAsk=null;return'';}
@@ -2371,16 +2381,15 @@ function askCard(){
     <div class="row"><button class="go" data-act="psupport">${BRAND.park.supportBtn}</button><button class="go" data-act="paskno">Not now</button></div></section>`;
 }
 function lookCard(){
-  const s=lookState();if(!s)return'';
-  const k=s.left.length;
-  return `<section class="nudge plook" aria-label="Look-back"><div class="nudge-h"><b>Your look-back</b><span class="nudge-btns"><button data-act="plookskip">Not this time</button></span></div>
-    <p>${k===1?'One worry':k+' worries'} to look at. Take ${k===1?'it':'them'} one at a time, there's no rush.</p>
-    <ul>${s.left.map(w=>`<li><button class="t" data-act="wopen" data-id="${w.id}">${esc(wFirst(w))}</button><button class="d" data-act="wjob" data-id="${w.id}">Make it a job</button><button class="d" data-act="wkeep" data-id="${w.id}">Keep parked</button><button class="d" data-act="wgo" data-id="${w.id}">Let it go</button></li>`).join('')}</ul></section>`;
+  const D=dueNow(),k=D.length;if(!k)return'';
+  return `<section class="nudge plook" aria-label="Ready for another look"><div class="nudge-h"><b>Ready for another look</b><span class="nudge-btns"><button data-act="plookskip">Not now</button></span></div>
+    <p>You asked for a nudge about ${k===1?'this one':'these'}. There's no rush.</p>
+    <ul>${D.map(w=>`<li><button class="t" data-act="wopen" data-id="${w.id}">${esc(wFirst(w))}</button><button class="d" data-act="wjob" data-id="${w.id}">Make it a job</button><button class="d" data-act="wkeep" data-id="${w.id}">Keep parked</button><button class="d" data-act="wgo" data-id="${w.id}">Let it go</button></li>`).join('')}</ul></section>`;
 }
 function worryRow(w){
   const extra=ui.parkNew===w.id
-    ?`<div class="wask"><span>Look back at this one later?</span><button data-act="wlook" data-v="1" data-id="${w.id}">Yes</button><button data-act="wlook" data-v="0" data-id="${w.id}">Just leave it</button></div>`
-    :w.look?`<div class="chips"><span class="chip">${I.rep}<span class="ct">Look-back</span></span></div>`:'';
+    ?`<div class="wask"><span>Nudge me about this one?</span><button data-act="wnudge" data-id="${w.id}">Set a nudge</button><button data-act="wleave" data-id="${w.id}">Just leave it</button></div>`
+    :w.nudge?`<div class="chips"><span class="chip">${I.bell}<span class="ct">${esc(nudgeText(w.nudge))}</span></span></div>`:'';
   return `<li class="worry" data-wopen="${w.id}"><div class="title">${esc(wFirst(w))}</div>${extra}</li>`;
 }
 function renderPark(){
@@ -2390,7 +2399,6 @@ function renderPark(){
   <div class="quick"><input id="quick" placeholder="Park a worry…" autocomplete="off" enterkeyhint="done" aria-label="Park a worry"><button data-act="parkadd" aria-label="Park it">${I.plus}</button></div>${askCard()}${lookCard()}`;
   if(P.length)h+=`<section class="sec"><div class="sec-h"><h2>Parked</h2><span class="count">${P.length}</span></div><ul class="list">${P.map(worryRow).join('')}</ul></section>`;
   else h+=`<div class="empty" style="margin-bottom:26px"><strong>Nothing parked</strong>Some thoughts aren't jobs. Type a worry above, however it comes out, and set it aside until you're ready.</div>`;
-  h+=`<div class="plookrow"><span>${park.look?'Look-back: '+esc(lookLabel()):'No look-back time chosen yet'}</span><button data-act="plooktime">${park.look?'Change':'Choose a time'}</button></div>`;
   if(G.length){
     h+=`<section class="sec"><div class="sec-h"><h2>Let go (${G.length})</h2><button data-act="pgone" aria-expanded="${!!ui.showGone}">${ui.showGone?'Hide':'Show'}</button></div>${ui.showGone?`<ul class="list">${G.map(w=>`<li class="worry gone"><div class="title">${esc(wFirst(w))}</div><div class="row wacts"><button class="opt" data-act="wback" data-id="${w.id}">Park again</button><button class="opt warnopt" data-act="wdel" data-id="${w.id}">Delete</button></div></li>`).join('')}</ul>`:''}</section>`;
   }
@@ -2401,77 +2409,79 @@ function renderPark(){
   if(ui.refocus){q.focus();ui.refocus=false;}
 }
 function goPark(){ui.filter=PARK;ui.proj=null;ui.who=null;window.scrollTo(0,0);render();if(!park.seen)openIntro();}
+const newWorry=text=>({id:'w'+newId(),text,ts:Date.now(),nudge:null,nDone:Date.now(),kept:0,asked:false,gone:false,goneAt:0});
 function parkAdd(){
   const q=document.getElementById('quick'),v=(q.value||'').trim();
   if(!v){q.focus();return;}
-  const w={id:'w'+newId(),text:v,ts:Date.now(),look:false,kept:0,asked:false,gone:false,goneAt:0};
-  park.items.push(w);ui.parkNew=w.id;savePark();ui.refocus=true;render();
+  const w=newWorry(v);park.items.push(w);ui.parkNew=w.id;savePark();ui.refocus=true;render();
 }
+const whenText=ms=>{const d=new Date(ms);return absDay(ymd(d))+', '+fmtTime(pad(d.getHours())+':'+pad(d.getMinutes()));};
 // Make it a job / Keep parked / Let it go, each with Undo
 function parkAct(id,what){
   const w=worry(id);if(!w)return;
   const before=JSON.stringify(park),tb=what==='job'?JSON.stringify(state.tasks):null,ask0=ui.parkAsk;
-  const inLook=!!(park.sess&&park.sess.ids.includes(id)&&lookState());
   let msg='';
   if(what==='job'){const L=w.text.trim().split('\n');
     state.tasks.push(blank({title:L[0].trim(),note:L.slice(1).join('\n').trim()}));
     park.items=park.items.filter(x=>x.id!==id);msg='Now a job in your brain dump';}
-  else if(what==='go'){w.gone=true;w.goneAt=Date.now();msg='Let go';}
-  else if(what==='keep'){w.kept=(w.kept||0)+1;msg='Kept parked';if(w.kept>=3&&!w.asked){w.asked=true;ui.parkAsk=id;}}
+  else if(what==='go'){w.gone=true;w.goneAt=Date.now();w.nudge=null;msg='Let go';}
+  else if(what==='keep'){
+    w.kept=(w.kept||0)+1;w.nDone=Date.now();
+    if(w.nudge&&w.nudge.rep==='once')w.nudge=null; // a one-off nudge has done its job; the worry stays parked
+    msg=w.nudge?'Kept parked. Next nudge '+whenText(nNext(w.nudge)):'Kept parked';
+    if(w.kept>=3&&!w.asked){w.asked=true;ui.parkAsk=id;}
+  }
   else if(what==='back'){w.gone=false;w.goneAt=0;msg='Parked again';}
-  if(park.sess&&what!=='back')park.sess.ids=park.sess.ids.filter(x=>x!==id);
   if(ui.parkNew===id)ui.parkNew=null;
   if(ui.parkAsk===id&&what!=='keep')ui.parkAsk=null;
   savePark();if(tb)save();
-  const still=lookState();
   render();
-  snack(inLook&&!still?msg+'. That\'s your look-back done':msg,()=>{park=parkClean(JSON.parse(before));if(tb)state.tasks=JSON.parse(tb);ui.parkAsk=ask0;savePark();if(tb)save();render();});
+  snack(msg,()=>{park=parkClean(JSON.parse(before));if(tb)state.tasks=JSON.parse(tb);ui.parkAsk=ask0;savePark();if(tb)save();render();});
 }
 
 /* worry sheet: write or edit a worry at any length */
 const ws=document.getElementById('wsheet'),wText=document.getElementById('w-text');
 let wdraft=null;
-function paintW(){
-  document.querySelectorAll('#w-look [data-wlk]').forEach(b=>b.classList.toggle('on',(b.dataset.wlk==='1')===!!wdraft.look));
-  document.getElementById('w-lookhint').textContent=!wdraft.look?'It stays parked and won\'t come up again unless you open it.'
-    :park.look?'It will come up in your look-back, '+lookLabel()+'.':'You\'ll be asked when you\'d like your look-back when you save.';
-}
 function openWorry(id){
   const w=id?worry(id):null;if(id&&!w)return;
-  wdraft=w?{id:w.id,look:w.look,isNew:false}:{id:null,look:false,isNew:true};
-  wText.value=w?w.text:'';wText.classList.remove('bad');
+  wdraft={id:w?w.id:null,isNew:!w};
+  wText.value=w?w.text:'';
   document.getElementById('ws-h').textContent=w?'Parked worry':'Park a worry';
   document.getElementById('w-save').textContent=w?'Save':'Park it';
-  document.getElementById('w-more').hidden=!w;
-  paintW();ws.classList.add('open');ws.setAttribute('aria-hidden','false');
+  document.getElementById('w-more').hidden=!w||w.gone;
+  document.getElementById('w-nf').hidden=!w||w.gone;
+  if(w){document.getElementById('w-nudge').textContent=w.nudge?nudgeText(w.nudge):'No nudge';document.getElementById('w-nbtn').textContent=w.nudge?'Change':'Set a nudge';}
+  ws.classList.add('open');ws.setAttribute('aria-hidden','false');
   if(!w)setTimeout(()=>wText.focus(),300);
 }
 function closeWorry(){ws.classList.remove('open');ws.setAttribute('aria-hidden','true');wdraft=null;}
+// returns the worry's id, or null if there was nothing to save
 function saveWorry(){
   const v=wText.value.trim();
-  if(!v){wText.classList.add('shake');setTimeout(()=>wText.classList.remove('shake'),520);wText.focus();return;}
-  const look=!!wdraft.look;
-  if(wdraft.isNew)park.items.push({id:'w'+newId(),text:v,ts:Date.now(),look,kept:0,asked:false,gone:false,goneAt:0});
-  else{const w=worry(wdraft.id);if(w){w.text=v;w.look=look;}}
-  ui.parkNew=null;closeWorry();savePark();render();
-  if(look&&!park.look)openLookTime();
+  if(!v){wText.classList.add('shake');setTimeout(()=>wText.classList.remove('shake'),520);wText.focus();return null;}
+  let id=wdraft.id;
+  if(wdraft.isNew){const w=newWorry(v);park.items.push(w);id=w.id;ui.parkNew=id;} // the list then asks about a nudge, the same as the quick box
+  else{const w=worry(id);if(w)w.text=v;}
+  closeWorry();savePark();render();
+  return id;
 }
 ws.addEventListener('click',e=>{
-  const k=e.target.closest('[data-wlk]');if(k&&wdraft){wdraft.look=k.dataset.wlk==='1';paintW();return;}
   const b=e.target.closest('[data-wact]');if(!b)return;const a=b.dataset.wact;
   if(a==='close')closeWorry();
   else if(a==='save')saveWorry();
+  else if(a==='nudge'){const id=saveWorry();if(id)openNudge(id);}
   else if(a==='job'||a==='go'){const id=wdraft&&wdraft.id;closeWorry();if(id)parkAct(id,a);}
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&wdraft)closeWorry();});
 
-/* info sheet: the first-open message, support, the look-back time and the delete check */
+/* info sheet: the first-open message, support, a worry's nudge and the delete check */
 const is=document.getElementById('isheet');
 let isClose=null;
 function openInfo(o){
   document.getElementById('is-h').textContent=o.h;
   document.getElementById('is-body').innerHTML=o.body;
   document.getElementById('is-acts').innerHTML=o.acts.map(a=>`<button class="${a[2]}" data-iact="${a[1]}">${a[0]}</button>`).join('');
+  is.querySelector('.x').textContent=o.x||'Close';
   isClose=o.onClose||null;
   is.classList.add('open');is.setAttribute('aria-hidden','false');is.querySelector('.sheet').scrollTop=0;
 }
@@ -2484,29 +2494,38 @@ function openIntro(){
 function openSupport(){
   openInfo({h:BRAND.park.supportH,body:BRAND.park.support,acts:[['Close','close','save']]});
 }
-const LT_DAYS=[1,2,3,4,5,6,0];
-let ltDay=null;
-function openLookTime(){
-  ltDay=park.look?park.look.day:null;
-  openInfo({h:'Your look-back',
-    body:`<p>A quiet moment, once a week, to look at the worries you've asked to come back to. Choose a day and time that suit you.</p>
-      <span class="lbl">Day</span><div class="seg" id="lt-days" style="grid-template-columns:repeat(7,1fr)">${LT_DAYS.map(d=>`<button data-iact="ltd" data-d="${d}"${ltDay===d?' class="on"':''}>${DAYS[d].slice(0,3)}</button>`).join('')}</div>
-      <span class="lbl">Time</span><input type="time" class="f-date" id="lt-time" aria-label="Look-back time" style="width:124px" value="${park.look?park.look.time:''}">
-      <div class="rep-hint" id="lt-hint">${NATIVE?'You\'ll get a quiet notification when it\'s time, and a card will be waiting in Park it.':'A card will be waiting in Park it when it\'s time.'}</div>`,
-    acts:(park.look?[['Turn off','ltoff','ghost']]:[]).concat([['Save','ltsave','save']])});
+/* a worry's own nudge: day, time, and once or repeating. Skip leaves it with no nudge. */
+const NREP_HINT={once:'One nudge, then nothing more.',day:'Every day at this time.',week:'Every week on this day.','2week':'Every 2 weeks on this day.',month:'Every month on this date.'};
+let nd=null;
+function openNudge(id){
+  const w=worry(id);if(!w||w.gone)return;
+  const n=w.nudge;nd={id,rep:n?n.rep:'once'};
+  openInfo({h:'Nudge me',x:n?'Close':'Skip',
+    body:`<p class="pq">${esc(wFirst(w))}</p><p>Choose when you'd like a nudge to look at this worry again. It's up to you: you can open Park it any time.</p>
+      <div class="nrow"><div><span class="lbl">Day</span><label class="pick${n?'':' unset'}"><input type="date" class="f-date" id="n-date" aria-label="Nudge day" value="${n?n.date:''}"><span>Pick a date</span></label></div>
+      <div><span class="lbl">Time</span><label class="pick${n?'':' unset'}"><input type="time" class="f-date" id="n-time" aria-label="Nudge time" value="${n?n.time:''}"><span>Pick a time</span></label></div></div>
+      <span class="lbl">Repeat</span><div class="seg" id="n-rep" style="grid-template-columns:repeat(5,1fr)">${NREPS.map(r=>`<button data-iact="nrep" data-r="${r[0]}"${nd.rep===r[0]?' class="on"':''}>${r[1]}</button>`).join('')}</div>
+      <div class="rep-hint" id="n-rhint">${NREP_HINT[nd.rep]}</div>
+      <div class="rep-hint" id="n-hint">${NATIVE?'You\'ll get a quiet notification that doesn\'t show the worry, and it will be waiting at the top of Park it.':'It will be waiting at the top of Park it when it\'s time.'}</div>`,
+    acts:(n?[['No nudge','nnone','ghost']]:[]).concat([['Save','nsave','save']]),
+    onClose:()=>{nd=null;if(ui.parkNew===id){ui.parkNew=null;render();}}});
 }
+const nPick=e=>{if(e.target.matches&&e.target.matches('#n-date,#n-time'))e.target.parentNode.classList.toggle('unset',!e.target.value);};
+is.addEventListener('input',nPick);is.addEventListener('change',nPick);
 is.addEventListener('click',e=>{
   const b=e.target.closest('[data-iact]');if(!b)return;const a=b.dataset.iact;
   if(a==='close')closeInfo();
   else if(a==='support'){closeInfo();openSupport();}
-  else if(a==='ltd'){ltDay=Number(b.dataset.d);is.querySelectorAll('[data-d]').forEach(x=>x.classList.toggle('on',x===b));}
-  else if(a==='ltsave'){
-    const t=document.getElementById('lt-time').value,hint=document.getElementById('lt-hint');
-    if(ltDay==null||!/^\d\d:\d\d/.test(t)){hint.textContent=ltDay==null?'Choose a day first.':'Choose a time first.';hint.style.color='var(--warn)';return;}
-    park.look={day:ltDay,time:t.slice(0,5)};park.done=Date.now();park.sess=null;ui.parkAsk=null;
-    closeInfo();savePark();if(LN)syncNotifs(true);render();snack('Look-back set for '+lookLabel());
+  else if(a==='nrep'&&nd){nd.rep=b.dataset.r;is.querySelectorAll('[data-r]').forEach(x=>x.classList.toggle('on',x===b));document.getElementById('n-rhint').textContent=NREP_HINT[nd.rep];}
+  else if(a==='nsave'&&nd){
+    const w=worry(nd.id),d=document.getElementById('n-date').value,t=document.getElementById('n-time').value.slice(0,5),hint=document.getElementById('n-hint');
+    const n=nudgeClean({date:d,time:t,rep:nd.rep});
+    const bad=!d?'Pick a date first.':!t?'Pick a time first.':!n?'Check the date and time.':n.rep==='once'&&nStep(n,0)<=Date.now()?'Choose a time that\'s still to come.':'';
+    if(bad||!w){hint.textContent=bad;hint.style.color='var(--warn)';return;}
+    w.nudge=n;w.nDone=Date.now();
+    closeInfo();savePark();if(LN)syncNotifs(true);render();snack('Nudge set: '+nudgeText(n));
   }
-  else if(a==='ltoff'){park.look=null;park.sess=null;ui.parkAsk=null;closeInfo();savePark();render();snack('Look-back turned off');}
+  else if(a==='nnone'&&nd){const w=worry(nd.id);if(w)w.nudge=null;closeInfo();savePark();render();snack('Nudge removed');}
   else if(a==='wdelgo'){const id=ui.delWorry;ui.delWorry=null;closeInfo();park.items=park.items.filter(w=>w.id!==id);savePark();render();snack('Deleted');}
 });
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&is.classList.contains('open'))closeInfo();});
@@ -3038,14 +3057,14 @@ view.addEventListener('click',e=>{
     if(act==='who'){ui.who=a.dataset.w||null;render();return;}
     if(act==='filter'){ui.filter=a.dataset.f||null;ui.proj=null;ui.who=null;try{localStorage.setItem(KEY+'-filter',ui.filter===PARK?'':ui.filter||'');}catch(err){}render();if(ui.filter===PARK&&!park.seen)openIntro();return;}
     if(act==='parkadd'){parkAdd();return;}
-    if(act==='wlook'){const w=worry(a.dataset.id);if(!w)return;w.look=a.dataset.v==='1';ui.parkNew=null;savePark();render();if(w.look&&!park.look)openLookTime();return;}
+    if(act==='wnudge'){openNudge(a.dataset.id);return;}
+    if(act==='wleave'){ui.parkNew=null;render();return;}
     if(act==='wopen'){openWorry(a.dataset.id);return;}
     if(act==='wjob'||act==='wkeep'||act==='wgo'||act==='wback'){parkAct(a.dataset.id,act.slice(1));return;}
     if(act==='wdel'){const w=worry(a.dataset.id);if(!w)return;ui.delWorry=w.id;
       openInfo({h:'Delete this worry?',body:`<p class="pq">${esc(wFirst(w))}</p><p>Once it's deleted it's gone for good and can't be brought back.</p>`,acts:[['Cancel','close','ghost'],['Delete','wdelgo','save warn']]});return;}
     if(act==='plookgo'){goPark();return;}
-    if(act==='plookskip'){const s=lookState();if(s){park.done=s.at;park.sess=null;ui.parkAsk=null;savePark();render();snack('No problem. It\'ll come round again next week');}return;}
-    if(act==='plooktime'){openLookTime();return;}
+    if(act==='plookskip'){const now=Date.now();dueNow().forEach(w=>{w.nDone=now;if(w.nudge.rep==='once')w.nudge=null;});ui.parkAsk=null;savePark();render();snack('No problem. They\'ll stay parked');return;}
     if(act==='pgone'){ui.showGone=!ui.showGone;render();return;}
     if(act==='psupport'){openSupport();return;}
     if(act==='paskno'){ui.parkAsk=null;render();return;}
@@ -3362,7 +3381,7 @@ const mornJobsOn=()=>(state.prefs&&state.prefs.mornJobs)!=='off';
 // Brain dump reminder: a gentle daily nudge at a time that suits (off until switched on).
 var BDR_ID=700000,BDR_DAYS=7;
 var DUE_ID=600000,DUE_MAX=8;
-var PARK_ID=500000;
+var PARK_ID=500000,PARK_MAX=4;
 const BDR_TIMES={am:'09:30',pm:'21:00'};
 const bdrMode=()=>['am','pm','own'].includes(state.prefs&&state.prefs.bdr)?state.prefs.bdr:'off';
 const bdrTime=()=>bdrMode()==='own'?((state.prefs&&state.prefs.bdrAt)||'21:00'):BDR_TIMES[bdrMode()];
@@ -3401,11 +3420,16 @@ function planNotifs(){
       out.push({id:BDR_ID+i,title:'',body:BRAND.dumpNudge,sound:'default',schedule:{at,allowWhileIdle:true},extra:{kind:'bdump'}});
     }
   }
-  // Park it look-back: a quiet nudge at the chosen day and time, only while a worry is waiting to be looked at.
-  // It never shows what the worry is.
-  if(parkOn()&&park.look&&park.items.some(w=>w.look&&!w.gone)){
-    for(let i=1;i<=2;i++){const at=new Date(lookLast());at.setDate(at.getDate()+7*i);
-      if(at.getTime()>now+30000)out.push({id:PARK_ID+i,title:'',body:'Your Park it look-back is ready when you are.',sound:'default',schedule:{at,allowWhileIdle:true},extra:{kind:'park'}});}
+  // Park it nudges: a quiet notification when a worry's nudge comes round. It never shows what the worry is,
+  // and worries due at the same minute share one notification. The soonest few are planned.
+  if(parkOn()){
+    const times=new Set();
+    for(const w of park.items){
+      if(w.gone||!w.nudge)continue;
+      const k=nIdx(w.nudge,now);
+      for(let j=k<0?0:1;j<(w.nudge.rep==='once'?1:PARK_MAX+1);j++){const at=nStep(w.nudge,Math.max(k,0)+j);if(at>now+30000)times.add(Math.floor(at/60000)*60000);}
+    }
+    [...times].sort((a,b)=>a-b).slice(0,PARK_MAX).forEach((at,i)=>out.push({id:PARK_ID+i,title:'',body:'A parked worry is ready for another look, when you are.',sound:'default',schedule:{at:new Date(at),allowWhileIdle:true},extra:{kind:'park'}}));
   }
   // shared jobs with a deadline: a reminder the morning before, for whoever is doing it (or everyone if it's anyone's)
   if(SHARING){
