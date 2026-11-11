@@ -328,6 +328,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .filters::-webkit-scrollbar{display:none}
 .fchip{flex:none;height:34px;padding:0 14px;border-radius:17px;background:var(--surface);box-shadow:var(--shadow);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
 .fchip.on{background:var(--primary);color:#fff;font-weight:600}
+.fchip .pdot{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}
+.fchip.on .pdot{background:#fff}
 /* checklist */
 .cl{list-style:none;margin:0 0 8px;padding:0}
 .cl li{display:flex;align-items:center;gap:10px;padding:4px 0}
@@ -2238,8 +2240,8 @@ function applyOrder(ids){
 function filterBar(){
   const nStar=state.tasks.filter(t=>t.starred&&!(!isRep(t)&&t.done)).length;
   const all=[[null,'All'],[STAR,'Starred'+(nStar?' '+nStar:'')]].concat(listOrder());
-  const drag=listOrder().length>1;
-  return `<div class="filters" role="tablist" aria-label="Lists">${all.map(([id,n])=>`<button class="fchip${(ui.filter||null)===id?' on':''}" data-act="filter" data-f="${id||''}"${drag&&id&&id!==STAR?` data-lid="${id}"`:''}>${id===SHARED?I.people:id===PROJ?I.folder:id===STAR?'<span aria-hidden="true">★</span>':''}${esc(n)}</button>`).join('')}</div>`;
+  const drag=listOrder().length>1,pdue=dueNow().length; // a quiet dot on the Park it tag when a nudge has come round
+  return `<div class="filters" role="tablist" aria-label="Lists">${all.map(([id,n])=>`<button class="fchip${(ui.filter||null)===id?' on':''}" data-act="filter" data-f="${id||''}"${drag&&id&&id!==STAR?` data-lid="${id}"`:''}>${id===SHARED?I.people:id===PROJ?I.folder:id===STAR?'<span aria-hidden="true">★</span>':''}${id===PARK&&pdue?'<i class="pdot" role="img" aria-label="Ready for another look"></i>':''}${esc(n)}</button>`).join('')}</div>`;
 }
 
 function row(t,o){
@@ -2279,7 +2281,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.27.3';
+const APPV='1.27.4';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
