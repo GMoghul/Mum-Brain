@@ -2278,7 +2278,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.27.0';
+const APPV='1.27.1';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3429,7 +3429,7 @@ function planNotifs(){
       const k=nIdx(w.nudge,now);
       for(let j=k<0?0:1;j<(w.nudge.rep==='once'?1:PARK_MAX+1);j++){const at=nStep(w.nudge,Math.max(k,0)+j);if(at>now+30000)times.add(Math.floor(at/60000)*60000);}
     }
-    [...times].sort((a,b)=>a-b).slice(0,PARK_MAX).forEach((at,i)=>out.push({id:PARK_ID+i,title:'',body:'A parked worry is ready for another look, when you are.',sound:'default',schedule:{at:new Date(at),allowWhileIdle:true},extra:{kind:'park'}}));
+    [...times].sort((a,b)=>a-b).slice(0,PARK_MAX).forEach((at,i)=>out.push({id:PARK_ID+i,title:'',body:'You asked for a nudge about a parked worry. Have a look when you\'re ready.',sound:'default',schedule:{at:new Date(at),allowWhileIdle:true},extra:{kind:'park'}}));
   }
   // shared jobs with a deadline: a reminder the morning before, for whoever is doing it (or everyone if it's anyone's)
   if(SHARING){
