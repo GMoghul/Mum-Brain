@@ -631,6 +631,14 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 #is-body a{color:var(--accent);font-weight:600}
 #is-body .lbl{display:block;font-size:14px;font-weight:600;color:var(--muted);margin:16px 0 8px}
 #is-body .seg button{font-size:13px}
+.ab-intro h3{margin:2px 0 10px;font-family:var(--font-head);letter-spacing:var(--hls);font-size:calc(19px * var(--hs));font-weight:600}
+.ab-sec{border-radius:14px;background:var(--accent-soft);margin-top:10px;scroll-margin-top:10px}
+.ab-h{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:52px;padding:10px 14px;text-align:left;color:var(--ink);font-size:16px;font-weight:600;line-height:1.3}
+.ab-h .ab-t{flex:none;color:var(--accent);font-size:14.5px;font-weight:600}
+.ab-b{padding:2px 14px 4px}
+.ab-b[hidden]{display:none}
+#is-body .ab-refs{padding-left:18px;font-size:13.5px;line-height:1.45;color:var(--muted)}
+#is-body .ab-refs li{margin-bottom:7px}
 #is-body .pq{color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .actions .ghost{height:50px;padding:0 16px;border-radius:14px;background:var(--bg);color:var(--accent);font-weight:600;font-size:15px}
 .actions .save.warn{background:var(--warn)}
@@ -1025,6 +1033,9 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="rep-hint" id="bk-hint">Your jobs are saved on this device. A backup file keeps them safe. On iPhone, choose Save to Files when the share sheet opens.</div>
       <div class="bk-confirm" id="bk-confirm" hidden></div>
     </div>
+    <div class="field"><span class="lbl">About &amp; support</span>
+      <div class="help-col"><button class="fam-how" id="ab-open"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg><span id="ab-open-t"></span><svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button></div>
+    </div>
     <div class="field"><span class="lbl">Help</span>
       <div class="help-col"><button class="fam-how" id="wl-replay"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg>Show the welcome screens<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button><button class="fam-how" id="ht-replay"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg>Show me how it works<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button><button class="fam-how" id="sh-replay"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 11v5.5"/><circle cx="12" cy="7.6" r=".6" fill="currentColor"/></svg>How sharing works<svg class="chev" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button></div>
     </div>
@@ -1120,6 +1131,7 @@ const BRAND={
            'Park it is private. It isn’t shared with your family, and nobody at Mum Brain can read it. That also means nobody is checking on what you write.',
            'If a worry feels too big to park, please don’t carry it alone. Talk to someone you trust, or to your GP, midwife or health visitor.'],
     supportBtn:'Support for mums',
+    moreBtn:'More about Mum Brain',    // on the support screen: opens the full About & support page
     tooBig:'Worries feeling too big to park?',
     kept3:'This one’s been on your mind for a while. Would it help to talk to someone about it?',
     listHint:'A private place to park worries until you’re ready to look at them. Kept on this phone only.',
@@ -1134,6 +1146,51 @@ const BRAND={
 <p>Mum Brain is a to-do app, not a medical or mental health service. It can’t give advice or respond in an emergency.</p>
 <p>If you feel you are at risk of harming yourself or someone else, please call <a href="tel:999">999</a> or go to A&amp;E. For urgent help that isn’t life-threatening, call <a href="tel:111">111</a> (in England, choose the mental health option), any time of day or night.</p>
 <p>Postpartum psychosis is a medical emergency. If you’re worried about yourself or someone else, get help straight away. <b>In an emergency, call 999.</b></p>`
+  },
+  // About & support page (Settings, after Backup). Wording agreed 11 Nov 2026. The intro shows in full; each section
+  // folds into a box. The section with support:true shows park.support above, so that text lives in one place only.
+  about:{
+    title:'About & support',
+    btn:'About Mum Brain & support',
+    intro:['It’s 9pm. The little ones are finally asleep. You’re exhausted. But your brain doesn’t seem to have got the memo and you can’t stop thinking about everything that still needs doing. The nursery form. The GP call tomorrow morning (you were supposed to do it today). And you need to take out the laundry. Actually, are we out of wipes again? Your head feels full. And since you’re so exhausted, you can’t even begin to make a plan. That’s the mental load: trying to keep track of everything, all at once.',
+           'This is where Mum Brain can help, where brain dumping comes first, letting you breathe a little before you even need to think about organising it all.',
+           'From one tired mum to another, let me tell you why this works.'],
+    sections:[
+      {h:'1. What’s a Brain Dump?',body:`<p>A Brain Dump means getting everything out of your head and into one place, as it comes. The dentist, the nursery form, the worry that keeps you up at night, the job you remembered in the shower. No dates, no order, and it only has to make sense to you.</p>
+<p>Think of it as the messy first step. Get it all down first, and sort it out a day (or week) later, when you’ve got a minute. Ta-da! You now have a to-do list!</p>
+<p>And if you’re not sure where to start, have a quick think through the usual suspects: the kids, the house, work, family and friends, and you (yes, you count too).</p>`},
+      {h:'2. Why it helps',body:`<p>Your brain can only juggle a handful of things at once - psychologists put it at around four. Everything else either slips, or keeps nagging at you so you don’t forget it.</p>
+<ul>
+<li><b>Unfinished jobs keep popping back up.</b> Studies found that writing jobs down with a simple plan stopped them interrupting you so much, even before they were done.</li>
+<li><b>Let something else do the remembering.</b> Psychologists call this “cognitive offloading”: writing it all down - on paper or on your phone - so your head doesn’t have to hold it all.</li>
+<li><b>It can help at bedtime.</b> In one study, people who wrote a to-do list before bed fell asleep faster than people who wrote about what they’d already done.</li>
+<li><b>It can help with worries too.</b> In another, anxious students who spent ten minutes writing down their worries before an exam did better than those who didn’t.</li>
+</ul>`},
+      {h:'3. The invisible mental load',body:`<p>Behind every job is the thinking nobody sees: noticing it needs doing, working out how, deciding when to do it, then checking it actually got done. That’s the mental load, and research shows it mostly falls on mums, often around 7 in every 10 of these tasks.</p>
+<p>Carrying more of it is linked to more stress, low mood and burnout. When mums were asked what makes managing this load so overwhelming, the top answers were constantly thinking about everyday jobs, and jobs that never felt finished. Sound familiar?</p>`},
+      {h:'4. How Mum Brain helps',body:`<p>Mum Brain is built on this research. The Brain Dump is the main feature of this app, because getting it out of your head helps ease the mental load.</p>
+<p><b>Dump it.</b> Get it out of your head the moment you think of it. Making breakfast? Sat in the car? At soft play? No problem. Dump it and leave it. Your head will feel clearer.</p>
+<p><b>Sort it.</b> Pick a day when you’re ready, or leave it in the Brain Dump for sorting later.</p>
+<p><b>Do it.</b> See just what’s on Today, and tick it off.</p>
+<p><b>Hand it over.</b> Writing things down eases the load, but sharing it lightens it. Pass a shared job to your partner so the thinking goes with it, not just the doing. (They’ll get notified immediately.)</p>
+<p><b>Park it.</b> Based on the NHS Every Mind Matters advice on tackling worries. Write a worry down and set it aside, without turning it into a job straight away. Come back to it when you’re ready, or let it go. Some worries may feel a little smaller by the time you look at them again.</p>
+<p>Park it is private. It isn’t shared with your family, and nobody at Mum Brain can read it. That also means nobody is checking on what you write. If a worry feels too big to park, please don’t carry it alone. Talk to someone you trust, or to your GP, midwife or health visitor.</p>
+<p>💡 <b>Mum Brain tip:</b> Try a five-minute dump before bed. You can set a Brain Dump reminder in Settings to nudge you. It might help you sleep better and wake up knowing you’ve not forgotten something important.</p>`},
+      {h:'5. When it’s more than a full head',support:true},
+      {h:'6. References',body:`<ul class="ab-refs">
+<li>Risko &amp; Gilbert (2016). Cognitive offloading. <i>Trends in Cognitive Sciences</i></li>
+<li>Masicampo &amp; Baumeister (2011). Plan making can eliminate the cognitive effects of unfulfilled goals. <i>Journal of Personality and Social Psychology</i></li>
+<li>Scullin et al. (2018). The effects of bedtime writing on difficulty falling asleep. <i>Journal of Experimental Psychology: General</i></li>
+<li>Aviv, Saxbe et al. (2024). Cognitive household labor: gender disparities and consequences for maternal mental health and wellbeing. <i>Archives of Women’s Mental Health</i></li>
+<li>Weeks, Ruppanner et al. (2024). A typology of US parents’ mental loads. <i>Journal of Marriage and Family</i></li>
+<li>Jungmann, Garbe Huedo, Jacobs &amp; Pothorn (2026). Mental load in women and mothers: causes of distress, personality traits, and psychopathology. <i>PLOS ONE</i></li>
+<li>Daminger (2025). <i>What’s on Her Mind: The Mental Workload of Family Life</i>. Princeton University Press</li>
+<li>NHS Every Mind Matters: Tackling your worries</li>
+<li>Cowan (2001). The magical number 4 in short-term memory. <i>Behavioral and Brain Sciences</i></li>
+<li>Ramirez &amp; Beilock (2011). Writing about testing worries boosts exam performance in the classroom. <i>Science</i></li>
+<li>NHS: NHS Talking Therapies (self-referral) and depression guidance</li>
+</ul>`}
+    ]
   }
 };
 document.title=BRAND.name;
@@ -2281,7 +2338,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.27.4';
+const APPV='1.28.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2491,7 +2548,21 @@ function openIntro(){
     onClose:()=>{if(!park.seen){park.seen=true;savePark();}}});
 }
 function openSupport(){
-  openInfo({h:BRAND.park.supportH,body:BRAND.park.support,acts:[['Close','close','save']]});
+  openInfo({h:BRAND.park.supportH,body:BRAND.park.support,acts:[[BRAND.park.moreBtn,'about','ghost'],['Close','close','save']]});
+}
+/* About & support: the intro in full, then each section folded into a tinted box. Opening one closes the others. */
+function openAbout(){
+  const A=BRAND.about;
+  openInfo({h:A.title,acts:[['Close','close','save']],
+    body:`<div class="ab-intro"><h3>${BRAND.slogan}</h3>${A.intro.map(x=>`<p>${x}</p>`).join('')}</div>`+
+      A.sections.map((x,i)=>`<section class="ab-sec"><button class="ab-h" data-iact="absec" aria-expanded="false" aria-controls="ab-b${i}"><span>${x.h}</span><span class="ab-t">Show</span></button><div class="ab-b" id="ab-b${i}" hidden>${x.support?BRAND.park.support:x.body}</div></section>`).join('')});
+}
+function aboutToggle(btn){
+  const sec=btn.closest('.ab-sec'),opening=btn.getAttribute('aria-expanded')!=='true';
+  is.querySelectorAll('.ab-sec').forEach(x=>{const on=opening&&x===sec,h=x.querySelector('.ab-h');
+    h.setAttribute('aria-expanded',on?'true':'false');h.querySelector('.ab-t').textContent=on?'Hide':'Show';x.querySelector('.ab-b').hidden=!on;});
+  // the section above may have just closed, so bring this heading to the top rather than lose her place
+  if(opening)requestAnimationFrame(()=>sec.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}));
 }
 /* a worry's own nudge: day, time, and once or repeating. Skip leaves it with no nudge. */
 const NREP_HINT={once:'One nudge, then nothing more.',day:'Every day at this time.',week:'Every week on this day.','2week':'Every 2 weeks on this day.',month:'Every month on this date.'};
@@ -2515,6 +2586,8 @@ is.addEventListener('click',e=>{
   const b=e.target.closest('[data-iact]');if(!b)return;const a=b.dataset.iact;
   if(a==='close')closeInfo();
   else if(a==='support'){closeInfo();openSupport();}
+  else if(a==='about'){closeInfo();openAbout();}
+  else if(a==='absec')aboutToggle(b);
   else if(a==='nrep'&&nd){nd.rep=b.dataset.r;is.querySelectorAll('[data-r]').forEach(x=>x.classList.toggle('on',x===b));document.getElementById('n-rhint').textContent=NREP_HINT[nd.rep];}
   else if(a==='nsave'&&nd){
     const w=worry(nd.id),d=document.getElementById('n-date').value,t=document.getElementById('n-time').value.slice(0,5),hint=document.getElementById('n-hint');
@@ -3739,6 +3812,8 @@ wl.addEventListener('touchend',e=>{if(wx==null)return;const dx=e.changedTouches[
   if(dx<-50&&wi<W.length-1){wi++;paintWl();}else if(dx>50&&wi>0){wi--;paintWl();}},{passive:true});
 document.addEventListener('keydown',e=>{if(wl.hidden)return;
   if(e.key==='Escape')closeWl();else if(e.key==='ArrowRight'&&wi<W.length-1){wi++;paintWl();}else if(e.key==='ArrowLeft'&&wi>0){wi--;paintWl();}});
+document.getElementById('ab-open-t').textContent=BRAND.about.btn;
+document.getElementById('ab-open').addEventListener('click',()=>{closeSettings();setTimeout(openAbout,300);});
 document.getElementById('ht-replay').addEventListener('click',()=>{closeSettings();setTimeout(()=>openWl('howto'),300);});
 document.getElementById('sh-replay').addEventListener('click',()=>{closeSettings();setTimeout(()=>openWl('share'),300);});
 document.getElementById('s-family').addEventListener('click',e=>{if(e.target.closest('[data-fam="how"]')){closeSettings();setTimeout(()=>openWl('share'),300);}});
