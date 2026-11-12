@@ -170,6 +170,9 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .bk-last+.rep-hint{margin-top:4px}
 .star{flex:none;width:32px;height:32px;margin:-4px -2px -4px 0;display:grid;place-items:center;color:var(--line)}
 .star.on{color:var(--star)}
+/* v1.29.0: a job that isn't important shows a thin outline star (still one tap to mark it), not a grey filled one */
+.star:not(.on){color:color-mix(in srgb,var(--muted) 50%,var(--line))}
+.star:not(.on) svg{fill:none;stroke:currentColor;stroke-width:1.4;stroke-linejoin:round}
 .empty{background:var(--surface);border-radius:18px;box-shadow:var(--shadow);padding:28px 22px;text-align:center;color:var(--muted);font-size:15px}
 .empty strong{display:block;color:var(--ink);font-size:17px;margin-bottom:4px;font-weight:600}
 
@@ -195,11 +198,11 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .none-note{font-size:14px;color:var(--muted);background:var(--bg);border-radius:12px;padding:12px 14px}
 .iconbtn{width:40px;height:40px;border-radius:12px;background:var(--surface);box-shadow:var(--shadow);display:grid;place-items:center}
 .pill{height:40px;padding:0 14px;border-radius:12px;background:var(--surface);box-shadow:var(--shadow);font-size:14px;font-weight:600}
-.cal{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);padding:12px 10px 10px;margin-bottom:24px}
+.cal{background:var(--surface);border-radius:20px;box-shadow:var(--shadow);padding:8px 10px 8px;margin-bottom:20px}
 .wk,.grid{display:grid;grid-template-columns:repeat(7,1fr)}
-.wk div{text-align:center;font-size:12.5px;font-weight:600;color:var(--muted);padding-bottom:8px}
-.cell{aspect-ratio:1/1.05;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:6px;border-radius:12px;gap:4px;font-size:15px;font-weight:500}
-.cell .n{width:30px;height:30px;display:grid;place-items:center;border-radius:50%}
+.wk div{text-align:center;font-size:12.5px;font-weight:600;color:var(--muted);padding-bottom:4px}
+.cell{height:42px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:2px;border-radius:12px;gap:2px;font-size:15px;font-weight:500}
+.cell .n{width:28px;height:28px;display:grid;place-items:center;border-radius:50%}
 .cell.today .n{color:var(--accent);font-weight:700}
 .cell.sel .n{background:var(--accent);color:#fff}
 .cell.past .n{color:var(--muted)}
@@ -211,6 +214,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 /* fab + tabs */
 .fab{position:fixed;right:max(12px,calc(50% - 268px));bottom:calc(12px + max(env(safe-area-inset-bottom,0px),var(--sab0,0px)));width:66px;height:66px;border-radius:24px;background:var(--primary);color:#fff;display:grid;place-items:center;box-shadow:0 6px 16px color-mix(in srgb,var(--primary) 22%,transparent);z-index:5}
 .tabs{position:fixed;left:max(12px,calc(50% - 268px));right:calc(max(12px,calc(50% - 268px)) + 76px);bottom:calc(12px + max(env(safe-area-inset-bottom,0px),var(--sab0,0px)));height:66px;box-sizing:border-box;z-index:6;background:color-mix(in srgb,var(--solid) 94%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-radius:24px;padding:6px;box-shadow:0 0 0 1px rgba(40,32,24,.06),0 8px 24px rgba(20,24,32,.07)}
+/* v1.29.0: the list stops at the row sitting on the wash; nothing shows beneath or beside the tab bar */
+body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:calc(94px + max(env(safe-area-inset-bottom,0px),var(--sab0,0px)));background:linear-gradient(to bottom,transparent,var(--bg) 6px);z-index:4}
 .tabs nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:2px}
 .tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;height:54px;padding:0;white-space:nowrap;border-radius:18px;font-size:11.5px;font-weight:600;color:var(--muted);transition:background .2s,color .2s}
 .tab[aria-selected="true"]{color:var(--accent);background:var(--accent-soft);font-weight:700}
@@ -297,7 +302,12 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .font .nm small{display:block;font-weight:400;color:var(--muted);font-size:12.5px}
 
 .date-row{display:flex;align-items:center;gap:8px;margin-top:6px}
-.date-row .date{margin-top:0;flex:1}
+.date-row .date{margin-top:0;flex:0 1 auto}
+/* v1.29.0: day/week arrows sit beside the date as plain chevrons */
+.date-row .navbtn{background:none;box-shadow:none;width:30px;height:34px;margin:-6px 0}
+.date-row .navbtn svg{width:18px;height:18px}
+.date-row .date+.navbtn,.date-row .date+.pill+.navbtn{margin-left:2px}
+.date-row .pill{order:3;margin-left:auto}
 .navbtn{width:34px;height:34px;border-radius:10px;background:var(--surface);box-shadow:var(--shadow);display:grid;place-items:center;color:var(--muted)}
 .pill.sm{height:34px;padding:0 12px;border-radius:10px;font-size:13px;color:var(--accent)}
 .sec-h button.open-day{font-weight:600}
@@ -357,6 +367,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 :root[data-sp="compact"] .task .chips{flex:0 0 auto;margin-left:auto;max-width:100%;flex-wrap:nowrap;justify-content:flex-end;margin-top:0;gap:4px}
 :root[data-sp="compact"] .task .chip{font-size:calc(11.5px * var(--ts));padding:1px 7px;white-space:nowrap;min-width:0}
 :root[data-sp="compact"] .task .chip svg{flex:none}
+/* v1.29.0: rows with "Back to brain dump" let their tags wrap to a second line instead of being cut off */
+:root[data-sp="compact"] .task .chips:has(.todump){flex-wrap:wrap;flex:1 1 100%}
 :root[data-sp="compact"] .task .c-alarm{display:none}
 :root[data-sp="compact"] .task .c-ico .ct{display:none}
 :root[data-sp="compact"] .task .c-list .ct{max-width:84px;overflow:hidden;text-overflow:ellipsis}
@@ -389,8 +401,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .whead-sub{margin-top:6px;font-size:17.5px;color:var(--muted);font-weight:500}
 /* search */
 .sbar{display:flex;align-items:center;gap:12px;margin-bottom:20px}
-.calnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
-.calnav .navbtn{box-shadow:none;background:var(--bg)}
+.calnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:2px}
+.calnav .navbtn{box-shadow:none;background:none;height:30px}
 .sfield{flex:1;display:flex;align-items:center;gap:8px;background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:0 12px;height:46px;color:var(--muted)}
 .sfield input{flex:1;min-width:0;border:0;background:none;outline:none;font-size:16px;color:var(--ink)}
 .sbar .x{font-size:15px;font-weight:600;color:var(--accent)}
@@ -2337,7 +2349,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.28.1';
+const APPV='1.29.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
