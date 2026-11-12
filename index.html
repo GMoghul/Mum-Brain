@@ -992,6 +992,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="field"><span class="lbl">Font</span><div class="fonts" id="s-fonts"></div></div>
     <div class="field"><span class="lbl">Text size</span>
       <div class="seg" id="s-ts" style="grid-template-columns:repeat(4,1fr)"><button data-ts="s">Small</button><button data-ts="m">Standard</button><button data-ts="l">Large</button><button data-ts="xl">Largest</button></div>
+      <div class="rep-hint" id="ts-hint" hidden>Starts from your phone's own text size. Use this to go a little smaller or larger.</div>
     </div>
     <div class="field"><span class="lbl">Spacing</span>
       <div class="seg seg3" id="s-sp"><button data-spc="compact">Compact</button><button data-spc="std">Standard</button><button data-spc="roomy">Roomy</button></div>
@@ -1324,6 +1325,21 @@ const FIREBASE={apiKey:"AIzaSyDrj319EEjlsAJbc1rfG2C6yRl_aCbDGq4",authDomain:"mum
 let family=null;try{family=JSON.parse(localStorage.getItem(KEY+'-family')||'null');}catch(e){}
 let SHARING=!!(family&&family.code);
 const listName=id=>id===SHARED?'Shared':((state.lists.find(l=>l.id===id)||{}).name||'');
+/* v1.30.0: the phone's own text size (iPhone: Settings > Display & Brightness > Text Size, or Accessibility > Larger Text).
+   Apple's "body" text style is 17px at the standard setting and grows or shrinks with that slider, so measuring it
+   gives the phone's scale. Phone app only; anywhere it can't be read the scale is 1 (no change). */
+let phoneTs=1;
+function readPhoneTs(){
+  let k=1;
+  try{if(NATIVE&&window.CSS&&CSS.supports&&CSS.supports('font','-apple-system-body')){
+    const p=document.createElement('span');p.textContent='A';
+    p.style.cssText='font:-apple-system-body;position:absolute;left:-999px;top:0;visibility:hidden;pointer-events:none';
+    document.documentElement.appendChild(p);const px=parseFloat(getComputedStyle(p).fontSize);p.remove();
+    if(px>0)k=px/17;}}catch(e){}
+  return phoneTs=Math.min(1.45,Math.max(.85,k));
+}
+// if the phone's text size was changed while the app was in the background, pick it up on return
+document.addEventListener('visibilitychange',()=>{if(document.hidden)return;const was=phoneTs;if(readPhoneTs()!==was)applyPrefs();});
 function applyPrefs(){
   const P=state.prefs,r=document.documentElement;
   let pal=PALETTES.find(x=>x.id===P.palette)||PALETTES[0];
@@ -1336,8 +1352,11 @@ function applyPrefs(){
   const tc=document.querySelector('meta[name="theme-color"]');if(tc)tc.setAttribute('content',pal.bg);
   r.style.setProperty('--font-body',f.body);r.style.setProperty('--font-head',f.head||f.body);
   r.style.setProperty('--font-sub',f.sub||f.body);r.style.setProperty('--sub-style',f.subStyle||'normal');r.style.setProperty('--hw',f.hw||700);
-  r.style.setProperty('--hs',f.hs);r.style.setProperty('--hls',f.hls);
-  r.style.setProperty('--ts',{s:.88,m:1,l:1.14,xl:1.28}[P.ts||'m']||1);
+  // v1.30.0: text starts from the phone's own text size (phoneTs), then the app's Text size setting adjusts it.
+  // Headings grow at half the rate so they don't crowd the screen; the total is capped so rows still fit.
+  const k=readPhoneTs();
+  r.style.setProperty('--hs',+(f.hs*(1+(k-1)*.5)).toFixed(3));r.style.setProperty('--hls',f.hls);
+  r.style.setProperty('--ts',+Math.min(1.6,({s:.88,m:1,l:1.14,xl:1.28}[P.ts||'m']||1)*k).toFixed(3));
   r.style.setProperty('--sp',{compact:.55,std:1,roomy:1.3}[P.sp||'std']||1);
   r.setAttribute('data-sp',P.sp||'std');
   if(P.mode==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',P.mode==='dark'?'dark':'light');
@@ -2349,7 +2368,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.29.0';
+const APPV='1.30.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3706,6 +3725,7 @@ function paintSettings(){
   document.querySelectorAll('[data-font]').forEach(b=>b.classList.toggle('on',b.dataset.font===P.font));
   document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('on',b.dataset.mode===P.mode));
   document.querySelectorAll('[data-ts]').forEach(b=>b.classList.toggle('on',b.dataset.ts===(P.ts||'m')));
+  {const h=document.getElementById('ts-hint');if(h)h.hidden=!NATIVE;}
   document.querySelectorAll('[data-tidy]').forEach(b=>b.classList.toggle('on',b.dataset.tidy===(P.tidy||'off')));
   document.querySelectorAll('[data-cel]').forEach(b=>b.classList.toggle('on',b.dataset.cel===(P.cel||'rabbit')));
   document.querySelectorAll('[data-nudge]').forEach(b=>b.classList.toggle('on',b.dataset.nudge===(P.nudge||'on')));
