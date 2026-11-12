@@ -633,6 +633,33 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .pfoot .q{color:var(--ink);font-weight:600;font-size:15.5px;margin-bottom:12px}
 .pfoot button,.pfoot a{color:var(--accent);font-weight:600;font-size:14px;text-decoration:none}
 #w-text{margin-top:0;min-height:132px}
+/* v1.31.0 Shopping list */
+.shop-sug{display:flex;gap:6px;overflow-x:auto;margin:-16px -18px 18px;padding:2px 18px;scrollbar-width:none}
+.shop-sug::-webkit-scrollbar{display:none}
+.shop-sug[hidden]{display:none}
+.schip{flex:none;height:30px;padding:0 11px 0 9px;border-radius:15px;border:1px solid var(--line);background:var(--solid);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;gap:5px}
+.schip b{color:var(--accent);font-weight:600}
+.task.sitem{align-items:center;padding-top:calc(11px * var(--sp));padding-bottom:calc(11px * var(--sp))}
+.sitem .body{flex:1;min-width:0}
+.sitem .qty{flex:none;font-size:calc(13.5px * var(--ts));font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:8px;padding:1px 8px}
+.sitem.done .qty{color:var(--muted);background:var(--bg)}
+.grp+.task::before{display:none}
+.shop-foot{margin:30px 4px 8px;font-size:14px;color:var(--muted)}
+.shop-foot p{margin:0;text-align:center;font-size:13.5px;line-height:1.45}
+.srow{display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:16px;box-shadow:var(--shadow);padding:12px 14px}
+.srow>span{flex:1;min-width:0;color:var(--ink);font-size:15px;font-weight:600}
+.srow>span svg{display:inline-block;width:14px;height:14px;margin-right:7px;vertical-align:-2px}
+.nudge.sfam .row{margin-top:10px}
+.nudge.sfam .row .go{margin:0}
+.srow small{display:block;font-size:13px;font-weight:400;line-height:1.35;color:var(--muted);margin-top:2px}
+.srow .pswitch{flex:none;width:44px;height:26px;border-radius:13px;background:var(--line);position:relative;transition:background .2s}
+.srow .pswitch i{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s}
+.srow .pswitch.on{background:var(--accent)}
+.srow .pswitch.on i{transform:translateX(18px)}
+.qrow{display:flex;align-items:center;gap:14px}
+.qrow button{width:44px;height:44px;border-radius:12px;background:var(--bg);font-size:22px;font-weight:500;line-height:1}
+.qrow b{min-width:28px;text-align:center;font-size:19px;font-weight:600}
+#ss-aisles .opt{height:38px}
 .wnrow{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:15.5px}
 .wnrow button{flex:none;height:34px;padding:0 12px;border-radius:9px;background:var(--accent-soft);color:var(--accent);font-size:14px;font-weight:600}
 .nrow{display:flex;gap:22px}
@@ -937,6 +964,20 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
   </div>
 </div>
 
+<div id="ssheet" aria-hidden="true">
+  <div class="scrim" data-shact="close"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ss-h">
+    <div class="grab"></div>
+    <div class="sheet-top"><h2 id="ss-h">Shopping item</h2><button class="x" data-shact="close">Cancel</button></div>
+    <input class="f-title" id="ss-name" placeholder="Item" aria-label="Item" autocomplete="off" enterkeyhint="done">
+    <div class="field"><span class="lbl">How many</span>
+      <div class="qrow"><button data-shact="minus" aria-label="One fewer">−</button><b id="ss-qty" aria-live="polite">1</b><button data-shact="plus" aria-label="One more">+</button></div>
+    </div>
+    <div class="field"><span class="lbl">Aisle</span><div class="row" id="ss-aisles"></div></div>
+    <div class="actions"><button class="del" data-shact="del">Remove</button><button class="save" data-shact="save">Save</button></div>
+  </div>
+</div>
+
 <div id="isheet" aria-hidden="true">
   <div class="scrim" data-iact="close"></div>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="is-h">
@@ -1109,6 +1150,8 @@ const BRAND={
   egQuick:'Dentist Fri 3pm',           // Quick-add box example
   egProject:'Camping trip',            // New project name example
   egProjects:'a camping trip, moving house or baby prep', // empty Projects screen
+  shop:{eg:'milk, 2 bread',     // Shopping list add box example
+        hint:'A list for the shops. Tick items into the basket as you go. Private until you choose to share it with your family.'}, // Settings › Lists
   webUrl:'https://gmoghul.github.io/Mum-Brain/', // online version (no longer in the iPhone app's "Send code" message; kept in case it's needed again)
   palette:'lilac',                     // default theme for new users
   welcome:[                            // first-open welcome screens: Dump it, Sort it, Do it
@@ -1264,6 +1307,7 @@ const I={
   people:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18 14.2A6.5 6.5 0 0 1 21.5 20"/></svg>',
   checks:'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12l3 3 5-6"/></svg>',
   search:'<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>',
+  basket:'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 9.5h17l-1.7 9a2 2 0 0 1-2 1.6H7.2a2 2 0 0 1-2-1.6z"/><path d="M8.2 9.5l2.8-5.5M15.8 9.5L13 4"/></svg>',
   plus:'<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>'
 };
 
@@ -1620,6 +1664,9 @@ function leaveFamily(removed){
   pushForget();noteQ={};saveNoteQ();
   if(famUnsub){try{famUnsub();}catch(e){}famUnsub=null;}
   sharedCol=null;sharedReady=false;sharedSeen={};clearPend();
+  // leaving the family: a shopping list you were sharing stays on this phone as your own
+  if(state.prefs.shopShare===true)state.tasks.forEach(t=>{if(t.shop&&t.list===SHARED&&!t.done)t.list=null;});
+  delete state.prefs.shopShare;
   state.tasks=state.tasks.filter(t=>t.list!==SHARED);
   if(ui.filter===SHARED)ui.filter=null;
   family=null;saveFamily();cache();paintFamily();render();
@@ -1805,6 +1852,7 @@ function saveNoteQ(){try{localStorage.setItem(KEY+'-noteq',JSON.stringify(noteQ)
 const myName=()=>((state.prefs&&state.prefs.myName)||'').trim();
 function noteChange(id,beforeJ,afterJ){
   if(noteMute)return;
+  if(/"shop":1[,}]/.test(afterJ||beforeJ||''))return; // shopping items are shared quietly: no notification for each one
   const q=noteQ[id];
   // keep the job as it was before this run of edits, so the notification shows the overall change
   noteQ[id]={b:q?q.b:(beforeJ==null?null:beforeJ),a:afterJ,at:Date.now()};
@@ -2113,7 +2161,7 @@ function undoable(label,fn){
 function tidy(){
   const d=Number(state.prefs&&state.prefs.tidy);if(!d)return;
   const cut=Date.now()-d*86400000,n0=state.tasks.length;
-  state.tasks=state.tasks.filter(t=>isRep(t)||t.proj||!t.done||!t.doneAt||t.doneAt>cut);
+  state.tasks=state.tasks.filter(t=>isRep(t)||t.proj||t.shop||!t.done||!t.doneAt||t.doneAt>cut);
   const oldDay=addDays(today(),-Math.max(d,31));
   state.tasks.forEach(t=>{if(isRep(t)&&t.completions)for(const k in t.completions)if(k<oldDay)delete t.completions[k];});
   if(state.tasks.length!==n0)save();
@@ -2133,7 +2181,7 @@ function returnOld(){
   if(n){save();setTimeout(()=>snack(n===1?'1 old job went back to your brain dump':n+' old jobs went back to your brain dump'),600);}
 }
 function dumpEmpty(){
-  const own=state.tasks.filter(t=>!isRep(t)&&!t.proj),open=own.filter(t=>!t.done);
+  const own=state.tasks.filter(t=>!isRep(t)&&!t.proj&&!t.shop),open=own.filter(t=>!t.done);
   return own.length>0&&open.length===0;
 }
 function checkCelebrate(){
@@ -2219,23 +2267,26 @@ const STAR='starred';
 /* ---------- projects ---------- */
 const PROJ='projects';
 const projOn=()=>!!(state.prefs&&state.prefs.proj==='on');
+const SHOP='shopping'; // v1.31.0: the Shopping list tag
+const shopOn=()=>(state.prefs&&state.prefs.shop)!=='off';
 const projOf=id=>id?(state.projects||[]).find(p=>p.id===id):null;
 const liveProjs=()=>(state.projects||[]).filter(p=>!p.archived).sort((a,b)=>(a.ts||0)-(b.ts||0));
-const archivedJob=t=>{if(!t.proj)return false;const p=projOf(t.proj);return !p||!!p.archived;};
+const archivedJob=t=>{if(t.shop)return true; // shopping items aren't jobs: they stay out of every job view, the widget and notifications
+  if(!t.proj)return false;const p=projOf(t.proj);return !p||!!p.archived;};
 const projJobs=id=>state.tasks.filter(t=>t.proj===id);
 function projStats(id){
   const J=projJobs(id).filter(t=>!isRep(t)),done=J.filter(t=>t.done).length;
   const next=J.filter(t=>!t.done&&t.date).sort((a,b)=>a.date.localeCompare(b.date)||byStar(a,b))[0]||null;
   return {total:J.length,done,next,pct:J.length?Math.round(done/J.length*100):0};
 }
-const vis=t=>!archivedJob(t)&&(!ui.filter||ui.filter===PARK||(ui.filter===STAR?!!t.starred:ui.filter===PROJ?!!t.proj:(t.list||null)===ui.filter));
+const vis=t=>!archivedJob(t)&&(!ui.filter||ui.filter===PARK||ui.filter===SHOP||(ui.filter===STAR?!!t.starred:ui.filter===PROJ?!!t.proj:(t.list||null)===ui.filter));
 const newDefaults=()=>{
   if(ui.tab==='dump'&&ui.proj){const p=projOf(ui.proj);if(p)return {proj:p.id,color:p.color||'grey'};}
   if(ui.tab==='dump'&&ui.filter===SHARED&&ui.who&&ui.who!=='any'){
     if(ui.who==='me')return {list:SHARED,own:devId(),ownN:myName()||null};
     const s=state.tasks.find(t=>t.list===SHARED&&whoKey(t)===ui.who);if(s)return {list:SHARED,own:s.own,ownN:s.ownN};
   }
-  return ui.filter===STAR?{starred:true}:ui.filter===PROJ||ui.filter===PARK?{}:{list:ui.filter};
+  return ui.filter===STAR?{starred:true}:ui.filter===PROJ||ui.filter===PARK||ui.filter===SHOP?{}:{list:ui.filter};
 };
 /* Who's doing it: on the Shared list, a row of small chips (Everyone · You · Fraz · Anyone) shows one person's jobs.
    Jobs given to the same name (typed or picked from the family) count as one person. */
@@ -2306,12 +2357,12 @@ function nudgeText(n){
 const dueNow=()=>parkOn()?parkedNow().filter(w=>w.nudge&&nLast(w.nudge)>(w.nDone||0)):[];
 // Shared and Projects are built-in tags: each remembers its own spot in the row.
 // Shared starts at the end; Projects starts first among your lists so it isn't scrolled off-screen.
-// Park it starts last in the row, where it's discreet.
-const SPECIAL=[[SHARED,'sharedAt',()=>SHARING,'Shared',null],[PROJ,'projAt',projOn,'Projects',0],[PARK,'parkAt',parkOn,'Park it',null]];
-const isSpecial=id=>id===SHARED||id===PROJ||id===PARK;
+// Park it starts last in the row, where it's discreet; Shopping sits just before it.
+const SPECIAL=[[SHARED,'sharedAt',()=>SHARING,'Shared',null],[PROJ,'projAt',projOn,'Projects',0],[SHOP,'shopAt',shopOn,'Shopping',null],[PARK,'parkAt',parkOn,'Park it',null]];
+const isSpecial=id=>id===SHARED||id===PROJ||id===PARK||id===SHOP;
 function listOrder(all){
   const L=state.lists.map(l=>[l.id,l.name]),P=state.prefs||{};
-  SPECIAL.filter(x=>x[2]()||(all&&(x[0]===PROJ||x[0]===PARK))).map(x=>({id:x[0],name:x[3],at:P[x[1]]!=null?P[x[1]]:x[4]}))
+  SPECIAL.filter(x=>x[2]()||(all&&(x[0]===PROJ||x[0]===PARK||x[0]===SHOP))).map(x=>({id:x[0],name:x[3],at:P[x[1]]!=null?P[x[1]]:x[4]}))
     .sort((a,b)=>(a.at==null?1e9:a.at)-(b.at==null?1e9:b.at))
     .forEach(x=>L.splice(x.at==null?L.length:Math.max(0,Math.min(L.length,x.at)),0,[x.id,x.name]));
   return L;
@@ -2327,8 +2378,8 @@ function applyOrder(ids){
 function filterBar(){
   const nStar=state.tasks.filter(t=>t.starred&&!(!isRep(t)&&t.done)).length;
   const all=[[null,'All'],[STAR,'Starred'+(nStar?' '+nStar:'')]].concat(listOrder());
-  const drag=listOrder().length>1,pdue=dueNow().length; // a quiet dot on the Park it tag when a nudge has come round
-  return `<div class="filters" role="tablist" aria-label="Lists">${all.map(([id,n])=>`<button class="fchip${(ui.filter||null)===id?' on':''}" data-act="filter" data-f="${id||''}"${drag&&id&&id!==STAR?` data-lid="${id}"`:''}>${id===SHARED?I.people:id===PROJ?I.folder:id===STAR?'<span aria-hidden="true">★</span>':''}${id===PARK&&pdue?'<i class="pdot" role="img" aria-label="Ready for another look"></i>':''}${esc(n)}</button>`).join('')}</div>`;
+  const drag=listOrder().length>1,pdue=dueNow().length,nShop=shopOn()?shopToBuy().length:0; // a quiet dot on the Park it tag when a nudge has come round
+  return `<div class="filters" role="tablist" aria-label="Lists">${all.map(([id,n])=>`<button class="fchip${(ui.filter||null)===id?' on':''}" data-act="filter" data-f="${id||''}"${drag&&id&&id!==STAR?` data-lid="${id}"`:''}>${id===SHARED?I.people:id===PROJ?I.folder:id===SHOP?I.basket:id===STAR?'<span aria-hidden="true">★</span>':''}${id===PARK&&pdue?'<i class="pdot" role="img" aria-label="Ready for another look"></i>':''}${esc(n)}${id===SHOP&&nShop?' '+nShop:''}</button>`).join('')}</div>`;
 }
 
 function row(t,o){
@@ -2368,8 +2419,8 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.30.0';
-const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj;
+const APPV='1.31.0';
+const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
   const t0=today();let n=null;
@@ -2432,6 +2483,7 @@ function renderDump(){
   if(ui.filter===PROJ){if(ui.proj&&projOf(ui.proj)&&!projOf(ui.proj).archived)return renderProject(projOf(ui.proj));ui.proj=null;return renderProjects();}
   ui.proj=null;
   if(ui.filter===PARK)return renderPark();
+  if(ui.filter===SHOP)return renderShop();
   const wb=whoBar();
   const T=state.tasks.filter(t=>vis(t)&&!t.proj&&(!ui.who||whoKey(t)===ui.who)),t0=today();
   const undated=T.filter(t=>!isRep(t)&&!t.date&&!t.done).sort(byStar);
@@ -2459,6 +2511,189 @@ function renderDump(){
   q.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();quickAdd();}});
   if(ui.refocus){q.focus();ui.refocus=false;}
 }
+/* ---------- Shopping list (v1.31.0) ----------
+   A built-in tag like Projects and Park it. Items are kept with the jobs (marked shop:1) so they are saved,
+   backed up and, when shared, sent to the family exactly like shared jobs (scrambled on the phone first).
+   They never show on Brain dump, Today, Week, Month, search, the widget or in notifications.
+   Private by default. With "Share with family" on, this phone shows the family's shared shopping list instead;
+   switching it off gives this phone its own private copy and leaves the family's list alone. */
+const AISLES=[['veg','Fruit & veg'],['bakery','Bakery'],['fridge','Fridge & dairy'],['meat','Meat & fish'],['freezer','Freezer'],['cupboard','Food cupboard'],['drinks','Drinks'],['baby','Baby'],['house','Household'],['care','Toiletries & health'],['other','Everything else']];
+const aisleName=id=>(AISLES.find(a=>a[0]===id)||AISLES[AISLES.length-1])[1];
+// whole phrases are checked first (in this order), then single words from the last word back ("chicken soup" is soup)
+const AISLE_PHRASES=[
+  ['baby',['baby wipes','baby food','baby milk','baby','nappy bags','follow on milk','pull ups','pull-ups']],
+  ['freezer',['ice cream','ice lolly','ice lollies','ice cubes','frozen','fish fingers','oven chips','potato waffles']],
+  ['veg',['butternut squash','sweet potato','sweet potatoes','spring onion','spring onions','green beans','salad','fruit','veg']],
+  ['cupboard',['peanut butter','coconut milk','tinned','tin of','tins of','tomato puree','tomato sauce','tomato ketchup','chopped tomatoes','baked beans','olive oil','vegetable oil','sunflower oil','cooking oil','stock cubes','stock cube','chicken stock','soy sauce','curry paste','curry powder','rice cakes','cereal bars','cereal bar','baking powder','icing sugar']],
+  ['drinks',['orange juice','apple juice','hot chocolate','tea bags','teabags','fizzy water','sparkling water']],
+  ['house',['toilet roll','toilet rolls','loo roll','loo rolls','kitchen roll','kitchen towel','washing up','washing powder','washing liquid','washing tablets','fabric softener','bin bags','bin liners','dishwasher','cling film','tin foil','baking paper','sandwich bags','freezer bags','food bags','light bulb','light bulbs','cat food','dog food','cat litter','air freshener','antibacterial']],
+  ['care',['shower gel','hand wash','hand soap','hand cream','cotton wool','cotton pads','cotton buds','sun cream','face wipes','lip balm','sanitary','nail varnish']]
+];
+const AISLE_WORDS={
+  veg:'apple banana orange satsuma clementine grape strawberry strawberries raspberry raspberries blueberry blueberries berries melon watermelon mango pear plum peach nectarine lemon lime avocado tomato tomatoes cucumber lettuce spinach kale carrot potato potatoes onion garlic ginger pepper chilli chillies courgette aubergine broccoli cauliflower cabbage leek mushroom peas sweetcorn celery beetroot parsnip swede coriander parsley mint basil pineapple kiwi cherry cherries radish rocket sprouts okra pomegranate',
+  bakery:'bread loaf rolls bagel wrap pitta pittas naan chapati chapatis roti rotis crumpet croissant bun baguette muffin tortilla brioche scone pancakes cake teacakes',
+  fridge:'milk butter cheese cheddar mozzarella halloumi paneer feta yoghurt yogurt cream egg margarine houmous hummus coleslaw custard tofu',
+  meat:'chicken beef lamb mince turkey sausage bacon ham pork fish salmon cod haddock prawns steak burger meatballs mackerel drumsticks thighs fillet',
+  freezer:'',
+  cupboard:'pasta rice flour sugar salt oil cereal porridge oats cornflakes granola beans lentils chickpeas tuna soup noodles spaghetti sauce ketchup mayo mayonnaise mustard vinegar honey jam marmalade chocolate biscuit crisps cracker nuts raisins spices cumin turmeric paprika cinnamon stock gravy couscous passata pesto popcorn sweets yeast vanilla cocoa syrup ghee daal dal atta masala poppadoms snacks',
+  drinks:'water juice squash cola coke lemonade tea coffee smoothie milkshake tonic cordial decaf',
+  baby:'nappy nappies wipes formula dummy dummies bibs rusks pouches',
+  house:'bleach sponge cloths detergent foil clingfilm batteries bulbs matches candles laundry softener',
+  care:'shampoo conditioner soap deodorant toothpaste toothbrush razor tissues plasters paracetamol ibuprofen calpol vitamins moisturiser mouthwash floss suncream tampons pads'
+};
+const AISLE_OF={};for(const a in AISLE_WORDS)AISLE_WORDS[a].split(' ').forEach(w=>{if(w)AISLE_OF[w]=a;});
+function aisleGuess(title){
+  const s=' '+String(title||'').toLowerCase().replace(/[^a-z\- ]+/g,' ').replace(/\s+/g,' ').trim()+' ';
+  for(const [a,P] of AISLE_PHRASES)for(const p of P)if(s.includes(' '+p+' ')||s.includes(' '+p+'s '))return a;
+  const W=s.trim().split(' ');
+  for(let i=W.length-1;i>=0;i--){const w=W[i];
+    for(const v of [w,w.replace(/ies$/,'y'),w.replace(/es$/,''),w.replace(/s$/,'')])if(AISLE_OF[v])return AISLE_OF[v];}
+  return 'other';
+}
+const shopKey=s=>String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+const shopMem=()=>{if(!state.shopMem||typeof state.shopMem!=='object'||Array.isArray(state.shopMem))state.shopMem={};return state.shopMem;};
+const shopShared=()=>SHARING&&state.prefs.shopShare===true;
+// the list this phone is looking at: the family's shared one, or its own private one
+const shopList=()=>state.tasks.filter(t=>t.shop&&(shopShared()?t.list===SHARED:t.list!==SHARED));
+const shopToBuy=()=>shopList().filter(t=>!t.done);
+// "2 milk", "2x milk", "milk x2", "milk ×2" all mean two; "500g mince" is left as typed
+function shopParse(raw){
+  let t=String(raw||'').replace(/\s+/g,' ').trim(),q=1,m;
+  if((m=t.match(/^(\d{1,2})\s*[x×]?\s+(\D.*)$/i))){q=+m[1];t=m[2];}
+  else if((m=t.match(/^(.*\D)\s*[x×]\s*(\d{1,2})$/i))){q=+m[2];t=m[1].trim();}
+  t=t.replace(/^[\-•*·]\s*/,'').trim();
+  if(!t)return null;
+  return {title:t[0].toUpperCase()+t.slice(1),qty:Math.max(1,Math.min(99,q||1))};
+}
+function shopRemember(t){
+  const M=shopMem(),k=shopKey(t.title);if(!k)return;
+  M[k]={t:t.title,a:t.aisle||'other',n:((M[k]&&M[k].n)||0)+1,at:Date.now()};
+  const K=Object.keys(M);if(K.length>400)K.sort((a,b)=>M[a].at-M[b].at).slice(0,K.length-400).forEach(x=>delete M[x]);
+}
+// adds one or several items ("milk, eggs, bread"); an item already in the basket comes back out instead of doubling up
+function shopAdd(raw){
+  const parts=String(raw||'').split(/[,;\n]+/).map(shopParse).filter(Boolean);if(!parts.length)return 0;
+  const L=shopList(),M=shopMem();let n=0,dup=0;
+  for(const p of parts){
+    const k=shopKey(p.title),ex=L.find(t=>shopKey(t.title)===k);
+    if(ex){if(ex.done){ex.done=false;ex.doneAt=null;ex.qty=p.qty;ex.ts=Date.now();n++;}else{if(p.qty>1)ex.qty=p.qty;dup++;}shopRemember(ex);continue;}
+    const t=blank({title:p.title,shop:1,qty:p.qty,aisle:(M[k]&&M[k].a)||aisleGuess(p.title),list:shopShared()?SHARED:null});
+    state.tasks.push(t);L.push(t);shopRemember(t);n++;
+  }
+  save();
+  if(!n&&dup)snack(dup===1?'Already on your list':'Those are already on your list');
+  return n+dup;
+}
+// items you've bought before: the ones matching what's being typed, or your regulars when the box is empty
+function shopSuggest(q){
+  const M=shopMem(),on=new Set(shopToBuy().map(t=>shopKey(t.title)));
+  q=shopKey(String(q||'').split(/[,;\n]/).pop());
+  let K=Object.keys(M).filter(k=>!on.has(k));
+  if(q)K=K.filter(k=>k!==q&&(k.startsWith(q)||k.includes(' '+q))).sort((a,b)=>(b.startsWith(q)-a.startsWith(q))||M[b].n-M[a].n);
+  else K=K.filter(k=>M[k].n>1).sort((a,b)=>M[b].n-M[a].n||M[b].at-M[a].at);
+  return K.slice(0,q?6:8).map(k=>M[k].t);
+}
+function paintShopSug(){
+  const el=document.getElementById('shop-sug'),q=document.getElementById('quick');if(!el||!q)return;
+  const S=shopSuggest(q.value);
+  el.innerHTML=S.map(t=>`<button class="schip" data-act="ssug" data-t="${esc(t)}"><b>+</b>${esc(t)}</button>`).join('');
+  el.hidden=!S.length;
+}
+function shopQuick(){
+  const q=document.getElementById('quick'),v=(q.value||'').trim();
+  if(!v){q.focus();return;}
+  if(shopAdd(v)){ui.refocus=true;render();}
+}
+function shopTick(id){
+  const t=find(id);if(!t||!t.shop)return;
+  const before=JSON.stringify(t);
+  t.done=!t.done;t.doneAt=t.done?Date.now():null;
+  save();render();
+  if(t.done){buzz('tick');snack('In the basket ✓',()=>{const i=state.tasks.findIndex(x=>x.id===id);if(i>=0){state.tasks[i]=JSON.parse(before);save();render();}});}
+}
+function shopRow(t){
+  return `<li class="task sitem${t.done?' done':''}" data-sopen="${t.id}">
+    <button class="check ${t.done?'on':''}" style="--c:${hex('grey')}" data-act="stick" data-id="${t.id}" aria-label="${t.done?'Take out of the basket':'Put in the basket'}">${I.tick}</button>
+    <div class="body"><div class="title">${esc(t.title)}</div></div>${t.qty>1?`<span class="qty" aria-label="Quantity ${t.qty}">×${t.qty}</span>`:''}
+  </li>`;
+}
+// turning sharing on moves this phone's own items into the family's list (no doubles)
+function shopShareOn(){
+  const sh=state.tasks.filter(t=>t.shop&&t.list===SHARED&&!t.done).map(t=>shopKey(t.title));
+  state.tasks=state.tasks.filter(t=>!(t.shop&&t.list!==SHARED&&(t.done||sh.includes(shopKey(t.title)))));
+  state.tasks.forEach(t=>{if(t.shop&&t.list!==SHARED)t.list=SHARED;});
+  state.prefs.shopShare=true;save();render();
+  snack('Shopping list shared with your family');
+}
+// turning it off keeps a private copy here; the family's list stays as it is for everyone else
+function shopShareOff(){
+  const copies=state.tasks.filter(t=>t.shop&&t.list===SHARED&&!t.done).map(t=>blank({title:t.title,shop:1,qty:t.qty||1,aisle:t.aisle||'other',list:null,ts:t.ts,ord:t.ord}));
+  state.tasks=state.tasks.filter(t=>!(t.shop&&t.list!==SHARED)).concat(copies);
+  state.prefs.shopShare=false;save();render();
+  snack('Private again. Your family keeps the shared list.');
+}
+function renderShop(){
+  const L=shopList(),buy=L.filter(t=>!t.done),got=L.filter(t=>t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
+  const famHas=SHARING&&state.prefs.shopShare==null&&state.tasks.some(t=>t.shop&&t.list===SHARED);
+  let h=`<header class="head"><h1>Brain dump</h1><p class="sub">${BRAND.slogan}</p></header>${filterBar()}
+  <div class="quick"><input id="quick" placeholder="Add items… e.g. ${BRAND.shop.eg}" autocomplete="off" autocapitalize="sentences" enterkeyhint="done" aria-label="Add to your shopping list"><button data-act="squick" aria-label="Add">${I.plus}</button></div>
+  <div class="shop-sug" id="shop-sug" aria-label="Items you've bought before" hidden></div>`;
+  if(famHas)h+=`<section class="nudge sfam" aria-label="Family shopping list"><div class="nudge-h"><b>Your family is sharing a shopping list</b></div>
+    <p>Join it to see, add and tick the same items.${buy.length?' The items on your own list will be added to it.':''}</p>
+    <div class="row"><button class="go" data-act="sjoin">Join the shared list</button><button class="go" data-act="skeep">Keep mine private</button></div></section>`;
+  if(!buy.length)h+=`<div class="empty" style="margin-bottom:26px"><strong>${got.length?'All in the basket':'Nothing to buy yet'}</strong>${got.length?'Everything on your list has been ticked off.':'Type an item above. Add a few at once with commas, and a number for how many.'}</div>`;
+  else{
+    let rows='';
+    for(const [a,name] of AISLES){const R=buy.filter(t=>(AISLES.some(x=>x[0]===t.aisle)?t.aisle:'other')===a).sort((x,y)=>ko(x)-ko(y));
+      if(R.length)rows+=`<li class="grp">${name}</li>`+R.map(shopRow).join('');}
+    h+=`<section class="sec"><div class="sec-h"><h2>To buy</h2><span class="count">${buy.length}</span></div><ul class="list">${rows}</ul></section>`;
+  }
+  if(got.length){
+    const open=!!ui.showBasket;
+    h+=`<section class="sec"><div class="sec-h"><h2>In the basket (${got.length})</h2><span><button data-act="sbshow" aria-expanded="${open}">${open?'Hide':'Show'}</button> &nbsp;<button data-act="sbclear">Clear</button></span></div>${open?`<ul class="list">${got.map(shopRow).join('')}</ul>`:''}</section>`;
+  }
+  const on=shopShared();
+  h+=`<div class="shop-foot">${SHARING
+    ?`<div class="srow"><span>${I.people}Share with family<small>${on?'Everyone in your family can see, add and tick these items.':'Only you can see this list.'}</small></span><button class="pswitch${on?' on':''}" role="switch" aria-checked="${on}" aria-label="Share the shopping list with family" data-act="sshare"><i></i></button></div>`
+    :`<p>Only you can see this list. To share it, set up Family sharing in Settings.</p>`}</div>`;
+  view.innerHTML=h;
+  const q=document.getElementById('quick');
+  q.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();shopQuick();}});
+  q.addEventListener('input',paintShopSug);
+  paintShopSug();
+  if(ui.refocus){q.focus();ui.refocus=false;}
+}
+/* the item's own sheet: name, how many, aisle, delete */
+const ss=document.getElementById('ssheet'),ssName=document.getElementById('ss-name');
+let sdraft=null;
+function paintShopSheet(){
+  document.getElementById('ss-qty').textContent=sdraft.qty;
+  document.getElementById('ss-aisles').innerHTML=AISLES.map(([id,n])=>`<button class="opt${sdraft.aisle===id?' on':''}" data-shact="aisle" data-a="${id}">${n}</button>`).join('');
+}
+function openShopItem(id){
+  const t=find(id);if(!t||!t.shop)return;
+  sdraft={id,qty:t.qty||1,aisle:AISLES.some(a=>a[0]===t.aisle)?t.aisle:'other'};
+  ssName.value=t.title;paintShopSheet();
+  ss.classList.add('open');ss.setAttribute('aria-hidden','false');ss.querySelector('.sheet').scrollTop=0;
+}
+function closeShopItem(){ss.classList.remove('open');ss.setAttribute('aria-hidden','true');sdraft=null;}
+ss.addEventListener('click',e=>{
+  const b=e.target.closest('[data-shact]');if(!b||!sdraft)return;const a=b.dataset.shact;
+  if(a==='close'){closeShopItem();return;}
+  if(a==='minus'||a==='plus'){sdraft.qty=Math.max(1,Math.min(99,sdraft.qty+(a==='plus'?1:-1)));paintShopSheet();return;}
+  if(a==='aisle'){sdraft.aisle=b.dataset.a;paintShopSheet();return;}
+  const t=find(sdraft.id);
+  if(a==='del'){const id=sdraft.id;closeShopItem();if(t)undoable('Item removed',()=>{const n0=state.tasks.length;state.tasks=state.tasks.filter(x=>x.id!==id);return n0-state.tasks.length;});return;}
+  if(a==='save'){
+    const v=ssName.value.replace(/\s+/g,' ').trim();
+    if(!v){ssName.classList.add('shake');setTimeout(()=>ssName.classList.remove('shake'),520);ssName.focus();return;}
+    if(t){t.title=v;t.qty=sdraft.qty;t.aisle=sdraft.aisle;const M=shopMem(),k=shopKey(v);M[k]={t:v,a:t.aisle,n:(M[k]&&M[k].n)||1,at:Date.now()};}
+    closeShopItem();save();render();
+  }
+});
+ssName.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();ssName.blur();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&sdraft)closeShopItem();});
+
 /* ---------- Park it: the list, the nudge card and the sheets ---------- */
 const NHS_WORRY='https://www.nhs.uk/every-mind-matters/mental-wellbeing-tips/self-help-cbt-techniques/tackling-your-worries/';
 function askCard(){
@@ -2867,14 +3102,15 @@ function searchResults(){
   const el=document.getElementById('sres');if(!el)return;
   const q=ui.q.trim().toLowerCase();
   if(!q){el.innerHTML=`<div class="empty">Type to search across every job.</div>`;return;}
-  const hit=t=>[t.title,t.note,listName(t.list),(projOf(t.proj)||{}).name].concat((t.checklist||[]).map(x=>x.text)).some(x=>x&&x.toLowerCase().includes(q));
+  const hit=t=>!t.shop&&[t.title,t.note,listName(t.list),(projOf(t.proj)||{}).name].concat((t.checklist||[]).map(x=>x.text)).some(x=>x&&x.toLowerCase().includes(q));
   const r=state.tasks.filter(hit).sort((a,b)=>((!isRep(a)&&a.done)-(!isRep(b)&&b.done))||(a.date||'9').localeCompare(b.date||'9')||byStar(a,b));
   el.innerHTML=r.length?section(`${r.length} result${r.length>1?'s':''}`,r,{showDay:true},' '):`<div class="empty"><strong>No matches</strong>Nothing found for “${esc(ui.q.trim())}”.</div>`;
 }
 function render(){
   if(ui.filter===PROJ&&!projOn()){ui.filter=null;ui.proj=null;}
   if(ui.filter===PARK&&!parkOn())ui.filter=null;
-  if(ui.filter&&ui.filter!==SHARED&&ui.filter!==STAR&&ui.filter!==PROJ&&ui.filter!==PARK&&!state.lists.some(l=>l.id===ui.filter))ui.filter=null;
+  if(ui.filter===SHOP&&!shopOn())ui.filter=null;
+  if(ui.filter&&ui.filter!==SHARED&&ui.filter!==STAR&&ui.filter!==PROJ&&ui.filter!==PARK&&ui.filter!==SHOP&&!state.lists.some(l=>l.id===ui.filter))ui.filter=null;
   document.querySelector('.topbar').hidden=ui.searching;
   if(ui.searching){
     if(!document.getElementById('sq'))renderSearch();else searchResults();return;}
@@ -3118,6 +3354,7 @@ document.getElementById('fab').addEventListener('click',()=>{
   else if(ui.tab==='week'){const t0=today();openEditor(null,Object.assign(L,{date:(t0>=ui.week&&t0<=addDays(ui.week,6))?t0:ui.week}));}
   else if(ui.filter===PROJ&&!ui.proj)openPSheet('new');
   else if(ui.filter===PARK)openWorry(null);
+  else if(ui.filter===SHOP){const q=document.getElementById('quick');window.scrollTo(0,0);if(q)q.focus();}
   else openEditor(null,L);
 });
 view.addEventListener('click',e=>{
@@ -3159,6 +3396,14 @@ view.addEventListener('click',e=>{
     if(act==='who'){ui.who=a.dataset.w||null;render();return;}
     if(act==='filter'){ui.filter=a.dataset.f||null;ui.proj=null;ui.who=null;try{localStorage.setItem(KEY+'-filter',ui.filter===PARK?'':ui.filter||'');}catch(err){}render();if(ui.filter===PARK&&!park.seen)openIntro();return;}
     if(act==='parkadd'){parkAdd();return;}
+    if(act==='squick'){shopQuick();return;}
+    if(act==='stick'){shopTick(a.dataset.id);return;}
+    if(act==='ssug'){const q=document.getElementById('quick'),rest=q?q.value.split(/[,;\n]/).slice(0,-1).join(', ').trim():'';
+      if(shopAdd(a.dataset.t)){render();const q2=document.getElementById('quick');if(q2){q2.value=rest?rest+', ':'';paintShopSug();q2.focus();}}return;}
+    if(act==='sbshow'){ui.showBasket=!ui.showBasket;render();return;}
+    if(act==='sbclear'){undoable(n=>`Cleared ${n} item${n>1?'s':''} from the basket`,()=>{const ids=new Set(shopList().filter(t=>t.done).map(t=>t.id)),n0=state.tasks.length;state.tasks=state.tasks.filter(t=>!ids.has(t.id));return n0-state.tasks.length;});return;}
+    if(act==='sshare'||act==='sjoin'){if(act==='sshare'&&shopShared())shopShareOff();else shopShareOn();return;}
+    if(act==='skeep'){state.prefs.shopShare=false;save();render();return;}
     if(act==='wnudge'){openNudge(a.dataset.id);return;}
     if(act==='wleave'){ui.parkNew=null;render();return;}
     if(act==='wopen'){openWorry(a.dataset.id);return;}
@@ -3192,6 +3437,7 @@ view.addEventListener('click',e=>{
   }
   const r=e.target.closest('[data-open]');if(r&&Date.now()-swipedAt>400)openEditor(r.dataset.open);
   const wr=e.target.closest('[data-wopen]');if(wr)openWorry(wr.dataset.wopen);
+  const sr=e.target.closest('[data-sopen]');if(sr&&Date.now()-swipedAt>400)openShopItem(sr.dataset.sopen);
 });
 
 /* ---------- day + month navigation ---------- */
@@ -3367,10 +3613,10 @@ view.addEventListener('touchmove',e=>{
 view.addEventListener('touchend',()=>{
   if(!sw||!sw.on){sw=null;return;}
   const s=sw;sw=null;swipedAt=Date.now();
-  const w=s.li.offsetWidth,id=s.li.dataset.open;
+  const w=s.li.offsetWidth,id=s.li.dataset.open||s.li.dataset.sopen,isShop=!!s.li.dataset.sopen;
   if(s.dx<-Math.max(90,w*.35)){
     s.li.classList.add('gone');s.li.style.transform=`translateX(${-w}px)`;
-    setTimeout(()=>{undoable('Job deleted',()=>{const n0=state.tasks.length;state.tasks=state.tasks.filter(t=>t.id!==id);return n0-state.tasks.length;});},200);
+    setTimeout(()=>{undoable(isShop?'Item removed':'Job deleted',()=>{const n0=state.tasks.length;state.tasks=state.tasks.filter(t=>t.id!==id);return n0-state.tasks.length;});},200);
   }else{
     s.li.classList.add('snap');s.li.style.transform='';
     setTimeout(()=>{s.li.classList.remove('snap','swiping');if(s.bg)s.bg.remove();},220);
@@ -3696,12 +3942,13 @@ function renderOpts(){
 }
 document.getElementById('s-fonts').innerHTML=FONTS.map(f=>`<button class="font" data-font="${f.id}"><span class="aa" style="font-family:${(f.head||f.body).replace(/"/g,'&quot;')};font-size:${Math.round(26*f.hs)}px">Aa</span><span class="nm" style="font-family:${f.body.replace(/"/g,'&quot;')}">${f.name}<small>${f.desc}</small></span></button>`).join('');
 function paintSLists(){
-  const L=listOrder(true),on=projOn(),pk=parkOn();
-  const end=id=>id===PARK?`<button class="pswitch${pk?' on':''}" role="switch" aria-checked="${pk}" aria-label="Show Park it tag" data-parks="${pk?'off':'on'}"><i></i></button>`
+  const L=listOrder(true),on=projOn(),pk=parkOn(),so=shopOn();
+  const end=id=>id===SHOP?`<button class="pswitch${so?' on':''}" role="switch" aria-checked="${so}" aria-label="Show Shopping tag" data-shops="${so?'off':'on'}"><i></i></button>`
+    :id===PARK?`<button class="pswitch${pk?' on':''}" role="switch" aria-checked="${pk}" aria-label="Show Park it tag" data-parks="${pk?'off':'on'}"><i></i></button>`
     :id===PROJ?`<button class="pswitch${on?' on':''}" role="switch" aria-checked="${on}" aria-label="Show Projects tag" data-projs="${on?'off':'on'}"><i></i></button>`
     :isSpecial(id)?'<span class="fixed">Built in</span>':`<button data-dellist="${id}">Delete</button>`;
-  const hint={[PROJ]:'Lists with dates, subtasks and progress bars. Ideal for bigger jobs, e.g. prepping for a trip or a renovation project.',[SHARED]:'Invite or manage family in Family sharing below.',[PARK]:BRAND.park.listHint};
-  document.getElementById('s-lists').innerHTML=L.map(([id,n])=>`<div class="lrow${(id===PROJ&&!on)||(id===PARK&&!pk)?' off':''}" data-lid="${id}">${L.length>1?`<span class="grip" aria-hidden="true">${GRIP}</span>`:''}<span>${esc(n)}${hint[id]?`<small class="lhint">${hint[id]}</small>`:''}</span>${end(id)}</div>`).join('')
+  const hint={[PROJ]:'Lists with dates, subtasks and progress bars. Ideal for bigger jobs, e.g. prepping for a trip or a renovation project.',[SHARED]:'Invite or manage family in Family sharing below.',[PARK]:BRAND.park.listHint,[SHOP]:BRAND.shop.hint};
+  document.getElementById('s-lists').innerHTML=L.map(([id,n])=>`<div class="lrow${(id===PROJ&&!on)||(id===PARK&&!pk)||(id===SHOP&&!so)?' off':''}" data-lid="${id}">${L.length>1?`<span class="grip" aria-hidden="true">${GRIP}</span>`:''}<span>${esc(n)}${hint[id]?`<small class="lhint">${hint[id]}</small>`:''}</span>${end(id)}</div>`).join('')
     +(SHARING?'':`<div class="lrow off"><span>Shared<small class="lhint">Shows here once you create or join a family in Family sharing below. Moving from another phone? Enter the same family code.</small></span><span class="fixed">Built in</span></div>`);
 }
 const slIn=document.getElementById('sl-in');
@@ -3768,7 +4015,7 @@ document.getElementById('fb-send').addEventListener('click',async()=>{
 });
 function closeSettings(){st.classList.remove('open');st.setAttribute('aria-hidden','true');}
 st.addEventListener('click',e=>{
-  const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-mstyle],button[data-mjobs],button[data-bdr],button[data-projs],button[data-parks],button[data-wkv],button[data-start]');if(!b)return;
+  const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-mstyle],button[data-mjobs],button[data-bdr],button[data-projs],button[data-parks],button[data-shops],button[data-wkv],button[data-start]');if(!b)return;
   if(b.dataset.sact){closeSettings();return;}
   if(b.dataset.pal)state.prefs.palette=b.dataset.pal;
   if(b.dataset.washv)state.prefs.washv=b.dataset.washv;
@@ -3787,6 +4034,7 @@ st.addEventListener('click',e=>{
   if(b.dataset.mjobs){state.prefs.mornJobs=b.dataset.mjobs;syncNotifs(true);}
   if(b.dataset.bdr){state.prefs.bdr=b.dataset.bdr;if(b.dataset.bdr==='own'&&!state.prefs.bdrAt)state.prefs.bdrAt='21:00';syncNotifs(true);}
   if(b.dataset.projs){state.prefs.proj=b.dataset.projs;if(b.dataset.projs==='off'&&ui.filter===PROJ){ui.filter=null;ui.proj=null;try{localStorage.setItem(KEY+'-filter','');}catch(err){}}render();}
+  if(b.dataset.shops){state.prefs.shop=b.dataset.shops;if(b.dataset.shops==='off'&&ui.filter===SHOP)ui.filter=null;render();}
   if(b.dataset.parks){state.prefs.park=b.dataset.parks;if(b.dataset.parks==='off'&&ui.filter===PARK)ui.filter=null;render();}
   if(b.dataset.cel){state.prefs.cel=b.dataset.cel;if(b.dataset.cel!=='off'){closeSettings();setTimeout(()=>celebrate('preview'),250);}}
   applyPrefs();paintSettings();save();
@@ -3861,7 +4109,7 @@ render();
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(()=>{});}catch(e){}
 document.getElementById('bk-save').addEventListener('click',async()=>{
   const json=JSON.stringify({app:'todo',version:1,savedAt:new Date().toISOString(),state,park},null,1); // park: the Park it worries, so they move to a new phone too
-  const n=state.tasks.filter(t=>t.list!==SHARED).length,name=BRAND.backupPrefix+today()+'-'+n+'-job'+(n===1?'':'s')+'.json';
+  const n=state.tasks.filter(t=>t.list!==SHARED&&!t.shop).length,name=BRAND.backupPrefix+today()+'-'+n+'-job'+(n===1?'':'s')+'.json';
   const hint=document.getElementById('bk-hint');
   const done=msg=>{try{localStorage.setItem(KEY+'-lastbk',JSON.stringify({at:new Date().toISOString(),n}));}catch(err){}paintBk();hint.textContent=msg;};
   // phones: open the share sheet so "Save to Files" lets you pick the folder (a Home Screen app can't save straight to Downloads)
@@ -3881,7 +4129,7 @@ document.getElementById('bk-save').addEventListener('click',async()=>{
 function paintBk(){
   const el=document.getElementById('bk-last');if(!el)return;
   let L=null;try{L=JSON.parse(localStorage.getItem(KEY+'-lastbk')||'null');}catch(e){}
-  const n=state.tasks.filter(t=>t.list!==SHARED).length,old=!L||Date.now()-new Date(L.at)>7*864e5;
+  const n=state.tasks.filter(t=>t.list!==SHARED&&!t.shop).length,old=!L||Date.now()-new Date(L.at)>7*864e5;
   el.innerHTML=L?`<b>Last backup:</b> ${esc(fmtStamp(L.at))} · ${n1(L.n)}${old&&n?' – worth saving a new one.':''}`:(n?'<b>No backup saved yet</b> on this phone.':'');
   el.classList.toggle('due',old&&!!n);
 }
@@ -3895,7 +4143,7 @@ document.getElementById('bk-load').addEventListener('change',e=>{
   const r=new FileReader();
   r.onload=()=>{e.target.value='';const box=document.getElementById('bk-confirm');
     try{const d=JSON.parse(r.result);const st=d&&d.state;if(!st||!Array.isArray(st.tasks))throw 0;pendingBk=st;pendingPark=d.park&&Array.isArray(d.park.items)?d.park:null;
-      const own=x=>x.filter(t=>t.list!==SHARED).length;
+      const own=x=>x.filter(t=>t.list!==SHARED&&!t.shop).length;
       // an empty backup would only wipe the list, so say so and don't offer to restore it
       if(!(SHARING?own(st.tasks):st.tasks.length)){pendingBk=null;
         box.innerHTML=`<b>Backup from ${fmtStamp(d.savedAt)}</b><span class="bk-empty">This backup is empty – it has no jobs in it.</span>
