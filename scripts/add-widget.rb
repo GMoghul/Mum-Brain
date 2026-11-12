@@ -14,7 +14,7 @@ end
 
 # --- the app: bridge plugin, main screen and App Group ---
 app_group = proj.main_group.children.find { |g| g.respond_to?(:path) && g.path == 'App' } or abort('App group not found')
-%w[WidgetBridgePlugin.swift MainViewController.swift].each do |f|
+%w[WidgetBridgePlugin.swift ICloudBackupPlugin.swift MainViewController.swift].each do |f|
   app.add_file_references([app_group.new_reference(f)])
 end
 app_group.new_reference('App.entitlements')

@@ -1082,6 +1082,12 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="rep-hint">Plays when you tick off the last job of the day, or empty your brain dump. <button class="more" id="cel-try" style="margin:0;display:inline">Preview</button></div>
     </div>
     <div class="field"><span class="lbl">Backup</span>
+      <div id="icb-box" hidden>
+        <span class="lbl lbl-sub" style="margin-top:0">iCloud backup</span>
+        <div class="row" style="flex-wrap:nowrap"><div class="seg" id="s-icb" style="grid-template-columns:repeat(2,1fr);flex:1"><button data-icb="on">On</button><button data-icb="off">Off</button></div><button class="opt" id="icb-restore" hidden>Restore from iCloud</button></div>
+        <div class="rep-hint" id="icb-hint"></div>
+        <span class="lbl lbl-sub">Backup file</span>
+      </div>
       <div class="row"><button class="opt" id="bk-save">Save a backup</button><label class="opt" style="display:inline-flex;align-items:center;cursor:pointer">Restore a backup<input type="file" id="bk-load" accept=".json,application/json" hidden></label></div>
       <div class="rep-hint bk-last" id="bk-last"></div>
       <div class="rep-hint" id="bk-hint">Your jobs are saved on this device. A backup file keeps them safe. On iPhone, choose Save to Files when the share sheet opens.</div>
@@ -1438,6 +1444,7 @@ function save(){
   if(remote){clearTimeout(timer);timer=setTimeout(()=>push(true),500);}
   syncShared();
   widgetQueue();
+  icbQueue();
 }
 function cache(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){warn('Couldn\'t save on this phone – its storage may be full. Save a backup in Settings to keep your jobs safe.');}}
 function push(retry){
@@ -2419,7 +2426,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.31.0';
+const APPV='1.32.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2491,7 +2498,7 @@ function renderDump(){
   const reps=T.filter(isRep).sort(byStar);
   const done=T.filter(t=>!isRep(t)&&t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   let h=`<header class="head"><h1>Brain dump</h1><p class="sub">${BRAND.slogan}</p></header>${filterBar()}${wb}
-  <div class="quick"><input id="quick" placeholder="Add a job… e.g. ${BRAND.egQuick}" autocomplete="off" enterkeyhint="done" aria-label="Add a job"><button data-act="quick" aria-label="Add">${I.plus}</button></div>${homeCard()}${nudgeCard()}`;
+  <div class="quick"><input id="quick" placeholder="Add a job… e.g. ${BRAND.egQuick}" autocomplete="off" enterkeyhint="done" aria-label="Add a job"><button data-act="quick" aria-label="Add">${I.plus}</button></div>${icloudCard()}${homeCard()}${nudgeCard()}`;
   if(!undated.length&&!sched.length&&!reps.length&&!done.length){
     h+=`<div class="empty"><strong>Nothing here yet${ui.filter===STAR?' starred':ui.filter?' in '+esc(listName(ui.filter)):''}</strong>Type anything on your mind above. You can give it a day, a colour or a repeat whenever you like.</div>`;
   }
@@ -3396,6 +3403,8 @@ view.addEventListener('click',e=>{
     if(act==='who'){ui.who=a.dataset.w||null;render();return;}
     if(act==='filter'){ui.filter=a.dataset.f||null;ui.proj=null;ui.who=null;try{localStorage.setItem(KEY+'-filter',ui.filter===PARK?'':ui.filter||'');}catch(err){}render();if(ui.filter===PARK&&!park.seen)openIntro();return;}
     if(act==='parkadd'){parkAdd();return;}
+    if(act==='icyes'){const f=icb.found;if(f){a.disabled=true;a.textContent='Bringing them back…';icbRestore(f.slot).then(ok=>{if(!ok)render();});}return;}
+    if(act==='icno'){try{localStorage.setItem(KEY+'-icask','1');}catch(err){}render();return;}
     if(act==='squick'){shopQuick();return;}
     if(act==='stick'){shopTick(a.dataset.id);return;}
     if(act==='ssug'){const q=document.getElementById('quick'),rest=q?q.value.split(/[,;\n]/).slice(0,-1).join(', ').trim():'';
@@ -4015,7 +4024,7 @@ document.getElementById('fb-send').addEventListener('click',async()=>{
 });
 function closeSettings(){st.classList.remove('open');st.setAttribute('aria-hidden','true');}
 st.addEventListener('click',e=>{
-  const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-mstyle],button[data-mjobs],button[data-bdr],button[data-projs],button[data-parks],button[data-shops],button[data-wkv],button[data-start]');if(!b)return;
+  const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-mstyle],button[data-mjobs],button[data-bdr],button[data-projs],button[data-parks],button[data-shops],button[data-icb],button[data-wkv],button[data-start]');if(!b)return;
   if(b.dataset.sact){closeSettings();return;}
   if(b.dataset.pal)state.prefs.palette=b.dataset.pal;
   if(b.dataset.washv)state.prefs.washv=b.dataset.washv;
@@ -4034,6 +4043,9 @@ st.addEventListener('click',e=>{
   if(b.dataset.mjobs){state.prefs.mornJobs=b.dataset.mjobs;syncNotifs(true);}
   if(b.dataset.bdr){state.prefs.bdr=b.dataset.bdr;if(b.dataset.bdr==='own'&&!state.prefs.bdrAt)state.prefs.bdrAt='21:00';syncNotifs(true);}
   if(b.dataset.projs){state.prefs.proj=b.dataset.projs;if(b.dataset.projs==='off'&&ui.filter===PROJ){ui.filter=null;ui.proj=null;try{localStorage.setItem(KEY+'-filter','');}catch(err){}}render();}
+  if(b.dataset.icb&&ICB){state.prefs.icloud=b.dataset.icb;icbSet(null);
+    if(b.dataset.icb==='off'){clearTimeout(icb.timer);ICB.remove({slot:devId()}).then(()=>icbList()).then(paintIcb).catch(()=>{});} // Off also takes this phone's copy out of iCloud
+  }
   if(b.dataset.shops){state.prefs.shop=b.dataset.shops;if(b.dataset.shops==='off'&&ui.filter===SHOP)ui.filter=null;render();}
   if(b.dataset.parks){state.prefs.park=b.dataset.parks;if(b.dataset.parks==='off'&&ui.filter===PARK)ui.filter=null;render();}
   if(b.dataset.cel){state.prefs.cel=b.dataset.cel;if(b.dataset.cel!=='off'){closeSettings();setTimeout(()=>celebrate('preview'),250);}}
@@ -4129,8 +4141,9 @@ document.getElementById('bk-save').addEventListener('click',async()=>{
 function paintBk(){
   const el=document.getElementById('bk-last');if(!el)return;
   let L=null;try{L=JSON.parse(localStorage.getItem(KEY+'-lastbk')||'null');}catch(e){}
-  const n=state.tasks.filter(t=>t.list!==SHARED&&!t.shop).length,old=!L||Date.now()-new Date(L.at)>7*864e5;
-  el.innerHTML=L?`<b>Last backup:</b> ${esc(fmtStamp(L.at))} · ${n1(L.n)}${old&&n?' – worth saving a new one.':''}`:(n?'<b>No backup saved yet</b> on this phone.':'');
+  const n=state.tasks.filter(t=>t.list!==SHARED&&!t.shop).length,ic=icbOn()&&(icbInfo()||{}).ok,old=!ic&&(!L||Date.now()-new Date(L.at)>7*864e5);
+  el.innerHTML=L?`<b>Last backup${ICB?' file':''}:</b> ${esc(fmtStamp(L.at))} · ${n1(L.n)}${old&&n?' – worth saving a new one.':''}`:(n&&!ic?'<b>No backup saved yet</b> on this phone.':'');
+  paintIcb();
   el.classList.toggle('due',old&&!!n);
 }
 const n1=n=>n+' job'+(n===1?'':'s');
@@ -4179,6 +4192,107 @@ document.getElementById('bk-confirm').addEventListener('click',e=>{
   document.getElementById('bk-hint').textContent='Backup restored: '+jobs(SHARING?st.tasks.filter(t=>t.list!==SHARED).length:st.tasks.length)+(SHARING?'. Your family list was left as it is.':hadShared?'. To see your Shared list, enter your family code in Family sharing below. You can find it in Settings › Family sharing on your other phone or the online version.':'.');
   if(hadShared){const fi=document.getElementById('fam-in');if(fi)fi.scrollIntoView({block:'center',behavior:'smooth'});}
 });
+/* ---------- iCloud backup (v1.32.0, iPhone app only) ----------
+   A copy of your own jobs, lists, projects, shopping list and settings is kept in your own iCloud, and brought
+   up to date a few seconds after anything changes. It never goes to the app's Firebase and nobody else can read it.
+   Left out on purpose: the family's shared list (it lives with the family, and the family code is never backed up)
+   and Park it worries (they stay on this phone only).
+   Each phone or iPad has its own slot, so two devices with different lists don't overwrite each other. */
+var ICB=NATIVE?((window.Capacitor.Plugins&&window.Capacitor.Plugins.ICloudBackup)||(window.Capacitor.registerPlugin&&window.Capacitor.registerPlugin('ICloudBackup'))):null;
+var icb={timer:null,busy:false,found:null,avail:null,all:[]};
+function icbOn(){return !!ICB&&((state.prefs&&state.prefs.icloud)||'on')==='on';}
+function icbInfo(){try{return JSON.parse(localStorage.getItem(KEY+'-icb')||'null');}catch(e){return null;}}
+function icbSet(o){try{if(o)localStorage.setItem(KEY+'-icb',JSON.stringify(o));else localStorage.removeItem(KEY+'-icb');}catch(e){}}
+function icbQueue(){if(!icbOn())return;clearTimeout(icb.timer);icb.timer=setTimeout(icbSave,15000);}
+async function icbList(){
+  try{const r=await ICB.list();icb.avail=!!r.available;
+    icb.all=(r.backups||[]).map(b=>{let m={};try{m=JSON.parse(b.meta)||{};}catch(e){}return {slot:b.slot,at:String(m.at||''),n:Number(m.n)||0};})
+      .filter(b=>b.at).sort((a,b)=>b.at.localeCompare(a.at));}
+  catch(e){icb.all=[];}
+  return icb.all;
+}
+async function icbSave(){
+  clearTimeout(icb.timer);
+  if(!icbOn()||icb.busy)return;
+  const own=state.tasks.filter(t=>t.list!==SHARED),n=own.filter(t=>!t.shop).length,info=icbInfo();
+  if(!own.length&&!(state.projects||[]).length)return;          // an empty list is never saved over a real backup
+  if(info&&info.ok&&info.u===state.updatedAt)return;             // nothing has changed since the last save
+  icb.busy=true;
+  const u=state.updatedAt,at=new Date().toISOString();
+  try{
+    const L=await icbList(),other=L.find(b=>b.slot!==devId());
+    const json=JSON.stringify({app:'todo',version:1,savedAt:at,hadFamily:SHARING,state:Object.assign({},state,{tasks:own})});
+    await ICB.save({slot:devId(),keep:other?other.slot:'',json,meta:JSON.stringify({at,n,v:APPV})});
+    icbSet({ok:true,at,n,u});
+  }catch(e){const c=e&&e.code;icbSet(Object.assign({},info||{},{ok:false,err:c==='noaccount'||c==='toobig'?c:'fail'}));}
+  finally{icb.busy=false;paintIcb();if(u!==state.updatedAt)icbQueue();}
+}
+// is there a backup in iCloud from another phone (or from before the app was reinstalled)?
+async function icbLook(){
+  if(!ICB)return;
+  const L=await icbList(),f=L.find(b=>b.slot!==devId()&&b.n>0)||null,was=icb.found;
+  icb.found=f;paintIcb();
+  if((f&&f.at)!==(was&&was.at)&&!draft&&ui.tab==='dump')render();
+}
+function icloudCard(){
+  if(!ICB||!icb||!icb.found)return'';
+  if(state.tasks.some(t=>t.list!==SHARED)||(state.projects||[]).length)return''; // only offered while this phone's own list is empty
+  try{if(localStorage.getItem(KEY+'-icask'))return'';}catch(e){}
+  const f=icb.found;
+  return `<section class="nudge sfam" aria-label="Restore from iCloud"><div class="nudge-h"><b>Welcome back</b></div>
+    <p>Your jobs are saved in your iCloud: <b>${f.n} job${f.n===1?'':'s'}</b>, backed up ${esc(fmtStamp(f.at))}.</p>
+    <div class="row"><button class="go" data-act="icyes">Bring them back</button><button class="go" data-act="icno">Start fresh</button></div></section>`;
+}
+async function icbRestore(slot){
+  try{
+    const r=await ICB.read({slot}),d=JSON.parse(r.json),st=d&&d.state;if(!st||!Array.isArray(st.tasks))throw 0;
+    // the family's shared list on this phone stays exactly as it is; only your own things come from the backup
+    st.tasks=st.tasks.filter(t=>t.list!==SHARED).concat(state.tasks.filter(t=>t.list===SHARED));
+    state=st;fixPrefs(state.prefs=state.prefs||{palette:BRAND.palette,font:'prata',mode:'light'});
+    if(!Array.isArray(state.lists))state.lists=[];
+    if(!Array.isArray(state.projects))state.projects=[];
+    try{localStorage.setItem(KEY+'-icask','1');}catch(e){}
+    icbSet(null);save();applyPrefs();paintSettings();render();
+    const n=state.tasks.filter(t=>t.list!==SHARED&&!t.shop).length;
+    if(d.hadFamily&&!SHARING)warn('Restored '+n+' job'+(n===1?'':'s')+' from iCloud. To see your Shared list too, enter your family code in Settings › Family sharing.');
+    else snack('Restored '+n+' job'+(n===1?'':'s')+' from iCloud');
+    return true;
+  }catch(e){warn('Couldn\'t restore from iCloud. Check your internet connection and try again.');return false;}
+}
+function paintIcb(){
+  const box=document.getElementById('icb-box');if(!box)return;
+  box.hidden=!ICB;if(!ICB)return;
+  const on=icbOn(),info=icbInfo(),hint=document.getElementById('icb-hint');
+  document.querySelectorAll('[data-icb]').forEach(b=>b.classList.toggle('on',b.dataset.icb===(on?'on':'off')));
+  document.getElementById('icb-restore').hidden=!icb.all.length;
+  const leftOut=' Your family\'s shared list and Park it worries aren\'t included.';
+  hint.classList.remove('due');
+  if(!on)hint.textContent='Off. Your jobs are only on this phone, so save a backup file now and then.';
+  else if(icb.avail===false||(info&&info.err==='noaccount')){hint.classList.add('due');hint.textContent='iCloud isn\'t switched on for this phone. Sign in to iCloud in your phone\'s Settings and the backup will start automatically.';}
+  else if(info&&info.err==='toobig'){hint.classList.add('due');hint.textContent='Your list is too big for iCloud backup. Save a backup file instead.';}
+  else if(info&&info.ok)hint.innerHTML='<b>Last saved to your iCloud:</b> '+esc(fmtStamp(info.at))+' · '+info.n+' job'+(info.n===1?'':'s')+'. It updates automatically, and only you can see it.'+leftOut;
+  else hint.textContent='Your jobs are saved to your own iCloud automatically, a few seconds after anything changes. Only you can see it.'+leftOut;
+}
+if(ICB){
+  try{ICB.addListener('changed',()=>icbLook());}catch(e){}
+  document.addEventListener('visibilitychange',()=>{if(document.hidden)icbSave();else icbLook();});
+  setTimeout(()=>{icbLook().then(()=>icbSave());},2500);
+  document.getElementById('icb-restore').addEventListener('click',async()=>{
+    const L=await icbList(),box=document.getElementById('bk-confirm');
+    if(!L.length){document.getElementById('icb-hint').textContent='No backup found in your iCloud yet.';return;}
+    const mine=state.tasks.filter(t=>t.list!==SHARED&&!t.shop).length;
+    box.innerHTML=`<b>Restore from iCloud</b>
+      <p>Restoring <b>replaces your own jobs</b>, lists and settings on this phone (you have ${mine} job${mine===1?'':'s'} now).${SHARING?' <b>Your family\'s shared list won\'t be touched.</b>':''} Park it worries on this phone stay as they are.</p>
+      ${L.map(b=>`<div class="row" style="justify-content:space-between;margin-top:8px"><span>${b.slot===devId()?'This phone':'Another device'} · ${esc(fmtStamp(b.at))} · ${b.n} job${b.n===1?'':'s'}</span><button class="opt bk-go" data-icr="${esc(b.slot)}">Restore</button></div>`).join('')}
+      <div class="row" style="margin-top:12px"><button class="opt" data-bk="save">Save current list first</button><button class="opt" data-bk="cancel">Cancel</button></div>`;
+    box.hidden=false;box.scrollIntoView({block:'nearest',behavior:'smooth'});
+  });
+  document.getElementById('bk-confirm').addEventListener('click',async e=>{
+    const b=e.target.closest('[data-icr]');if(!b)return;
+    if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='Tap to confirm';return;}
+    b.disabled=true;if(await icbRestore(b.dataset.icr))document.getElementById('bk-confirm').hidden=true;else b.disabled=false;
+  });
+}
 if('serviceWorker' in navigator&&location.protocol==='https:'){window.addEventListener('load',()=>{navigator.serviceWorker.register('sw.js').catch(()=>{});});}
 connect();
 if(family&&family.code)connectFamily();

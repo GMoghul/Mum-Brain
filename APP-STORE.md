@@ -98,6 +98,12 @@ The live web app on GitHub Pages (`main`) is not affected.
    - **Remembered items** (`state.shopMem`): suggestions under the add box as you type, and your regulars (bought more than once) when the box is empty.
    - **Sharing:** private by default. With family sharing on, a **Share with family** switch under the list (`prefs.shopShare`). On: this phone's items move to the Shared list's storage (`list:'shared'`, scrambled like shared jobs) and the tag shows the family's list. Off: this phone gets a private copy and the family's list is left alone. Other members see a "Your family is sharing a shopping list" card (Join / Keep mine private). Shopping items send no shared-change notifications. Family members on an older version see shared shopping items as plain jobs on their Shared list until they update.
    - Wording that is edition-specific is in `BRAND.shop`.
+27. **Automatic iCloud backup (v1.32.0, 12 Nov 2026):** in the phone app, a copy of the user's own jobs, lists, projects, shopping list and settings is kept in their own iCloud and updated about 15 seconds after any change (and when the app goes to the background).
+   - Native side: `ios-widget/App/ICloudBackupPlugin.swift` (Apple's iCloud key-value storage, packed with zlib; 450 KB limit per backup, 1 MB for the app). Entitlement `com.apple.developer.ubiquity-kvstore-identifier` in `App.entitlements`. **Apple side: iCloud must be ticked on the App ID `com.gmoghul.mumbrainsorted`** at developer.apple.com.
+   - Each phone or iPad saves to its own slot (its device id), so two devices with different lists don't overwrite each other. iCloud keeps this device's backup plus the newest one from another device.
+   - Not included, on purpose: the family's shared list (and the family code) and Park it worries.
+   - An empty list is never saved over a backup. On a new or reinstalled phone with an empty list, Brain dump shows a **Welcome back** card (Bring them back / Start fresh). Settings › Backup has iCloud backup On/Off (Off also removes that phone's copy from iCloud), the last-saved time and **Restore from iCloud**.
+   - `privacy.html` updated to describe it.
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)
