@@ -2275,7 +2275,8 @@ const STAR='starred';
 const PROJ='projects';
 const projOn=()=>!!(state.prefs&&state.prefs.proj==='on');
 const SHOP='shopping'; // v1.31.0: the Shopping list tag
-const shopOn=()=>(state.prefs&&state.prefs.shop)!=='off';
+// v1.32.1: off until switched on in Settings › Lists. A phone that already has items (or whose family shares a list) keeps it showing.
+const shopOn=()=>{const p=state.prefs&&state.prefs.shop;return p==='on'||(p==null&&state.tasks.some(t=>t.shop));};
 const projOf=id=>id?(state.projects||[]).find(p=>p.id===id):null;
 const liveProjs=()=>(state.projects||[]).filter(p=>!p.archived).sort((a,b)=>(a.ts||0)-(b.ts||0));
 const archivedJob=t=>{if(t.shop)return true; // shopping items aren't jobs: they stay out of every job view, the widget and notifications
@@ -2317,7 +2318,8 @@ const T=()=>state.tasks.filter(vis);
    the owner saves herself.
    Each worry can have its own nudge: a day and time to look at it again, once or repeating. No nudge is the default. */
 const PARK='parkit';
-const parkOn=()=>(state.prefs&&state.prefs.park)!=='off';
+// v1.32.1: off until switched on in Settings › Lists. A phone that already has parked worries keeps it showing.
+const parkOn=()=>{const p=state.prefs&&state.prefs.park;if(p!=null)return p==='on';try{return park.items.length>0;}catch(e){return false;}};
 const NREPS=[['once','Once'],['day','Daily'],['week','Weekly'],['2week','2 weeks'],['month','Monthly']];
 const nudgeClean=n=>n&&/^\d{4}-\d\d-\d\d$/.test(n.date||'')&&/^\d\d:\d\d$/.test(n.time||'')&&NREPS.some(r=>r[0]===n.rep)?{date:n.date,time:n.time,rep:n.rep}:null;
 function parkClean(p){
@@ -2426,7 +2428,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.32.0';
+const APPV='1.32.1';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
