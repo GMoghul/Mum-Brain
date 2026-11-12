@@ -676,6 +676,13 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .ab-h{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:52px;padding:10px 14px;text-align:left;color:var(--ink);font-size:16px;font-weight:600;line-height:1.3}
 .ab-h .ab-t{flex:none;color:var(--accent);font-size:14.5px;font-weight:600}
 .ab-b{padding:2px 14px 4px}
+/* v1.33.0 calmer Settings: the same folding boxes, one group open at a time */
+.sg{margin-top:10px}
+#fb-field+.sg{margin-top:22px}
+.sg-b{padding:0 14px 14px}
+.sg-b[hidden]{display:none}
+.sg-b>.field:first-child{margin-top:4px}
+.sg.solo .sg-b>.field>.lbl:first-child{display:none}
 .ab-b[hidden]{display:none}
 #is-body .ab-refs{padding-left:18px;font-size:13.5px;line-height:1.45;color:var(--muted)}
 #is-body .ab-refs li{margin-bottom:7px}
@@ -1432,7 +1439,7 @@ applyPrefs();paintWash();
 
 let ui={filter:null,searching:false,q:'',week:null,tab:'today',day:today(),month:null,mpick:false,pickYear:null,sel:today(),showDone:false,refocus:false};
 const startTab=()=>{const v=state.prefs&&state.prefs.start;return v==='today'||v==='week'||v==='month'?v:'dump';};
-ui.tab=startTab();ui.showSched=true;ui.showRep=true;try{ui.showSched=localStorage.getItem(KEY+'-sched')!=='hide';ui.showRep=localStorage.getItem(KEY+'-rep')!=='hide';}catch(e){} // opens on Brain dump by default (somewhere to put the thought straight away), or the tab chosen in Settings › Open app on
+ui.tab=startTab();ui.showSched=true;ui.showRep=true;try{ui.showSched=localStorage.getItem(KEY+'-sched')!=='hide';ui.showRep=localStorage.getItem(KEY+'-rep')!=='hide';}catch(e){} // opens on Brain dump by default (somewhere to put the thought straight away), or the tab chosen in Settings › General
 // the app always opens on Brain dump › All (the list tag chosen last time isn't brought back)
 /* coming back after 10+ minutes away also returns to Brain dump › All, unless a job sheet is open */
 {let hid=0;document.addEventListener('visibilitychange',()=>{if(document.hidden){hid=Date.now();return;}
@@ -2429,7 +2436,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.32.2';
+const APPV='1.33.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3940,6 +3947,35 @@ if(WB){
 
 /* ---------- settings ---------- */
 const st=document.getElementById('settings');
+/* v1.33.0 calmer Settings. The sheet used to show every setting at once; now each group is a folding box (as on
+   About & support) and only one is open at a time. Names follow the iPhone's own Settings where there's a match.
+   Feedback stays on its own at the top for the tester round.
+   TODO before the App Store version: move Feedback into the last group, "Help & about" (asked 12 Nov 2026). */
+const SGROUPS=[['General',['Open app on','Week view','Morning sort','Tidy away finished jobs','Celebration']],
+  ['Appearance',['Theme','Appearance','Font','Text size','Spacing']],
+  ['Lists',['Lists']],['Family sharing',['Family sharing']],
+  ['Notifications',['Morning summary','Brain dump reminder']],
+  ['Backup',['Backup']],['Help & about',['About & support','Help']]];
+(function(){
+  const sh=st.querySelector('.sheet'),F=[...sh.children].filter(x=>x.classList.contains('field'));
+  const lblOf=f=>{const l=f.querySelector('.lbl');return l?l.textContent.trim():'';};
+  SGROUPS.forEach(([name,labels],i)=>{
+    const sec=document.createElement('section');sec.className='ab-sec sg'+(labels.length===1&&labels[0]===name?' solo':'');sec.dataset.sg=name;
+    sec.innerHTML=`<button class="ab-h" data-sgt aria-expanded="false" aria-controls="sg-b${i}"><span>${esc(name)}</span><span class="ab-t">Show</span></button><div class="sg-b" id="sg-b${i}" hidden></div>`;
+    const body=sec.lastChild;
+    labels.forEach(l=>{const f=F.find(x=>lblOf(x)===l);if(f){if(name==='Appearance'&&l==='Appearance')f.querySelector('.lbl').textContent='Light or dark';body.appendChild(f);}});
+    sh.appendChild(sec);
+  });
+})();
+// open one group (closing the rest), or close them all with sgOpen(null)
+function sgOpen(name,scroll){
+  st.querySelectorAll('.sg').forEach(x=>{const on=x.dataset.sg===name,h=x.querySelector('.ab-h');
+    h.setAttribute('aria-expanded',on);h.querySelector('.ab-t').textContent=on?'Hide':'Show';x.querySelector('.sg-b').hidden=!on;
+    if(on&&scroll)requestAnimationFrame(()=>x.scrollIntoView({block:'start',behavior:matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth'}));});
+}
+// a group whose settings are all unavailable here (e.g. Notifications outside the phone app) isn't shown
+function sgSync(){st.querySelectorAll('.sg').forEach(x=>{x.hidden=[...x.querySelector('.sg-b').children].every(c=>c.hidden);});}
+st.addEventListener('click',e=>{const h=e.target.closest('[data-sgt]');if(!h)return;const sec=h.closest('.sg');sgOpen(h.getAttribute('aria-expanded')==='true'?null:sec.dataset.sg,true);});
 function renderOpts(){
   const P=state.prefs,el=document.getElementById('s-opts');
   if(P.style==='wash')el.innerHTML='<div class="themes">'+PALETTES.map(p=>`<button class="theme" data-pal="${p.id}"><span class="pv" style="background-color:${p.bg};background-image:linear-gradient(${p.bg}4D,${p.bg}4D),${washURL(p.w).replace(/"/g,'&quot;')}"><i style="background:${p.accent}"></i></span>${p.name}</button>`).join('')+'</div>';
@@ -3959,9 +3995,9 @@ function paintSLists(){
     :id===PARK?`<button class="pswitch${pk?' on':''}" role="switch" aria-checked="${pk}" aria-label="Show Park it tag" data-parks="${pk?'off':'on'}"><i></i></button>`
     :id===PROJ?`<button class="pswitch${on?' on':''}" role="switch" aria-checked="${on}" aria-label="Show Projects tag" data-projs="${on?'off':'on'}"><i></i></button>`
     :isSpecial(id)?'<span class="fixed">Built in</span>':`<button data-dellist="${id}">Delete</button>`;
-  const hint={[PROJ]:'Lists with dates, subtasks and progress bars. Ideal for bigger jobs, e.g. prepping for a trip or a renovation project.',[SHARED]:'Invite or manage family in Family sharing below.',[PARK]:BRAND.park.listHint,[SHOP]:BRAND.shop.hint};
+  const hint={[PROJ]:'Lists with dates, subtasks and progress bars. Ideal for bigger jobs, e.g. prepping for a trip or a renovation project.',[SHARED]:'Invite or manage family in Family sharing.',[PARK]:BRAND.park.listHint,[SHOP]:BRAND.shop.hint};
   document.getElementById('s-lists').innerHTML=L.map(([id,n])=>`<div class="lrow${(id===PROJ&&!on)||(id===PARK&&!pk)||(id===SHOP&&!so)?' off':''}" data-lid="${id}">${L.length>1?`<span class="grip" aria-hidden="true">${GRIP}</span>`:''}<span>${esc(n)}${hint[id]?`<small class="lhint">${hint[id]}</small>`:''}</span>${end(id)}</div>`).join('')
-    +(SHARING?'':`<div class="lrow off"><span>Shared<small class="lhint">Shows here once you create or join a family in Family sharing below. Moving from another phone? Enter the same family code.</small></span><span class="fixed">Built in</span></div>`);
+    +(SHARING?'':`<div class="lrow off"><span>Shared<small class="lhint">Shows here once you create or join a family in Family sharing. Moving from another phone? Enter the same family code.</small></span><span class="fixed">Built in</span></div>`);
 }
 const slIn=document.getElementById('sl-in');
 document.getElementById('sl-add').addEventListener('click',()=>{addList(slIn);paintSLists();render();});
@@ -3974,6 +4010,7 @@ document.getElementById('s-lists').addEventListener('click',e=>{
   save();paintSLists();render();
 });
 function paintSettings(){
+  setTimeout(sgSync,0);
   paintBk();
   paintFamily();
   const P=state.prefs;paintSLists();
@@ -4004,14 +4041,14 @@ function paintSettings(){
 document.getElementById('bdr-at').addEventListener('change',e=>{if(!e.target.value)return;state.prefs.bdrAt=e.target.value;save();syncNotifs(true);paintSettings();});
 document.getElementById('morn-at').addEventListener('change',e=>{if(!e.target.value)return;state.prefs.mornAt=e.target.value;save();syncNotifs(true);});
 document.getElementById('cel-try').addEventListener('click',()=>{closeSettings();setTimeout(()=>celebrate('preview'),250);});
-document.getElementById('gear').addEventListener('click',()=>{if(!fbRec&&!['fb-stuck','fb-change','fb-add'].some(id=>document.getElementById(id).value.trim()))fbOpen(false);paintSettings();st.classList.add('open');st.setAttribute('aria-hidden','false');});
+document.getElementById('gear').addEventListener('click',()=>{if(!fbRec&&!['fb-stuck','fb-change','fb-add'].some(id=>document.getElementById(id).value.trim()))fbOpen(false);paintSettings();sgOpen(null);st.querySelector('.sheet').scrollTop=0;st.classList.add('open');st.setAttribute('aria-hidden','false');});
 let fbRec='';
 function fbStatus(st,msg){const el=document.getElementById('fb-status');el.hidden=false;el.className='fam-status'+(st==='ok'?' ok':st==='err'?' err':'');el.innerHTML='<i></i>'+esc(msg);}
 function fbOpen(on){document.getElementById('fb-rest').hidden=!on;document.getElementById('fb-row').hidden=on;document.getElementById('fb-more').setAttribute('aria-expanded',on);}
 const fbQuick=()=>{document.getElementById('fb-quick').disabled=!fbRec;};
 document.getElementById('fb-quick').addEventListener('click',()=>document.getElementById('fb-send').click());
 document.getElementById('fb-more').addEventListener('click',()=>fbOpen(true));
-function openFeedback(){fbOpen(true);paintSettings();st.classList.add('open');st.setAttribute('aria-hidden','false');setTimeout(()=>document.getElementById('fb-field').scrollIntoView({block:'start',behavior:'smooth'}),250);}
+function openFeedback(){fbOpen(true);paintSettings();sgOpen(null);st.classList.add('open');st.setAttribute('aria-hidden','false');setTimeout(()=>document.getElementById('fb-field').scrollIntoView({block:'start',behavior:'smooth'}),250);}
 document.getElementById('fb-rec').addEventListener('click',e=>{const b=e.target.closest('[data-rec]');if(!b)return;fbRec=fbRec===b.dataset.rec?'':b.dataset.rec;
   document.querySelectorAll('[data-rec]').forEach(x=>x.classList.toggle('on',x.dataset.rec===fbRec));fbQuick();document.getElementById('fb-status').hidden=true;});
 document.getElementById('fb-send').addEventListener('click',async()=>{
@@ -4193,7 +4230,7 @@ document.getElementById('bk-confirm').addEventListener('click',e=>{
   save();applyPrefs();paintSettings();render();
   const hadShared=!SHARING&&st.tasks.some(t=>t.list===SHARED);
   document.getElementById('bk-hint').textContent='Backup restored: '+jobs(SHARING?st.tasks.filter(t=>t.list!==SHARED).length:st.tasks.length)+(SHARING?'. Your family list was left as it is.':hadShared?'. To see your Shared list, enter your family code in Family sharing below. You can find it in Settings › Family sharing on your other phone or the online version.':'.');
-  if(hadShared){const fi=document.getElementById('fam-in');if(fi)fi.scrollIntoView({block:'center',behavior:'smooth'});}
+  if(hadShared){sgOpen('Family sharing');const fi=document.getElementById('fam-in');if(fi)fi.scrollIntoView({block:'center',behavior:'smooth'});}
 });
 /* ---------- iCloud backup (v1.32.0, iPhone app only) ----------
    A copy of your own jobs, lists, projects, shopping list and settings is kept in your own iCloud, and brought

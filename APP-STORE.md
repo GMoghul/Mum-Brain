@@ -106,6 +106,8 @@ The live web app on GitHub Pages (`main`) is not affected.
    - `privacy.html` updated to describe it.
 28. **Shopping and Park it start switched off (v1.32.1, 12 Nov 2026):** like Projects, both tags are hidden until switched on in Settings › Lists. A phone that already has shopping items or parked worries (and hasn't touched the switch) keeps the tag showing, so nothing disappears on update.
 29. **Back to today (v1.32.2, 12 Nov 2026):** on Today, when looking at another day, "Back to today" is now a plain link on the date's own line, with its right edge lined up with the buttons above. As a white box it ran into those buttons.
+30. **Calmer Settings (v1.33.0, 12 Nov 2026):** Settings is now a short list of folding boxes (the About & support pattern), one open at a time, all folded when Settings opens. Names follow the iPhone's own Settings where there's a match: **General** (Open app on, Week view, Morning sort, Tidy away, Celebration), **Appearance** (Theme, Light or dark, Font, Text size, Spacing), **Lists**, **Family sharing**, **Notifications** (Morning summary, Brain dump reminder), **Backup**, **Help & about** (About & support, Help). The groups are set in `SGROUPS`; a group with nothing available (Notifications outside the phone app) is hidden.
+   - **BEFORE THE APP STORE VERSION: move Feedback into the last group, "Help & about".** It stays on its own at the top of Settings only for the tester round (asked 12 Nov 2026).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)
