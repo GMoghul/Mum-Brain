@@ -105,6 +105,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - An empty list is never saved over a backup. On a new or reinstalled phone with an empty list, Brain dump shows a **Welcome back** card (Bring them back / Start fresh). Settings › Backup has iCloud backup On/Off (Off also removes that phone's copy from iCloud), the last-saved time and **Restore from iCloud**.
    - `privacy.html` updated to describe it.
 28. **Shopping and Park it start switched off (v1.32.1, 12 Nov 2026):** like Projects, both tags are hidden until switched on in Settings › Lists. A phone that already has shopping items or parked worries (and hasn't touched the switch) keeps the tag showing, so nothing disappears on update.
+29. **Back to today (v1.32.2, 12 Nov 2026):** on Today, when looking at another day, "Back to today" is now a plain link on the date's own line, with its right edge lined up with the buttons above. As a white box it ran into those buttons.
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)

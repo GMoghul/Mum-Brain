@@ -307,7 +307,8 @@ body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:calc(94px +
 .date-row .navbtn{background:none;box-shadow:none;width:30px;height:34px;margin:-6px 0}
 .date-row .navbtn svg{width:18px;height:18px}
 .date-row .date+.navbtn,.date-row .date+.pill+.navbtn{margin-left:2px}
-.date-row .pill{order:3;margin-left:auto}
+/* v1.32.2: Back to today is a plain link on the date's own line, lined up with the buttons above (as a box it ran into them) */
+.date-row .pill.sm{order:3;margin:-8px -4px -8px auto;height:38px;padding:0 0 0 8px;background:none;box-shadow:none;border-radius:0;font-size:14.5px;white-space:nowrap}
 .navbtn{width:34px;height:34px;border-radius:10px;background:var(--surface);box-shadow:var(--shadow);display:grid;place-items:center;color:var(--muted)}
 .pill.sm{height:34px;padding:0 12px;border-radius:10px;font-size:13px;color:var(--accent)}
 .sec-h button.open-day{font-weight:600}
@@ -2428,7 +2429,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.32.1';
+const APPV='1.32.2';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
