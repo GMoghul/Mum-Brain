@@ -1068,6 +1068,10 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="seg" id="s-nudge" style="grid-template-columns:repeat(2,1fr)"><button data-nudge="on">On</button><button data-nudge="off">Off</button></div>
       <div class="rep-hint">A small card each day with 3 jobs from your brain dump that need a day.</div>
     </div>
+    <div class="field"><span class="lbl">Lighter day</span>
+      <div class="seg" id="s-lite" style="grid-template-columns:repeat(2,1fr)"><button data-lite="on">On</button><button data-lite="off">Off</button></div>
+      <div class="rep-hint">Hard day? One tap on Today moves the jobs you haven't starred to tomorrow. Starred and repeating jobs stay.</div>
+    </div>
     <div class="field" id="morn-field" hidden><span class="lbl">Morning summary</span>
       <div class="row" style="align-items:center;gap:8px"><div class="seg" id="s-morn" style="grid-template-columns:repeat(2,1fr);flex:1"><button data-morn="on">On</button><button data-morn="off">Off</button></div><input type="time" class="f-date" id="morn-at" aria-label="Morning summary time" style="width:124px"></div>
       <div class="rep-hint" id="morn-hint"></div>
@@ -2440,7 +2444,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.33.1';
+const APPV='1.33.2';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3031,7 +3035,7 @@ function renderToday(){
     ${isT?'':`<button class="pill sm" data-act="dtoday">Back to today</button>`}
     <button class="navbtn" data-act="dprev" aria-label="Previous day">${I.left}</button>
     <button class="navbtn" data-act="dnext" aria-label="Next day">${I.right}</button></div>
-  ${list.length?`<div class="progress"><div class="bar"><i style="width:${pct}%"></i></div><span>${n} of ${list.length} done</span>${isT&&lightJobs().length?`<button class="pill sm lighter" data-act="lighter">${I.leaf}Lighter day</button>`:''}</div>`:''}</header>`;
+  ${list.length?`<div class="progress"><div class="bar"><i style="width:${pct}%"></i></div><span>${n} of ${list.length} done</span>${isT&&state.prefs.lite!=='off'&&lightJobs().length?`<button class="pill sm lighter" data-act="lighter">${I.leaf}Lighter day</button>`:''}</div>`:''}</header>`;
   if(isT)h+=nudgeCard()+fbCard();
   h+=filterBar();
   // more than 3 old jobs fold to one line, so today's jobs come first
@@ -3955,7 +3959,7 @@ const st=document.getElementById('settings');
    About & support) and only one is open at a time. Names follow the iPhone's own Settings where there's a match.
    Feedback stays on its own at the top for the tester round.
    TODO before the App Store version: move Feedback into the last group, "Help & about" (asked 12 Nov 2026). */
-const SGROUPS=[['General',['Open app on','Week view','Morning sort','Tidy away finished jobs','Celebration']],
+const SGROUPS=[['General',['Open app on','Week view','Morning sort','Lighter day','Tidy away finished jobs','Celebration']],
   ['Appearance',['Theme','Appearance','Font','Text size','Spacing']],
   ['Lists',['Lists']],['Family sharing',['Family sharing']],
   ['Notifications',['Morning summary','Brain dump reminder']],
@@ -4029,6 +4033,7 @@ function paintSettings(){
   document.querySelectorAll('[data-tidy]').forEach(b=>b.classList.toggle('on',b.dataset.tidy===(P.tidy||'off')));
   document.querySelectorAll('[data-cel]').forEach(b=>b.classList.toggle('on',b.dataset.cel===(P.cel||'rabbit')));
   document.querySelectorAll('[data-nudge]').forEach(b=>b.classList.toggle('on',b.dataset.nudge===(P.nudge||'on')));
+  document.querySelectorAll('[data-lite]').forEach(b=>b.classList.toggle('on',b.dataset.lite===(P.lite||'on')));
   document.querySelectorAll('[data-spc]').forEach(b=>b.classList.toggle('on',b.dataset.spc===(P.sp||'std')));
   document.querySelectorAll('[data-start]').forEach(b=>b.classList.toggle('on',b.dataset.start===startTab()));
   document.querySelectorAll('[data-wkv]').forEach(b=>b.classList.toggle('on',b.dataset.wkv===(P.wkv||'cal')));
@@ -4068,7 +4073,7 @@ document.getElementById('fb-send').addEventListener('click',async()=>{
 });
 function closeSettings(){st.classList.remove('open');st.setAttribute('aria-hidden','true');}
 st.addEventListener('click',e=>{
-  const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-morn],button[data-mstyle],button[data-mjobs],button[data-bdr],button[data-projs],button[data-parks],button[data-shops],button[data-icb],button[data-wkv],button[data-start]');if(!b)return;
+  const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-lite],button[data-morn],button[data-mstyle],button[data-mjobs],button[data-bdr],button[data-projs],button[data-parks],button[data-shops],button[data-icb],button[data-wkv],button[data-start]');if(!b)return;
   if(b.dataset.sact){closeSettings();return;}
   if(b.dataset.pal)state.prefs.palette=b.dataset.pal;
   if(b.dataset.washv)state.prefs.washv=b.dataset.washv;
@@ -4082,6 +4087,7 @@ st.addEventListener('click',e=>{
   if(b.dataset.wkv){state.prefs.wkv=b.dataset.wkv;ui.week=weekHome();render();}
   if(b.dataset.tidy){state.prefs.tidy=b.dataset.tidy;tidy();render();}
   if(b.dataset.nudge){state.prefs.nudge=b.dataset.nudge;render();}
+  if(b.dataset.lite){state.prefs.lite=b.dataset.lite;render();} // v1.33.2: the Lighter day button on Today can be switched off (on to start)
   if(b.dataset.morn){state.prefs.morn=b.dataset.morn;syncNotifs(true);}
   if(b.dataset.mstyle){state.prefs.mornStyle=b.dataset.mstyle;syncNotifs(true);}
   if(b.dataset.mjobs){state.prefs.mornJobs=b.dataset.mjobs;syncNotifs(true);}
