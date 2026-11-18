@@ -110,6 +110,13 @@ The live web app on GitHub Pages (`main`) is not affected.
    - **BEFORE THE APP STORE VERSION: move Feedback into the last group, "Help & about".** It stays on its own at the top of Settings only for the tester round (asked 12 Nov 2026).
 31. **Top buttons (v1.33.1, 13 Nov 2026):** the three buttons at the top right (search, calendar, settings) are slightly smaller (34px, was 38px, with the tap area kept generous) and sit level with the heading's capital letters on every tab. On Today that also leaves clear space above "Back to today", which looked squashed under them.
 32. **Lighter day in Settings (v1.33.2, 13 Nov 2026):** Settings › General has a **Lighter day** row (On/Off, on to start) with a one-line explanation, so the feature is described somewhere other than the how-to tour and can be left unused. Off hides the Lighter day button on Today (`prefs.lite`).
+33. **Events, a trial (v1.34.0, 18 Nov 2026):** so the family calendar (TimeTree) can move into the app. Settings › General › **Events** (On/Off, off to start).
+   - The job screen gets an **Event** switch. An event is a job with `ev:true`: a colour bar instead of the tick ring, no star, nothing to tick off, not counted in "x of y done", the morning summary, Lighter day, "Move unfinished", "Still to do from earlier" or the celebration, and never sent back to the brain dump.
+   - All day by default, or a start and finish time (`time`, `etime`). One-off events can last several days (`end`, shown as "Day 2 of 5", and as one joined-up bar on Month). Repeats and reminders work as for jobs; a multi-day event reminds once, before it starts.
+   - Colours can be named once (`prefs.cnames`, e.g. teal = Work) and the name shows on every event in that colour.
+   - Personal unless put on the Shared list. On Today, Week and Month, events sit on top with jobs underneath; an **All / Mine / Shared** switch appears once there are shared events. Events don't show on Brain dump.
+   - Widget: the day's events go first (up to 4) with `ev:true`, drawn as a colour bar with no tick, and left out of the job counts.
+   - Switching Events off turns every event back into an ordinary dated job on its first day, so nothing is lost; past ones stay out of "Still to do from earlier" and Scheduled.
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)

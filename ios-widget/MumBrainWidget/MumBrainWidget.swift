@@ -16,6 +16,8 @@ struct WJob: Codable, Hashable, Identifiable {
     let c: String
     let done: Bool
     let star: Bool
+    var ev: Bool? = nil   // v1.34.0: an event (a colour bar, nothing to tick off, not counted as a job)
+    var isEv: Bool { ev == true }
 }
 
 struct WDay: Codable {
@@ -249,10 +251,14 @@ struct DayEntry: TimelineEntry {
     var key: String { Fmt.ymd.string(from: date) }
     var day: WDay? { data?.days.first(where: { $0.d == key }) }
     var jobs: [WJob] { day?.jobs ?? [] }
-    var open: [WJob] { jobs.filter { !$0.done } }
-    var total: Int { max(day?.n ?? 0, jobs.count) }
-    var doneCount: Int { day?.nd ?? jobs.filter { $0.done }.count }
-    var openCount: Int { max(0, total - doneCount) }
+    var events: [WJob] { jobs.filter { $0.isEv } }
+    var tasks: [WJob] { jobs.filter { !$0.isEv } }
+    // events first, then the jobs still to do
+    var open: [WJob] { events + tasks.filter { !$0.done } }
+    var total: Int { max(day?.n ?? 0, tasks.count) }
+    var doneCount: Int { day?.nd ?? tasks.filter { $0.done }.count }
+    var jobsLeft: Int { max(0, total - doneCount) }
+    var openCount: Int { events.count + jobsLeft }
     var dump: Int { data?.dump ?? 0 }
     var late: Int { data?.late ?? 0 }
     var weekday: String { Fmt.weekday.string(from: date) }
@@ -274,7 +280,7 @@ struct DayEntry: TimelineEntry {
     var headline: String {
         if jobs.isEmpty { return "Nothing planned" }
         if open.isEmpty { return "All done today" }
-        return openCount == 1 ? "1 to do today" : "\(openCount) to do today"
+        return jobsLeft == 1 ? "1 to do today" : "\(jobsLeft) to do today"
     }
 }
 
@@ -446,7 +452,13 @@ struct Row: View {
     var tick: some View { Tick(color: p.ink, done: job.done, size: size + 1, check: p.bg) }
     var body: some View {
         HStack(spacing: 7) {
-            if #available(iOSApplicationExtension 17.0, *), !day.isEmpty {
+            if job.isEv {
+                // an event: a short bar in its colour where the tick ring would be
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(Color(hex: job.c))
+                    .frame(width: max(4, size * 0.3), height: size + 1)
+                    .frame(width: size + 1, height: size + 1)
+            } else if #available(iOSApplicationExtension 17.0, *), !day.isEmpty {
                 // tap the circle to tick the job off (bigger tap area than the circle itself)
                 Button(intent: ToggleJobIntent(id: job.id, day: day)) {
                     tick.padding(6).contentShape(Rectangle())
@@ -873,7 +885,7 @@ struct AccessoryView: View {
                 Gauge(value: Double(e.doneCount), in: 0...Double(max(1, e.total))) {
                     Text("Done")
                 } currentValueLabel: {
-                    Text("\(e.openCount)")
+                    Text("\(e.jobsLeft)")
                 }
                 .gaugeStyle(.accessoryCircularCapacity)
             }

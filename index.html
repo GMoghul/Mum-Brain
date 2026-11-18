@@ -582,6 +582,26 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
 /* projects */
 .chip.c-proj{color:color-mix(in srgb,var(--pc) 70%,var(--ink));background:color-mix(in srgb,var(--pc) 14%,var(--solid))}
+/* v1.34.0 events: a colour bar where the tick ring would be, on top of each day with the jobs underneath */
+.task.ev .evbar{flex:none;width:calc(26px * var(--ts));height:calc(26px * var(--ts));display:grid;place-items:center;margin-top:-1px}
+.task.ev .evbar::before{content:"";width:5px;height:100%;border-radius:3px;background:var(--c)}
+:root[data-sp="compact"] .task.ev .evbar{width:calc(23px * var(--ts));height:calc(23px * var(--ts));margin-top:0}
+.task.ev.past{opacity:.55}
+.wday .evlist+.list{margin-top:8px}
+.evf.seg{background:color-mix(in srgb,var(--ink) 6%,transparent);margin:-8px 0 16px}
+.cell.hasev{height:50px}
+.evbs{display:flex;flex-direction:column;gap:2px;width:100%;min-height:4px}
+.evb{display:block;height:4px;margin:0 5px;border-radius:2px;background:var(--c)}
+.evb.st{margin-right:-3px;border-radius:2px 0 0 2px}
+.evb.mid{margin:0 -3px;border-radius:0}
+.evb.en{margin-left:-3px;border-radius:0 2px 2px 0}
+.evtog{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;text-align:left;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--accent) 7%,var(--solid));color:var(--ink)}
+.evtog b{display:block;font-size:15.5px;font-weight:600}
+.evtog small{display:block;font-size:13px;color:var(--muted);margin-top:2px;line-height:1.35}
+.evtog i{flex:none;width:44px;height:26px;border-radius:13px;background:var(--line);position:relative;transition:background .2s}
+.evtog i::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.2);transition:transform .2s}
+.evtog.on i{background:var(--accent)}
+.evtog.on i::after{transform:translateX(18px)}
 .chip .pdot{width:7px;height:7px;border-radius:2px;background:var(--pc);flex:none}
 :root[data-sp="compact"] .task .c-proj .ct{max-width:84px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .fchip svg{flex:none}
@@ -831,8 +851,11 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <input class="f-title" id="f-title" placeholder="Type your job here, e.g. Book dentist" aria-label="Job" autocomplete="off" enterkeyhint="done">
     <textarea class="f-note" id="f-note" placeholder="Add details here (optional)" aria-label="Details"></textarea>
     <div class="f-who" id="f-who" hidden></div>
+    <div class="field" id="f-evf" hidden>
+      <button class="evtog" id="f-ev" role="switch" aria-checked="false"><span><b>Event</b><small id="f-ev-sub">Shows on the calendar with a time. Nothing to tick off.</small></span><i aria-hidden="true"></i></button>
+    </div>
 
-    <div class="field">
+    <div class="field" id="f-clf">
       <span class="lbl">Checklist</span>
       <ul class="cl" id="f-cl"></ul>
       <div class="cl-add"><input id="cl-in" placeholder="Add an item" autocomplete="off" enterkeyhint="done" aria-label="Add a checklist item"><button class="opt" id="cl-btn">Add</button></div>
@@ -848,16 +871,26 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       </div>
     </div>
 
+    <div class="field" id="f-endf" hidden>
+      <span class="lbl" id="end-lbl">Ends</span>
+      <div class="row">
+        <button class="opt" data-end="none">Same day</button>
+        <label class="pick" id="f-end-w"><input type="date" class="f-date" id="f-end" aria-labelledby="end-lbl"><span>Pick a date</span></label>
+      </div>
+      <div class="rep-hint">For things that last a few days, like a holiday or nursery being closed.</div>
+    </div>
+
     <div class="field">
       <span class="lbl" id="time-lbl">Time</span>
       <div class="row">
         <label class="pick" id="f-time-w"><input type="time" class="f-date" id="f-time" aria-labelledby="time-lbl"><span>Pick a time</span></label>
+        <label class="pick" id="f-etime-w" hidden><input type="time" class="f-date" id="f-etime" aria-label="Finish time"><span>Finish time</span></label>
         <button class="opt" data-time="none">No time</button>
       </div>
     </div>
 
     <div class="field">
-      <span class="lbl">Alarm</span>
+      <span class="lbl" id="alarm-lbl">Alarm</span>
       <div class="row" id="f-alarm">
         <button class="opt" data-alarm="none">None</button>
         <button class="opt" data-alarm="0">At time</button>
@@ -921,9 +954,11 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="swatches" id="f-colors"></div>
       <button class="more" id="more-btn" aria-expanded="false">More colours</button>
       <div class="swatches more-grid" id="f-more" hidden></div>
+      <div class="newlist" id="cname-w" hidden><input class="f-date" id="cname-in" maxlength="20" placeholder="Name this colour, e.g. Work" autocomplete="off" enterkeyhint="done" aria-label="Name for this colour"></div>
+      <div class="rep-hint" id="cname-hint" hidden>Give a colour a name once and every event in that colour shows it.</div>
     </div>
 
-    <div class="field">
+    <div class="field" id="f-starf">
       <button class="starbtn" id="f-star">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3.2l2.6 5.5 6 .7-4.4 4.1 1.2 5.9L12 16.5l-5.4 2.9 1.2-5.9L3.4 9.4l6-.7z"/></svg>
         <span id="f-star-txt">Mark as important</span>
@@ -1059,6 +1094,10 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="seg" id="s-wk" style="grid-template-columns:repeat(2,1fr)"><button data-wkv="cal">Mon – Sun</button><button data-wkv="roll">Next 7 days</button></div>
       <div class="rep-hint">Mon – Sun shows the whole week, including days already passed. Next 7 days always starts from today, with earlier days folded at the top.</div>
     </div>
+    <div class="field"><span class="lbl">Events</span>
+      <div class="seg" id="s-ev" style="grid-template-columns:repeat(2,1fr)"><button data-evon="on">On</button><button data-evon="off">Off</button></div>
+      <div class="rep-hint">Adds an Event switch to the job screen, for things at a set time like appointments, work or holidays. Events sit at the top of Today, Week and Month, with your jobs underneath, and there's nothing to tick off. Switch it off any time and your events go back to being ordinary jobs.</div>
+    </div>
     <div class="field"><span class="lbl">Lists</span>
       <div id="s-lists"></div>
       <div class="newlist"><input class="f-date" id="sl-in" placeholder="New list name" autocomplete="off" enterkeyhint="done" aria-label="New list name"><button class="opt on" id="sl-add">Add list</button></div>
@@ -1170,6 +1209,7 @@ const BRAND={
   backupPrefix:'Mum-Brain-backup-',    // start of backup file names
   egJob:'Book dentist',                // New job box example
   egQuick:'Dentist Fri 3pm',           // Quick-add box example
+  egEvent:'Swimming lesson',           // New event box example (v1.34.0 events)
   egProject:'Camping trip',            // New project name example
   egProjects:'a camping trip, moving house or baby prep', // empty Projects screen
   shop:{eg:'milk, 2 bread',     // Shopping list add box example
@@ -2127,8 +2167,16 @@ async function connect(){
 const find=id=>state.tasks.find(t=>t.id===id);
 const isRep=t=>t.repeat&&t.repeat!=='none';
 const startOf=t=>t.date||t.created;
+/* v1.34.0 events (a trial, behind Settings › General › Events). An event is a job with ev:true: it sits on the
+   calendar with a time (or all day), can last several days (end), and has nothing to tick off. Switching the
+   setting off turns every event back into an ordinary dated job on its first day, so nothing is lost. */
+const evOn=()=>!!(state.prefs&&state.prefs.evon==='on');
+const isEv=t=>!!(t&&t.ev&&evOn());
+const evEnd=t=>(isEv(t)&&!isRep(t)&&t.date&&t.end&&t.end>t.date)?t.end:null;
+const evLast=t=>evEnd(t)||t.date;
+const colName=k=>(state.prefs&&state.prefs.cnames&&state.prefs.cnames[k])||'';
 function occurs(t,s){
-  if(!isRep(t))return t.date===s;
+  if(!isRep(t)){const e=evEnd(t);return e?(s>=t.date&&s<=e):t.date===s;}
   const st=startOf(t);if(!st||s<st)return false;
   const D=parse(s),S=parse(st);
   switch(t.repeat){
@@ -2141,9 +2189,9 @@ function occurs(t,s){
   }
   return false;
 }
-const isDone=(t,s)=>isRep(t)?!!(t.completions&&t.completions[s]):!!t.done;
+const isDone=(t,s)=>isEv(t)?false:isRep(t)?!!(t.completions&&t.completions[s]):!!t.done;
 function toggle(id,s){
-  const t=find(id);if(!t)return;
+  const t=find(id);if(!t||isEv(t))return;
   const before=JSON.stringify(t);
   if(isRep(t)){t.completions=t.completions||{};if(t.completions[s])delete t.completions[s];else t.completions[s]=true;}
   else{t.done=!t.done;t.doneAt=t.done?Date.now():null;}
@@ -2192,7 +2240,7 @@ function tidy(){
 /* celebrations */
 function allDoneToday(){
   const t0=today();
-  const todays=state.tasks.filter(t=>!archivedJob(t)&&occurs(t,t0));
+  const todays=state.tasks.filter(t=>!archivedJob(t)&&!isEv(t)&&occurs(t,t0));
   // old jobs from earlier days no longer hold back today's celebration
   return todays.length>0&&todays.every(t=>isDone(t,t0));
 }
@@ -2200,11 +2248,11 @@ function allDoneToday(){
 const LATE_DAYS=3;
 function returnOld(){
   const cut=addDays(today(),-LATE_DAYS);let n=0;
-  state.tasks.forEach(t=>{if(!isRep(t)&&!t.done&&t.date&&t.date<cut&&t.list!==SHARED&&!archivedJob(t)){t.date=null;t.time=null;t.alarm='none';n++;}});
+  state.tasks.forEach(t=>{if(!isRep(t)&&!t.done&&!t.ev&&t.date&&t.date<cut&&t.list!==SHARED&&!archivedJob(t)){t.date=null;t.time=null;t.alarm='none';n++;}});
   if(n){save();setTimeout(()=>snack(n===1?'1 old job went back to your brain dump':n+' old jobs went back to your brain dump'),600);}
 }
 function dumpEmpty(){
-  const own=state.tasks.filter(t=>!isRep(t)&&!t.proj&&!t.shop),open=own.filter(t=>!t.done);
+  const own=state.tasks.filter(t=>!isRep(t)&&!t.proj&&!t.shop&&!t.ev),open=own.filter(t=>!t.done);
   return own.length>0&&open.length===0;
 }
 function checkCelebrate(){
@@ -2407,7 +2455,43 @@ function filterBar(){
   return `<div class="filters" role="tablist" aria-label="Lists">${all.map(([id,n])=>`<button class="fchip${(ui.filter||null)===id?' on':''}" data-act="filter" data-f="${id||''}"${drag&&id&&id!==STAR?` data-lid="${id}"`:''}>${id===SHARED?I.people:id===PROJ?I.folder:id===SHOP?I.basket:id===STAR?'<span aria-hidden="true">★</span>':''}${id===PARK&&pdue?'<i class="pdot" role="img" aria-label="Ready for another look"></i>':''}${esc(n)}${id===SHOP&&nShop?' '+nShop:''}</button>`).join('')}</div>`;
 }
 
+/* events: a colour bar instead of a tick ring, the time (or "All day") and no star */
+function evWhen(t,s){
+  const e=evEnd(t),a=t.time?fmtTime(t.time):'',b=t.etime?fmtTime(t.etime):'';
+  if(e&&s&&s!==t.date&&s!==e)return'All day';
+  if(e&&s===t.date)return a?'From '+a:'All day';
+  if(e&&s===e)return b?'Until '+b:'All day';
+  return a?a+(b?' – '+b:''):'All day';
+}
+function evRow(t,o){
+  const c=hex(t.color),s=o.ctx||null,e=evEnd(t),t0=today();
+  let chips='';
+  if(o.showDay&&!isRep(t)&&t.date)chips+=`<span class="chip">${I.cal}<span class="ct">${esc(dayLabel(t.date))}${e?' – '+esc(dayLabel(e)):''}</span></span>`;
+  chips+=`<span class="chip">${I.clock}<span class="ct">${esc(evWhen(t,s))}</span></span>`;
+  if(e&&s){const n=Math.round((parse(s)-parse(t.date))/864e5)+1,tot=Math.round((parse(e)-parse(t.date))/864e5)+1;chips+=`<span class="chip"><span class="ct">Day ${n} of ${tot}</span></span>`;}
+  if(hasAlarm(t))chips+=`<span class="chip c-alarm" title="${ALARMS[t.alarm]||''}">${I.bell}<span class="ct">${t.alarm==='0'?'Reminder':esc((ALARMS[t.alarm]||'').replace(' before',''))}</span></span>`;
+  if(isRep(t))chips+=`<span class="chip c-ico" title="${esc(repLabel(t))}">${I.rep}<span class="ct">${esc(repLabel(t))}</span></span>`;
+  const cn=colName(t.color);if(cn)chips+=`<span class="chip c-proj" style="--pc:${c}"><i class="pdot"></i><span class="ct">${esc(cn)}</span></span>`;
+  if(t.list===SHARED&&(!ui.filter||ui.filter===STAR))chips+=`<span class="chip c-list">${I.people}<span class="ct">${esc(listName(SHARED))}</span></span>`;
+  const past=isRep(t)?(s&&s<t0):evLast(t)<t0;
+  return `<li class="task ev${past?' past':''}" data-open="${t.id}"><span class="evbar" style="--c:${c}" aria-hidden="true"></span>
+    <div class="body"><div class="title">${esc(t.title)}</div>${t.note?`<div class="note">${esc(t.note.split('\n')[0])}</div>`:''}<div class="chips">${chips}</div></div></li>`;
+}
+/* the events for one day, kept apart from the jobs (they sit on top, with jobs underneath) */
+const evShow=t=>!ui.evf||ui.evf==='all'||(ui.evf==='shared'?t.list===SHARED:t.list!==SHARED);
+function dayEvents(s){
+  if(!evOn())return[];
+  return state.tasks.filter(t=>isEv(t)&&!archivedJob(t)&&(!ui.filter||(ui.filter===SHARED&&t.list===SHARED))&&evShow(t)&&occurs(t,s))
+    .sort((a,b)=>((evEnd(b)?1:0)-(evEnd(a)?1:0))||((a.time?1:0)-(b.time?1:0))||(a.time||'').localeCompare(b.time||'')||ko(a)-ko(b));
+}
+function evSection(s,title){
+  const L=dayEvents(s);if(!L.length)return'';
+  return `<section class="sec evsec"><div class="sec-h"><h2>${title||'Events'}</h2><span class="count">${L.length}</span></div><ul class="list">${L.map(t=>evRow(t,{ctx:s})).join('')}</ul></section>`;
+}
+const evFilter=()=>evOn()&&state.tasks.some(t=>isEv(t)&&t.list===SHARED)&&(!ui.filter)
+  ?`<div class="evf seg seg3" role="group" aria-label="Which events to show">${[['all','All'],['mine','Mine'],['shared','Shared']].map(([k,n])=>`<button class="${(ui.evf||'all')===k?'on':''}" data-act="evf" data-evf="${k}">${n}</button>`).join('')}</div>`:'';
 function row(t,o){
+  if(isEv(t))return evRow(t,o);
   const c=hex(t.color),ctx=o.ctx||null;
   const canCheck=!!ctx||!isRep(t);
   const done=ctx?isDone(t,ctx):(!isRep(t)&&!!t.done);
@@ -2444,7 +2528,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.33.2';
+const APPV='1.34.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -2510,9 +2594,9 @@ function renderDump(){
   if(ui.filter===PARK)return renderPark();
   if(ui.filter===SHOP)return renderShop();
   const wb=whoBar();
-  const T=state.tasks.filter(t=>vis(t)&&!t.proj&&(!ui.who||whoKey(t)===ui.who)),t0=today();
+  const T=state.tasks.filter(t=>vis(t)&&!t.proj&&!isEv(t)&&(!ui.who||whoKey(t)===ui.who)),t0=today(); // events live on Today, Week and Month
   const undated=T.filter(t=>!isRep(t)&&!t.date&&!t.done).sort(byStar);
-  const sched=T.filter(t=>!isRep(t)&&t.date&&!t.done).sort((a,b)=>a.date.localeCompare(b.date)||byStar(a,b));
+  const sched=T.filter(t=>!isRep(t)&&t.date&&!t.done&&!(t.ev&&(t.end||t.date)<t0)).sort((a,b)=>a.date.localeCompare(b.date)||byStar(a,b));
   const reps=T.filter(isRep).sort(byStar);
   const done=T.filter(t=>!isRep(t)&&t.done).sort((a,b)=>(b.doneAt||0)-(a.doneAt||0));
   let h=`<header class="head"><h1>Brain dump</h1><p class="sub">${BRAND.slogan}</p></header>${filterBar()}${wb}
@@ -3023,11 +3107,12 @@ function quickAdd(){
 }
 
 // Lighter day: today's unfinished jobs that aren't marked important, one-off ones only (repeating jobs stay put).
-function lightJobs(){const t0=today();return state.tasks.filter(t=>vis(t)&&!isRep(t)&&!t.done&&!t.starred&&t.date===t0);}
+function lightJobs(){const t0=today();return state.tasks.filter(t=>vis(t)&&!isRep(t)&&!t.done&&!t.ev&&!t.starred&&t.date===t0);}
 function renderToday(){
   const t0=today(),dayS=ui.day,d=parse(dayS),T=state.tasks.filter(vis),isT=dayS===t0;
-  const overdue=isT?T.filter(t=>!isRep(t)&&t.date&&t.date<t0&&!t.done).sort((a,b)=>a.date.localeCompare(b.date)||byStar(a,b)):[];
-  const list=T.filter(t=>occurs(t,dayS)).sort((a,b)=>(isDone(a,dayS)-isDone(b,dayS))||byTime(a,b));
+  const overdue=isT?T.filter(t=>!isRep(t)&&!t.ev&&t.date&&t.date<t0&&!t.done).sort((a,b)=>a.date.localeCompare(b.date)||byStar(a,b)):[];
+  const list=T.filter(t=>!isEv(t)&&occurs(t,dayS)).sort((a,b)=>(isDone(a,dayS)-isDone(b,dayS))||byTime(a,b));
+  const evs=dayEvents(dayS);
   const n=list.filter(t=>isDone(t,dayS)).length,pct=list.length?Math.round(n/list.length*100):0;
   const rel=isT?'Today':dayS===addDays(t0,1)?'Tomorrow':dayS===addDays(t0,-1)?'Yesterday':'';
   let h=`<header class="today-head"><div class="dow">${DAYS[d.getDay()]}</div>
@@ -3037,7 +3122,7 @@ function renderToday(){
     <button class="navbtn" data-act="dnext" aria-label="Next day">${I.right}</button></div>
   ${list.length?`<div class="progress"><div class="bar"><i style="width:${pct}%"></i></div><span>${n} of ${list.length} done</span>${isT&&state.prefs.lite!=='off'&&lightJobs().length?`<button class="pill sm lighter" data-act="lighter">${I.leaf}Lighter day</button>`:''}</div>`:''}</header>`;
   if(isT)h+=nudgeCard()+fbCard();
-  h+=filterBar();
+  h+=filterBar()+evFilter()+evSection(dayS);
   // more than 3 old jobs fold to one line, so today's jobs come first
   if(overdue.length>3&&!ui.showEarlier)h+=`<button class="earlier-line" data-act="togearlier" aria-expanded="false"><b>${overdue.length} still to do from earlier</b><span>Show</span></button>`;
   else h+=section('Still to do from earlier',overdue,{showDay:true,back:true},overdue.length>3?`<button class="earlier-btn" data-act="togearlier" aria-expanded="true">Hide</button>`:'');
@@ -3045,6 +3130,7 @@ function renderToday(){
   if(list.length)h+=`<button class="addslot" data-act="addto" data-date="${dayS}"><span>Add something for ${isT?'today':'this day'}</span><i>${I.plus}</i></button>`;
   const left=isT?overdue.length+list.filter(t=>!isRep(t)&&!t.done).length:0;
   if(left)h+=`<button class="roll" data-act="roll">${I.right}Move ${left} unfinished to tomorrow</button>`;
+  else if(!list.length&&!overdue.length&&evs.length)h+=`<button class="addslot" data-act="addto" data-date="${dayS}"><span>Add a job for ${isT?'today':'this day'}</span><i>${I.plus}</i></button>`;
   else if(!list.length&&!overdue.length)h+=`<div class="empty"><strong>Nothing planned${isT?' for today':''}</strong>Tap + to add a job${isT?', or give a day to something in your brain dump':' to this day'}.</div>`;
   view.innerHTML=h;
 }
@@ -3064,21 +3150,26 @@ function renderMonth(){
   for(let i=0;i<off;i++)cells+='<div></div>';
   for(let dd=1;dd<=days;dd++){
     const s=ymd(new Date(y,m,dd));
-    const on=state.tasks.filter(t=>vis(t)&&occurs(t,s)).sort(byStar);
+    const on=state.tasks.filter(t=>vis(t)&&!isEv(t)&&occurs(t,s)).sort(byStar),ev=dayEvents(s);
     const dots=on.slice(0,4).map(t=>`<i style="--c:${hex(t.color)}" class="${isDone(t,s)?'d':''}"></i>`).join('');
-    cells+=`<button class="cell${s===t0?' today':''}${s===ui.sel?' sel':''}${s<t0?' past':''}" data-act="pick" data-date="${s}" aria-label="${dayLabel(s)}${on.length?', '+on.length+' jobs':''}"><span class="n">${dd}</span><span class="dots">${dots}</span></button>`;
+    // events as short bars (joined up across the days of a multi-day one), jobs as dots underneath
+    const bars=ev.slice(0,2).map(t=>{const e=evEnd(t),k=e?(s===t.date?' st':s===e?' en':' mid'):'';return `<i class="evb${k}" style="--c:${hex(t.color)}"></i>`;}).join('');
+    const lab=[ev.length?ev.length+(ev.length===1?' event':' events'):'',on.length?on.length+(on.length===1?' job':' jobs'):''].filter(Boolean).join(', ');
+    cells+=`<button class="cell${s===t0?' today':''}${s===ui.sel?' sel':''}${s<t0?' past':''}${evOn()?' hasev':''}" data-act="pick" data-date="${s}" aria-label="${dayLabel(s)}${lab?', '+lab:''}"><span class="n">${dd}</span>${evOn()?`<span class="evbs">${bars}</span>`:''}<span class="dots">${dots}</span></button>`;
   }
   const sd=parse(ui.sel);
-  const list=state.tasks.filter(t=>vis(t)&&occurs(t,ui.sel)).sort((a,b)=>(isDone(a,ui.sel)-isDone(b,ui.sel))||byTime(a,b));
+  const list=state.tasks.filter(t=>vis(t)&&!isEv(t)&&occurs(t,ui.sel)).sort((a,b)=>(isDone(a,ui.sel)-isDone(b,ui.sel))||byTime(a,b));
+  const evL=dayEvents(ui.sel);
   const chev='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
   let h=`<header class="mhead"><h1><button class="mtitle" data-act="mpick" aria-expanded="${ui.mpick}">${MONTHS[m]} <span>${y}</span>${chev}</button></h1>
 </header>
   ${ui.mpick?picker(y,m):''}
-  ${filterBar()}
+  ${filterBar()}${evFilter()}
   <div class="cal"${ui.mpick?' hidden':''}><div class="calnav"><button class="navbtn" data-act="prev" aria-label="Previous month">${I.left}</button>${(y===new Date().getFullYear()&&m===new Date().getMonth())?'':'<button class="pill sm" data-act="thismonth">This month</button>'}<button class="navbtn" data-act="next" aria-label="Next month">${I.right}</button></div><div class="wk">${['M','T','W','T','F','S','S'].map(x=>`<div>${x}</div>`).join('')}</div><div class="grid">${cells}</div></div>`;
   const title=`${DAYS[sd.getDay()]} ${sd.getDate()} ${MONTHS[sd.getMonth()]}`;
   const od=`<button class="open-day" data-act="openday">Open day</button>`;
-  if(list.length)h+=section(title,list,{ctx:ui.sel},od);
+  if(evL.length){h+=`<section class="sec evsec"><div class="sec-h"><h2>${title}</h2>${od}</div><ul class="list">${evL.map(t=>evRow(t,{ctx:ui.sel})).join('')}</ul></section>`;if(list.length)h+=section('Jobs',list,{ctx:ui.sel});}
+  else if(list.length)h+=section(title,list,{ctx:ui.sel},od);
   else h+=`<section class="sec"><div class="sec-h"><h2>${title}</h2>${od}</div><div class="empty">Nothing on this day. Tap + to add a job to it.</div></section>`;
   view.innerHTML=h;
 }
@@ -3096,12 +3187,12 @@ function renderWeek(){
     <div class="date-row"><div class="date whead-sub">${range}</div>
     ${thisW?'':`<button class="pill sm" data-act="wtoday">This week</button>`}
     <button class="navbtn" data-act="wprev" aria-label="Previous week">${I.left}</button>
-    <button class="navbtn" data-act="wnext" aria-label="Next week">${I.right}</button></div></header>${filterBar()}`;
-  if(state.tasks.some(t=>vis(t)&&!isRep(t)&&t.date&&t.date>=w0&&t.date<=w6))h+=`<p class="whint">Hold a job to move it to another day</p>`;
+    <button class="navbtn" data-act="wnext" aria-label="Next week">${I.right}</button></div></header>${filterBar()}${evFilter()}`;
+  if(state.tasks.some(t=>vis(t)&&!isEv(t)&&!isRep(t)&&t.date&&t.date>=w0&&t.date<=w6))h+=`<p class="whint">Hold a job to move it to another day</p>`;
   if(weekRoll()&&thisW){
     // the 6 days before today, so the full 7-day stretch (and what got ticked off) is still in reach
     const past=[];let nd=0;
-    for(let i=6;i>=1;i--){const s=addDays(t0,-i),l=state.tasks.filter(t=>vis(t)&&occurs(t,s)).sort((x,y)=>(isDone(x,s)-isDone(y,s))||byTime(x,y));
+    for(let i=6;i>=1;i--){const s=addDays(t0,-i),l=dayEvents(s).concat(state.tasks.filter(t=>vis(t)&&!isEv(t)&&occurs(t,s)).sort((x,y)=>(isDone(x,s)-isDone(y,s))||byTime(x,y)));
       if(l.length){past.push([s,l]);nd+=l.filter(t=>isDone(t,s)).length;}}
     if(past.length){
       h+=`<button class="wearly" data-act="wearly" aria-expanded="${!!ui.wEarly}"><span>Earlier${nd?` · ${nd} done`:''}</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>`;
@@ -3110,10 +3201,11 @@ function renderWeek(){
   }
   for(let i=0;i<7;i++){
     const s=addDays(w0,i),d=parse(s),isT=s===t0;
-    const list=state.tasks.filter(t=>vis(t)&&occurs(t,s)).sort((x,y)=>(isDone(x,s)-isDone(y,s))||byTime(x,y));
+    const list=state.tasks.filter(t=>vis(t)&&!isEv(t)&&occurs(t,s)).sort((x,y)=>(isDone(x,s)-isDone(y,s))||byTime(x,y)),evl=dayEvents(s);
     const title=`${isT?'<i class="dot-today"></i>':''}${DAYS[d.getDay()]} ${d.getDate()}`;
     h+=`<section class="sec wday${isT?' is-today':''}" data-wdate="${s}"><div class="sec-h"><h2>${title}</h2><button class="open-day" data-act="openday" data-date="${s}">Open</button></div>`
-      +(list.length?`<ul class="list">${list.map(t=>row(t,{ctx:s,wdrag:!isRep(t)})).join('')}</ul>`:`<div class="wempty">Nothing planned<button data-act="addto" data-date="${s}">Add</button></div>`)+`</section>`;
+      +(evl.length?`<ul class="list evlist">${evl.map(t=>evRow(t,{ctx:s})).join('')}</ul>`:'')
+      +(list.length?`<ul class="list">${list.map(t=>row(t,{ctx:s,wdrag:!isRep(t)})).join('')}</ul>`:evl.length?'':`<div class="wempty">Nothing planned<button data-act="addto" data-date="${s}">Add</button></div>`)+`</section>`;
   }
   view.innerHTML=h;
 }
@@ -3156,12 +3248,42 @@ fMore.innerHTML=MORE.map(c=>`<button class="sw" style="--c:${c}" data-color="${c
 function setMore(open){fMore.hidden=!open;moreBtn.setAttribute('aria-expanded',open);moreBtn.textContent=open?'Fewer colours':'More colours';}
 moreBtn.addEventListener('click',()=>setMore(fMore.hidden));
 document.getElementById('f-custom').addEventListener('input',e=>{draft.color=e.target.value.toUpperCase();paint();});
-fTime.addEventListener('change',()=>{draft.time=fTime.value||null;if(!draft.time)draft.alarm='none';paint();});
+fTime.addEventListener('change',()=>{draft.time=fTime.value||null;if(!draft.time){draft.alarm='none';draft.etime=null;}paint();});
+/* events: the Event switch, an end date for multi-day ones, a finish time, and a name for the colour */
+const fEv=document.getElementById('f-ev'),fEnd=document.getElementById('f-end'),fEtime=document.getElementById('f-etime'),cnIn=document.getElementById('cname-in');
+let cnEdit=null;
+fEv.addEventListener('click',()=>{draft.ev=!draft.ev;if(draft.ev){if(!draft.date)draft.date=today();draft.proj=null;}else{draft.end=null;draft.etime=null;}paint();});
+fEnd.addEventListener('change',()=>{draft.end=fEnd.value&&draft.date&&fEnd.value>draft.date?fEnd.value:null;paint();});
+fEtime.addEventListener('change',()=>{draft.etime=fEtime.value||null;paint();});
+cnIn.addEventListener('input',()=>{cnEdit={k:draft.color,v:cnIn.value.trim()};});
+cnIn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();cnIn.blur();}});
+function paintEvent(){
+  const on=evOn(),ev=on&&!!draft.ev;
+  document.getElementById('f-evf').hidden=!on||!!draft.shop;
+  fEv.classList.toggle('on',ev);fEv.setAttribute('aria-checked',String(ev));
+  document.getElementById('ed-h').textContent=(isNew?'New ':'Edit ')+(ev?'event':'job');
+  fTitle.placeholder=ev?'Type your event here, e.g. '+BRAND.egEvent:'Type your job here, e.g. '+BRAND.egJob;
+  document.getElementById('f-save').textContent=ev?'Save event':'Save job';
+  document.querySelector('[data-day="none"]').style.display=(ev||isRep(draft))?'none':'';
+  const endOn=ev&&!isRep(draft);
+  document.getElementById('f-endf').hidden=!endOn;
+  if(endOn){fEnd.value=draft.end||'';fEnd.min=draft.date||'';fEnd.parentNode.classList.toggle('unset',!draft.end);document.querySelector('[data-end="none"]').classList.toggle('on',!draft.end);}
+  if(ev)document.getElementById('day-lbl').textContent=isRep(draft)||draft.end?'Starts':'Date';
+  const ew=document.getElementById('f-etime-w');ew.hidden=!(ev&&draft.time);
+  fEtime.value=draft.etime||'';ew.classList.toggle('unset',!draft.etime);
+  document.querySelector('[data-time="none"]').textContent=ev?'All day':'No time';
+  document.getElementById('time-lbl').textContent=ev&&draft.time?'Starts and finishes':'Time';
+  document.getElementById('alarm-lbl').textContent=ev?'Reminder':'Alarm';
+  document.getElementById('f-starf').hidden=ev;
+  document.getElementById('f-clf').hidden=ev&&!(draft.checklist&&draft.checklist.length);
+  document.getElementById('cname-w').hidden=!ev;document.getElementById('cname-hint').hidden=!ev;
+  if(ev&&document.activeElement!==cnIn)cnIn.value=cnEdit&&cnEdit.k===draft.color?cnEdit.v:colName(draft.color);
+}
 let draft=null,isNew=false,clTicked=new Set(); // checklist items ticked/unticked on this phone while the sheet is open
 
 function blank(o){return Object.assign({id:newId(),title:'',note:'',checklist:[],list:null,color:'grey',starred:false,date:null,time:null,alarm:'none',repeat:'none',done:false,completions:{},ts:Date.now(),created:today()},o||{});}
 function openEditor(id,defaults){
-  const t=id?find(id):null;isNew=!t;clTicked=new Set();
+  const t=id?find(id):null;isNew=!t;clTicked=new Set();cnEdit=null;
   draft=t?JSON.parse(JSON.stringify(t)):blank(defaults);
   fTitle.value=draft.title;fNote.value=draft.note||'';fTitle.classList.remove('bad');
   document.getElementById('ed-h').textContent=isNew?'New job':'Edit job';
@@ -3182,7 +3304,7 @@ function paintLists(){
 }
 const fProjF=document.getElementById('f-projf'),fProjs=document.getElementById('f-projs'),projHint=document.getElementById('proj-hint');
 function paintProjs(){
-  const L=liveProjs(),show=(projOn()&&L.length>0)||!!draft.proj;
+  const L=liveProjs(),show=!(evOn()&&draft.ev)&&((projOn()&&L.length>0)||!!draft.proj);
   fProjF.hidden=!show;if(!show)return;
   if(draft.list===SHARED){fProjs.innerHTML='';projHint.textContent='Shared jobs can\u2019t go in a project yet.';return;}
   const opts=[[null,'None','']].concat(L.map(p=>[p.id,p.name,p.color]));
@@ -3227,13 +3349,13 @@ function paint(){
   document.querySelector('[data-time="none"]').classList.toggle('on',!draft.time);
   document.querySelectorAll('[data-alarm]').forEach(b=>{b.disabled=!draft.time;b.classList.toggle('on',!!draft.time&&b.dataset.alarm===(draft.alarm||'none'));});
   document.getElementById('alarm-hint').textContent=(!draft.time?'Set a time to add an alarm. ':'')+(NATIVE?'Alarms arrive as a notification, even when '+BRAND.short+' is closed. If your phone is on silent, it won\'t make a sound.':'Alarms only sound while '+BRAND.short+' is open on your screen.');
-  paintShareFields();
+  paintShareFields();paintEvent();
   fStar.classList.toggle('on',!!draft.starred);
   document.getElementById('f-star-txt').textContent=draft.starred?'Marked as important':'Mark as important';
 }
 const fShareF=document.getElementById('f-sharef'),fDue=document.getElementById('f-due'),fOwn=document.getElementById('f-own');
 function paintShareFields(){
-  const on=draft.list===SHARED;fShareF.hidden=!on;if(!on)return;
+  const on=draft.list===SHARED&&!(evOn()&&draft.ev);fShareF.hidden=!on;if(!on)return;
   fDue.value=draft.due||'';fDue.parentNode.classList.toggle('unset',!draft.due);
   document.querySelector('[data-due="none"]').classList.toggle('on',!draft.due);
   document.getElementById('due-hint').textContent=draft.due
@@ -3269,6 +3391,14 @@ function commit(){
   let nl=null;const typed=draft.title;
   if(isNew&&!draft.date&&!draft.time){nl=nlParse(draft.title);if(nl){draft.title=nl.title;draft.date=nl.date;draft.time=nl.time;}}
   if(isRep(draft)&&!draft.date)draft.date=today();
+  if(evOn()&&draft.ev){
+    if(!draft.date)draft.date=today();
+    if(isRep(draft)||!draft.end||draft.end<=draft.date)draft.end=null;
+    draft.etime=draft.time?(fEtime.value||null):null;
+    if(draft.etime&&!draft.end&&draft.etime<=draft.time)draft.etime=null; // a finish time before it starts is dropped
+    draft.proj=null;draft.due=null;draft.starred=false;
+    if(cnEdit){state.prefs.cnames=state.prefs.cnames||{};if(cnEdit.v)state.prefs.cnames[cnEdit.k]=cnEdit.v;else delete state.prefs.cnames[cnEdit.k];}
+  }
   if(nl){const id=draft.id;setTimeout(()=>snack('Added for '+whenLabel(nl.date,nl.time),()=>{const x=find(id);if(!x)return;x.title=typed;x.date=isRep(x)?today():null;x.time=null;x.alarm='none';save();render();}),50);}
   if(isNew)state.tasks.push(draft);else{const i=state.tasks.findIndex(t=>t.id===draft.id);if(i>=0)state.tasks[i]=draft;}
   save();closeEditor();render();
@@ -3280,7 +3410,7 @@ document.getElementById('f-save').addEventListener('click',commit);
 fStar.addEventListener('click',()=>{draft.starred=!draft.starred;paint();});
 fDel.addEventListener('click',()=>{
   if(!fDel.classList.contains('arm')){fDel.classList.add('arm');fDel.textContent='Tap again to delete';return;}
-  const did=draft.id;closeEditor();undoable('Job deleted',()=>{const n0=state.tasks.length;state.tasks=state.tasks.filter(t=>t.id!==did);return n0-state.tasks.length;});
+  const did=draft.id,wasEv=isEv(draft);closeEditor();undoable(wasEv?'Event deleted':'Job deleted',()=>{const n0=state.tasks.length;state.tasks=state.tasks.filter(t=>t.id!==did);return n0-state.tasks.length;});
 });
 ed.addEventListener('click',e=>{
   const cb=e.target.closest('[data-cli],[data-cld]');
@@ -3290,6 +3420,7 @@ ed.addEventListener('click',e=>{
       const t=isNew?null:find(draft.id),y=t&&(t.checklist||[]).find(i=>i.id===x.id);if(y){y.done=x.done;save();render();}}}
     else draft.checklist=cl.filter(i=>i.id!==cb.dataset.cld);
     paintCl();return;}
+  if(e.target.closest('[data-end]')){draft.end=null;paint();return;}
   const db=e.target.closest('[data-due]');
   if(db){draft.due=null;paintShareFields();return;}
   if(e.target.closest('[data-ownadd]')){const a=document.getElementById('own-add');a.hidden=!a.hidden;if(!a.hidden)document.getElementById('own-in').focus();return;}
@@ -3442,7 +3573,8 @@ view.addEventListener('click',e=>{
     if(act==='psupport'){openSupport();return;}
     if(act==='paskno'){ui.parkAsk=null;render();return;}
     if(act==='roll'){const t0=today(),tm=addDays(t0,1);
-      undoable(n=>`Moved ${n} to tomorrow`,()=>{let n=0;state.tasks.forEach(t=>{if(vis(t)&&!isRep(t)&&!t.done&&t.date&&t.date<=t0){t.date=tm;n++;}});return n;});return;}
+      undoable(n=>`Moved ${n} to tomorrow`,()=>{let n=0;state.tasks.forEach(t=>{if(vis(t)&&!isRep(t)&&!t.done&&!t.ev&&t.date&&t.date<=t0){t.date=tm;n++;}});return n;});return;}
+    if(act==='evf'){ui.evf=a.dataset.evf;render();return;}
     if(act==='lighter'){const tm=addDays(today(),1),L=lightJobs();
       undoable(n=>`Lighter day: ${n} moved to tomorrow`,()=>{L.forEach(t=>{t.date=tm;});return L.length;});return;}
     if(act==='wprev'||act==='wnext'){shiftWeek(act==='wnext'?1:-1);return;}
@@ -3643,7 +3775,7 @@ view.addEventListener('touchend',()=>{
   const w=s.li.offsetWidth,id=s.li.dataset.open||s.li.dataset.sopen,isShop=!!s.li.dataset.sopen;
   if(s.dx<-Math.max(90,w*.35)){
     s.li.classList.add('gone');s.li.style.transform=`translateX(${-w}px)`;
-    setTimeout(()=>{undoable(isShop?'Item removed':'Job deleted',()=>{const n0=state.tasks.length;state.tasks=state.tasks.filter(t=>t.id!==id);return n0-state.tasks.length;});},200);
+    setTimeout(()=>{undoable(isShop?'Item removed':s.li.classList.contains('ev')?'Event deleted':'Job deleted',()=>{const n0=state.tasks.length;state.tasks=state.tasks.filter(t=>t.id!==id);return n0-state.tasks.length;});},200);
   }else{
     s.li.classList.add('snap');s.li.style.transform='';
     setTimeout(()=>{s.li.classList.remove('snap','swiping');if(s.bg)s.bg.remove();},220);
@@ -3760,7 +3892,7 @@ const BDR_TIMES={am:'09:30',pm:'21:00'};
 const bdrMode=()=>['am','pm','own'].includes(state.prefs&&state.prefs.bdr)?state.prefs.bdr:'off';
 const bdrTime=()=>bdrMode()==='own'?((state.prefs&&state.prefs.bdrAt)||'21:00'):BDR_TIMES[bdrMode()];
 function greetText(n,day,style){const g=GREETS[style||mornStyle()];return n?g.pick[greetIdx(day||today())%g.pick.length](n,n===1?'job':'jobs',n===1):g.none;}
-function dueJobs(day){return state.tasks.filter(t=>!archivedJob(t)&&occurs(t,day)&&!isDone(t,day)).sort(byTime);}
+function dueJobs(day){return state.tasks.filter(t=>!archivedJob(t)&&!isEv(t)&&occurs(t,day)&&!isDone(t,day)).sort(byTime);}
 function morningText(day){return greetText(dueJobs(day).length,day);}
 function planNotifs(){
   const now=Date.now(),t0=today(),out=[];
@@ -3825,6 +3957,8 @@ function planNotifs(){
       const fire=at.getTime()-Number(t.alarm)*60000;
       if(fire<=now+5000)continue;
       const when=day===t0?'today':day===addDays(t0,1)?'tomorrow':dayLabel(day);
+      if(isEv(t)){if(evEnd(t)&&day!==t.date)continue; // a multi-day event reminds once, before it starts
+        al.push({fire,n:{title:t.title,sound:'default',body:(t.alarm==='0'?'Starting now':'Starts at '+fmtTime(t.time)+' '+when),extra:{kind:'alarm',id:t.id,day}}});continue;}
       al.push({fire,n:{title:t.title,sound:'default',body:t.alarm==='0'?'Now':'At '+fmtTime(t.time)+' '+when,actionTypeId:'job',extra:{kind:'alarm',id:t.id,day}}});
     }
   }
@@ -3916,16 +4050,18 @@ function widgetData(){
   pal=stylePal(P,pal);
   const days=[];
   for(let i=0;i<8;i++){const d=addDays(t0,i);
-    const all=live.filter(t=>occurs(t,d)).sort((a,b)=>(isDone(a,d)-isDone(b,d))||byTime(a,b));
-    // only the first 14 jobs travel to the widget, so it also gets the real totals (n = all jobs, nd = done)
-    days.push({d,n:all.length,nd:all.filter(t=>isDone(t,d)).length,jobs:all.slice(0,14)
-      .map(t=>({id:String(t.id),t:t.title||'',tm:t.time?fmtTime(t.time):'',c:hex(t.color),done:!!isDone(t,d),star:!!t.starred}))});}
+    const all=live.filter(t=>!isEv(t)&&occurs(t,d)).sort((a,b)=>(isDone(a,d)-isDone(b,d))||byTime(a,b));
+    const evs=evOn()?live.filter(t=>isEv(t)&&occurs(t,d)).sort((a,b)=>((a.time?1:0)-(b.time?1:0))||(a.time||'').localeCompare(b.time||'')):[];
+    // only the first 14 jobs travel to the widget, so it also gets the real totals (n = all jobs, nd = done).
+    // v1.34.0: the day's events go first, marked ev (a colour bar, nothing to tick) and left out of n and nd.
+    days.push({d,n:all.length,nd:all.filter(t=>isDone(t,d)).length,jobs:evs.slice(0,4).map(t=>({id:String(t.id),t:t.title||'',tm:evWhen(t,d)==='All day'?'':evWhen(t,d),c:hex(t.color),done:false,star:false,ev:true}))
+      .concat(all.slice(0,14).map(t=>({id:String(t.id),t:t.title||'',tm:t.time?fmtTime(t.time):'',c:hex(t.color),done:!!isDone(t,d),star:!!t.starred})))});}
   // dots on the large widget's month: days with something planned, this month and next
   const marks={},n0=new Date(),m0=new Date(n0.getFullYear(),n0.getMonth(),1),m2=new Date(n0.getFullYear(),n0.getMonth()+2,1);
   for(let d=ymd(m0);d<ymd(m2);d=addDays(d,1)){const k=live.filter(t=>occurs(t,d)&&!isDone(t,d)).length;if(k)marks[d]=k;}
   return {v:1,days,marks,
     dump:live.filter(undatedJob).length,
-    late:live.filter(t=>!isRep(t)&&t.date&&t.date<t0&&!t.done).length,
+    late:live.filter(t=>!isRep(t)&&!t.ev&&t.date&&t.date<t0&&!t.done).length,
     theme:{accent:pal.accent,bg:pal.bg,ink:pal.ink||'',muted:pal.muted||'',line:pal.line||'',w:pal.w,wash:pal.wash,mode:P.mode||'auto',font:P.font||'sfround'}};
 }
 async function widgetSync(){
@@ -3959,7 +4095,7 @@ const st=document.getElementById('settings');
    About & support) and only one is open at a time. Names follow the iPhone's own Settings where there's a match.
    Feedback stays on its own at the top for the tester round.
    TODO before the App Store version: move Feedback into the last group, "Help & about" (asked 12 Nov 2026). */
-const SGROUPS=[['General',['Open app on','Week view','Morning sort','Lighter day','Tidy away finished jobs','Celebration']],
+const SGROUPS=[['General',['Open app on','Week view','Events','Morning sort','Lighter day','Tidy away finished jobs','Celebration']],
   ['Appearance',['Theme','Appearance','Font','Text size','Spacing']],
   ['Lists',['Lists']],['Family sharing',['Family sharing']],
   ['Notifications',['Morning summary','Brain dump reminder']],
@@ -4034,6 +4170,7 @@ function paintSettings(){
   document.querySelectorAll('[data-cel]').forEach(b=>b.classList.toggle('on',b.dataset.cel===(P.cel||'rabbit')));
   document.querySelectorAll('[data-nudge]').forEach(b=>b.classList.toggle('on',b.dataset.nudge===(P.nudge||'on')));
   document.querySelectorAll('[data-lite]').forEach(b=>b.classList.toggle('on',b.dataset.lite===(P.lite||'on')));
+  document.querySelectorAll('[data-evon]').forEach(b=>b.classList.toggle('on',b.dataset.evon===(P.evon||'off')));
   document.querySelectorAll('[data-spc]').forEach(b=>b.classList.toggle('on',b.dataset.spc===(P.sp||'std')));
   document.querySelectorAll('[data-start]').forEach(b=>b.classList.toggle('on',b.dataset.start===startTab()));
   document.querySelectorAll('[data-wkv]').forEach(b=>b.classList.toggle('on',b.dataset.wkv===(P.wkv||'cal')));
@@ -4073,7 +4210,7 @@ document.getElementById('fb-send').addEventListener('click',async()=>{
 });
 function closeSettings(){st.classList.remove('open');st.setAttribute('aria-hidden','true');}
 st.addEventListener('click',e=>{
-  const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-lite],button[data-morn],button[data-mstyle],button[data-mjobs],button[data-bdr],button[data-projs],button[data-parks],button[data-shops],button[data-icb],button[data-wkv],button[data-start]');if(!b)return;
+  const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-lite],button[data-evon],button[data-morn],button[data-mstyle],button[data-mjobs],button[data-bdr],button[data-projs],button[data-parks],button[data-shops],button[data-icb],button[data-wkv],button[data-start]');if(!b)return;
   if(b.dataset.sact){closeSettings();return;}
   if(b.dataset.pal)state.prefs.palette=b.dataset.pal;
   if(b.dataset.washv)state.prefs.washv=b.dataset.washv;
@@ -4087,6 +4224,7 @@ st.addEventListener('click',e=>{
   if(b.dataset.wkv){state.prefs.wkv=b.dataset.wkv;ui.week=weekHome();render();}
   if(b.dataset.tidy){state.prefs.tidy=b.dataset.tidy;tidy();render();}
   if(b.dataset.nudge){state.prefs.nudge=b.dataset.nudge;render();}
+  if(b.dataset.evon){state.prefs.evon=b.dataset.evon;if(b.dataset.evon==='off')ui.evf=null;syncNotifs(true);render();} // v1.34.0 events trial (off to start)
   if(b.dataset.lite){state.prefs.lite=b.dataset.lite;render();} // v1.33.2: the Lighter day button on Today can be switched off (on to start)
   if(b.dataset.morn){state.prefs.morn=b.dataset.morn;syncNotifs(true);}
   if(b.dataset.mstyle){state.prefs.mornStyle=b.dataset.mstyle;syncNotifs(true);}
