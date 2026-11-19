@@ -1113,35 +1113,103 @@ struct WeekDayColumn: View {
     }
 }
 
-struct WeekView: View {
+struct WeekCalendar: View {
     let e: DayEntry
     let p: Palette
-    let large: Bool
+    let maxPills: Int
     var body: some View {
         var cal = Calendar.current
         cal.firstWeekday = 2   // weeks run Monday to Sunday
         let start = cal.dateInterval(of: .weekOfYear, for: e.date)?.start ?? cal.startOfDay(for: e.date)
         let dates = (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
         let todayKey = Fmt.ymd.string(from: e.date)
-        return VStack(alignment: .leading, spacing: large ? 10 : 6) {
-            HStack(alignment: .center) {
-                Text(Fmt.month.string(from: e.date))
-                    .font(.system(size: large ? 19 : 16, weight: .bold))
-                    .foregroundColor(p.ink)
-                    .lineLimit(1)
-                Spacer(minLength: 8)
-                AddButton(p: p)
+        return HStack(alignment: .top, spacing: 3) {
+            ForEach(0..<dates.count, id: \.self) { i in
+                let key = Fmt.ymd.string(from: dates[i])
+                WeekDayColumn(day: e.data?.wk?.first(where: { $0.d == key }), date: dates[i],
+                              isToday: key == todayKey, p: p, maxPills: maxPills)
             }
-            HStack(alignment: .top, spacing: 3) {
-                ForEach(0..<dates.count, id: \.self) { i in
-                    let key = Fmt.ymd.string(from: dates[i])
-                    WeekDayColumn(day: e.data?.wk?.first(where: { $0.d == key }), date: dates[i],
-                                  isToday: key == todayKey, p: p, maxPills: large ? 11 : 4)
+        }
+    }
+}
+
+// v1.35.2: the same bottom line as the Today widget (painted wash, + at its right end).
+// Medium: the week's events. Large: the week's events, then today's events and jobs underneath.
+struct WeekView: View {
+    let e: DayEntry
+    let p: Palette
+    let large: Bool
+    var body: some View {
+        Group {
+            if large, #available(iOS 16.0, *), !e.open.isEmpty {
+                ViewThatFits(in: .vertical) {
+                    WeekBody(e: e, p: p, large: true, limit: 5)
+                    WeekBody(e: e, p: p, large: true, limit: 4)
+                    WeekBody(e: e, p: p, large: true, limit: 3)
                 }
+            } else {
+                WeekBody(e: e, p: p, large: large, limit: 4)
             }
-            .frame(maxHeight: .infinity, alignment: .top)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+struct WeekBody: View {
+    let e: DayEntry
+    let p: Palette
+    let large: Bool
+    let limit: Int
+    // events this week (Mon – Sun), a multi-day one counted once
+    var weekEvents: Int {
+        var cal = Calendar.current
+        cal.firstWeekday = 2
+        guard let week = cal.dateInterval(of: .weekOfYear, for: e.date) else { return 0 }
+        var n = 0
+        for d in e.data?.wk ?? [] {
+            guard let day = Fmt.ymd.date(from: d.d), week.contains(day) else { continue }
+            for pill in d.e where (pill.k ?? 0) < 2 { n += 1 }
+        }
+        return n
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(Fmt.month.string(from: e.date))
+                .font(.system(size: large ? 18 : 15, weight: .bold))
+                .foregroundColor(p.ink)
+                .lineLimit(1)
+                .padding(.bottom, large ? 6 : 4)
+            WeekCalendar(e: e, p: p, maxPills: large ? 5 : 3)
+            if large {
+                Rectangle().fill(p.line).frame(height: 0.5).padding(.top, 10)
+                Text("Today")
+                    .font(F.body(11))
+                    .foregroundColor(p.muted)
+                    .padding(.top, 8)
+                Group {
+                    if e.open.isEmpty {
+                        Message(e: e, p: p, size: 14, centred: false)
+                    } else {
+                        JobList(e: e, p: p, limit: limit, size: 13, spacing: 7)
+                    }
+                }
+                .padding(.top, 6)
+            }
+            Spacer(minLength: 4)
+            BottomLine(p: p, style: .wash, leftWidth: large ? 122 : 0) {
+                if e.total > 0 {
+                    ProgressLine(e: e, p: p)
+                }
+            } mid: {
+                if !large {
+                    let n = weekEvents
+                    Text(n == 0 ? "No events this week" : n == 1 ? "1 event this week" : "\(n) events this week")
+                        .font(F.body(11))
+                        .foregroundColor(p.muted)
+                        .lineLimit(1)
+                }
+            }
+        }
     }
 }
 
@@ -1173,7 +1241,7 @@ struct WeekWidget: Widget {
             WeekEntryView(e: entry)
         }
         .configurationDisplayName("Week")
-        .description("Your week's events at a glance, Monday to Sunday. Tap to open Week.")
+        .description("Your week's events at a glance, Monday to Sunday. The large size adds today's jobs underneath. Tap to open Week.")
         .supportedFamilies([.systemMedium, .systemLarge])
     }
 }
