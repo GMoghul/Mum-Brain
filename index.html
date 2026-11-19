@@ -589,9 +589,9 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .task.ev.past{opacity:.55}
 .wday .evlist+.list{margin-top:8px}
 .evf.seg{background:color-mix(in srgb,var(--ink) 6%,transparent);margin:-8px 0 16px}
-.cell.hasev{height:50px}
+.cell.hasev{height:47px}
 .evbs{display:flex;flex-direction:column;gap:2px;width:100%;min-height:4px}
-.evb{display:block;height:4px;margin:0 5px;border-radius:2px;background:var(--c)}
+.evb{display:block;height:3px;margin:0 6px;border-radius:2px;background:var(--c);opacity:.75}
 .evb.st{margin-right:-3px;border-radius:2px 0 0 2px}
 .evb.mid{margin:0 -3px;border-radius:0}
 .evb.en{margin-left:-3px;border-radius:0 2px 2px 0}
@@ -2528,7 +2528,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.35.4';
+const APPV='1.35.5';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3153,7 +3153,8 @@ function renderMonth(){
     const on=state.tasks.filter(t=>vis(t)&&!isEv(t)&&occurs(t,s)).sort(byStar),ev=dayEvents(s);
     const dots=on.slice(0,4).map(t=>`<i style="--c:${hex(t.color)}" class="${isDone(t,s)?'d':''}"></i>`).join('');
     // events as short bars (joined up across the days of a multi-day one), jobs as dots underneath
-    const bars=ev.slice(0,2).map(t=>{const e=evEnd(t),k=e?(s===t.date?' st':s===e?' en':' mid'):'';return `<i class="evb${k}" style="--c:${hex(t.color)}"></i>`;}).join('');
+    // v1.35.5: one thin line however many events (the first one's colour; multi-day ones come first, so they join up)
+    const bars=ev.slice(0,1).map(t=>{const e=evEnd(t),k=e?(s===t.date?' st':s===e?' en':' mid'):'';return `<i class="evb${k}" style="--c:${hex(t.color)}"></i>`;}).join('');
     const lab=[ev.length?ev.length+(ev.length===1?' event':' events'):'',on.length?on.length+(on.length===1?' job':' jobs'):''].filter(Boolean).join(', ');
     cells+=`<button class="cell${s===t0?' today':''}${s===ui.sel?' sel':''}${s<t0?' past':''}${evOn()?' hasev':''}" data-act="pick" data-date="${s}" aria-label="${dayLabel(s)}${lab?', '+lab:''}"><span class="n">${dd}</span>${evOn()?`<span class="evbs">${bars}</span>`:''}<span class="dots">${dots}</span></button>`;
   }
