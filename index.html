@@ -591,7 +591,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .evf.seg{background:color-mix(in srgb,var(--ink) 6%,transparent);margin:-8px 0 16px}
 .cell.hasev{height:47px}
 .evbs{display:flex;flex-direction:column;gap:2px;width:100%;min-height:4px}
-.evb{display:block;height:3px;margin:0 6px;border-radius:2px;background:var(--c);opacity:.75}
+.evb{display:block;height:3px;margin:0 6px;border-radius:2px;background:color-mix(in srgb,var(--accent) 60%,transparent)} /* v1.35.10: the theme's colour, not the event's */
 .evb.st{margin-right:-3px;border-radius:2px 0 0 2px}
 .evb.mid{margin:0 -3px;border-radius:0}
 .evb.en{margin-left:-3px;border-radius:0 2px 2px 0}
@@ -2528,7 +2528,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.35.9';
+const APPV='1.35.10';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
