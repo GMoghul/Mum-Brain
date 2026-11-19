@@ -122,6 +122,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.35.1: the Week widget shows events only (jobs stay on the Today widgets), and long names are cut off at the column edge instead of pushing the columns wider.
    - v1.35.2: the Week widget uses the same bottom line as Today (painted wash, + at its right end); medium shows the week's events and "N events this week"; large adds today's events and jobs underneath (tickable, like the Today widget) with the job count on the wash.
    - v1.35.3: Week widget tidy: day columns only as tall as their events, so on large today's list follows straight on from the calendar ("Today" plus the date as a heading) with spare room above the wash; the job count on the wash is words only.
+   - v1.35.4: event circles are the same size as the tick rings (app and Today widget). Large Week widget: events take priority (up to 6 a day), today's list underneath is jobs only, shrinking to fit with "+N more".
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 

@@ -473,7 +473,6 @@ struct Row: View {
                 // an event: a filled dot in its colour, a little smaller than the tick ring (v1.35.0)
                 Circle()
                     .fill(Color(hex: job.c))
-                    .frame(width: (size + 1) * 0.72, height: (size + 1) * 0.72)
                     .frame(width: size + 1, height: size + 1)
             } else if #available(iOSApplicationExtension 17.0, *), !day.isEmpty {
                 // tap the circle to tick the job off (bigger tap area than the circle itself)
@@ -508,16 +507,19 @@ struct JobList: View {
     let limit: Int
     let size: CGFloat
     let spacing: CGFloat
+    var jobsOnly = false   // Week widget: its events are already on the calendar above (v1.35.4)
     var body: some View {
         // ticked-off jobs drop off the widget (the app keeps the record), so the next jobs move up.
         // show every job still to do if they all fit, otherwise leave a line for "+N more"
-        let shown = e.openCount <= limit ? e.open : Array(e.open.prefix(limit - 1))
+        let items = jobsOnly ? e.tasks.filter { !$0.done } : e.open
+        let count = jobsOnly ? e.jobsLeft : e.openCount
+        let shown = count <= limit ? items : Array(items.prefix(max(0, limit - 1)))
         VStack(alignment: .leading, spacing: spacing) {
             ForEach(shown) { j in
                 Row(job: j, p: p, size: size, day: e.key)
             }
-            if e.openCount > shown.count {
-                Text("+\(e.openCount - shown.count) more")
+            if count > shown.count {
+                Text("+\(count - shown.count) more")
                     .font(F.body(size - 1.5))
                     .foregroundColor(p.muted)
             }
@@ -546,14 +548,14 @@ struct Message: View {
     let size: CGFloat
     var centred = false
     var sub: String {
-        if e.jobs.isEmpty { return e.dump > 0 ? "\(e.dump) waiting in Brain dump" : "Enjoy your day" }
+        if e.tasks.isEmpty { return e.dump > 0 ? "\(e.dump) waiting in Brain dump" : "Enjoy your day" }
         return e.doneCount == 1 ? "1 job ticked off" : "\(e.doneCount) jobs ticked off"
     }
     var body: some View {
         if centred {
             // all done / nothing planned: a calm resting state in the middle of the space
             VStack(spacing: 5) {
-                if !e.jobs.isEmpty {
+                if !e.tasks.isEmpty {
                     Tick(color: p.accent, done: true, size: size + 8).padding(.bottom, 2)
                 }
                 Text(e.headline).font(F.bold(size)).foregroundColor(p.ink)
@@ -564,7 +566,7 @@ struct Message: View {
         } else {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    if !e.jobs.isEmpty {
+                    if !e.tasks.isEmpty {
                         Tick(color: p.accent, done: true, size: size + 2)
                     }
                     Text(e.headline).font(F.bold(size)).foregroundColor(p.ink)
@@ -1141,14 +1143,19 @@ struct WeekView: View {
     let large: Bool
     var body: some View {
         Group {
-            if large, #available(iOS 16.0, *), !e.open.isEmpty {
+            // events come first: the calendar keeps its room and today's jobs shrink to fit, the rest as "+N more"
+            if large, #available(iOS 16.0, *), e.jobsLeft > 0 {
                 ViewThatFits(in: .vertical) {
-                    WeekBody(e: e, p: p, large: true, limit: 5)
-                    WeekBody(e: e, p: p, large: true, limit: 4)
-                    WeekBody(e: e, p: p, large: true, limit: 3)
+                    WeekBody(e: e, p: p, large: true, limit: 6, pills: 6)
+                    WeekBody(e: e, p: p, large: true, limit: 5, pills: 6)
+                    WeekBody(e: e, p: p, large: true, limit: 4, pills: 6)
+                    WeekBody(e: e, p: p, large: true, limit: 3, pills: 6)
+                    WeekBody(e: e, p: p, large: true, limit: 2, pills: 6)
+                    WeekBody(e: e, p: p, large: true, limit: 1, pills: 6)
+                    WeekBody(e: e, p: p, large: true, limit: 1, pills: 5)
                 }
             } else {
-                WeekBody(e: e, p: p, large: large, limit: 4)
+                WeekBody(e: e, p: p, large: large, limit: 4, pills: large ? 7 : 3)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -1160,6 +1167,7 @@ struct WeekBody: View {
     let p: Palette
     let large: Bool
     let limit: Int
+    var pills = 3
     // events this week (Mon – Sun), a multi-day one counted once
     var weekEvents: Int {
         var cal = Calendar.current
@@ -1179,7 +1187,7 @@ struct WeekBody: View {
                 .foregroundColor(p.ink)
                 .lineLimit(1)
                 .padding(.bottom, large ? 6 : 4)
-            WeekCalendar(e: e, p: p, maxPills: large ? 5 : 3)
+            WeekCalendar(e: e, p: p, maxPills: pills)
             if large {
                 // today's list follows straight on from the calendar; any spare room goes above the wash
                 Rectangle().fill(p.line).frame(height: 0.5).padding(.top, 12)
@@ -1194,10 +1202,10 @@ struct WeekBody: View {
                 }
                 .padding(.top, 10)
                 Group {
-                    if e.open.isEmpty {
+                    if e.jobsLeft == 0 {
                         Message(e: e, p: p, size: 14, centred: false)
                     } else {
-                        JobList(e: e, p: p, limit: limit, size: 13, spacing: 7)
+                        JobList(e: e, p: p, limit: limit, size: 13, spacing: 7, jobsOnly: true)
                     }
                 }
                 .padding(.top, 8)

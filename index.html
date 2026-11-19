@@ -584,7 +584,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .chip.c-proj{color:color-mix(in srgb,var(--pc) 70%,var(--ink));background:color-mix(in srgb,var(--pc) 14%,var(--solid))}
 /* v1.34.0 events: a colour bar where the tick ring would be, on top of each day with the jobs underneath */
 .task.ev .evbar{flex:none;width:calc(26px * var(--ts));height:calc(26px * var(--ts));display:grid;place-items:center;margin-top:-1px}
-.task.ev .evbar::before{content:"";width:calc(18px * var(--ts));height:calc(18px * var(--ts));border-radius:50%;background:var(--c)} /* v1.35.0: a filled dot, a little smaller than the tick ring so it never reads as a ticked-off job */
+.task.ev .evbar::before{content:"";width:100%;height:100%;border-radius:50%;background:var(--c)} /* v1.35.4: a filled circle the same size as the tick ring */
 :root[data-sp="compact"] .task.ev .evbar{width:calc(23px * var(--ts));height:calc(23px * var(--ts));margin-top:0}
 .task.ev.past{opacity:.55}
 .wday .evlist+.list{margin-top:8px}
@@ -2528,7 +2528,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.35.3';
+const APPV='1.35.4';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
