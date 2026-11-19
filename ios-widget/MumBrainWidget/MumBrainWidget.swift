@@ -1050,22 +1050,25 @@ struct WeekPill: View {
     var body: some View {
         let c = Color(hex: pill.c)
         let k = pill.k ?? 0
-        Text(pill.t)
-            .font(.system(size: 10.5, weight: .semibold))
-            .foregroundColor(ev ? (lightHex(pill.c) ? Color(hex: "#23201C") : .white) : p.ink)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .padding(.horizontal, 3)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        // the pill takes its column's width; the name sits on top and is cut off at the edge (like TimeTree),
+        // so a long name can never push the columns wider (v1.35.1)
+        RoundedRectangle(cornerRadius: 3.5)
+            .fill(ev ? c : c.opacity(p.dark ? 0.32 : 0.16))
+            .frame(maxWidth: .infinity)
             .frame(height: 15)
-            .background(
-                RoundedRectangle(cornerRadius: 3.5)
-                    .fill(ev ? c : c.opacity(p.dark ? 0.32 : 0.16))
-                    // a multi-day event runs on into the next day's column
-                    .padding(.leading, (k == 2 || k == 3) ? -2 : 0)
-                    .padding(.trailing, (k == 1 || k == 2) ? -2 : 0)
+            .overlay(
+                Text(pill.t)
+                    .font(.system(size: 10.5, weight: .semibold))
+                    .foregroundColor(ev ? (lightHex(pill.c) ? Color(hex: "#23201C") : .white) : p.ink)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.leading, 3),
+                alignment: .leading
             )
             .clipped()
+            // a multi-day event runs on into the next day's column
+            .padding(.leading, (k == 2 || k == 3) ? -1.5 : 0)
+            .padding(.trailing, (k == 1 || k == 2) ? -1.5 : 0)
     }
 }
 
@@ -1076,10 +1079,10 @@ struct WeekDayColumn: View {
     let p: Palette
     let maxPills: Int
     var body: some View {
+        // events only (v1.35.1): jobs stay on the Today widgets
         let ev = day?.e ?? []
-        let jobs = (day?.j ?? []).filter { $0.x != true }
-        let all: [(WPill, Bool)] = ev.map { ($0, true) } + jobs.map { ($0, false) }
-        let total = max(day?.n ?? 0, all.count)
+        let all: [(WPill, Bool)] = ev.map { ($0, true) }
+        let total = all.count
         let fits = total > maxPills ? maxPills - 1 : maxPills
         let shown = Array(all.prefix(fits))
         VStack(spacing: 2.5) {
@@ -1106,7 +1109,7 @@ struct WeekDayColumn: View {
                     .padding(.leading, 3)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 }
 
@@ -1170,7 +1173,7 @@ struct WeekWidget: Widget {
             WeekEntryView(e: entry)
         }
         .configurationDisplayName("Week")
-        .description("Your week at a glance, Monday to Sunday: events and jobs for each day. Tap to open Week.")
+        .description("Your week's events at a glance, Monday to Sunday. Tap to open Week.")
         .supportedFamilies([.systemMedium, .systemLarge])
     }
 }
