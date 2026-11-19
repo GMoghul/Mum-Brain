@@ -1278,8 +1278,8 @@ struct WeekWidget: Widget {
             WeekEntryView(e: entry)
         }
         .configurationDisplayName("Week")
-        .description("Your week's events at a glance, Monday to Sunday, with today's jobs underneath. Tap to open Week.")
-        .supportedFamilies([.systemLarge])
+        .description("Your week's events at a glance, Monday to Sunday. The large size adds today's jobs underneath. Tap to open Week.")
+        .supportedFamilies([.systemMedium, .systemLarge])   // v1.35.8: medium (events only) back
     }
 }
 

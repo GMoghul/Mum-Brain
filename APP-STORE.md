@@ -126,6 +126,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.35.5: Month shows one thin, softer line under a day with events however many there are (the first event's colour; multi-day ones still join up), so busy weeks don't crowd the calendar.
    - v1.35.6: widget gallery cut to three: Today (small, medium), Week (large only). "Today · Simple" and the large Today widget are gone; lock-screen widgets unchanged.
    - v1.35.7: small Today widget redesigned as a daily nudge: brain icon, day and date, and the medium widget's wash and + with the job count on it ("3 jobs today" / "1 of 3 done" / "All done"); no list.
+   - v1.35.8: medium Week widget (events only, "N events this week" on the wash) added back, so the gallery has four: Today small and medium, Week medium and large.
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
