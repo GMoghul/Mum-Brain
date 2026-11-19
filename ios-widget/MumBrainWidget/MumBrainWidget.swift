@@ -1005,9 +1005,10 @@ struct TodayWidget: Widget {
 
     var families: [WidgetFamily] {
         if #available(iOSApplicationExtension 16.0, *) {
-            return [.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryCircular, .accessoryInline]
+            // v1.35.6: home screen keeps small and medium only (the large size is now the Week widget)
+            return [.systemSmall, .systemMedium, .accessoryRectangular, .accessoryCircular, .accessoryInline]
         }
-        return [.systemSmall, .systemMedium, .systemLarge]
+        return [.systemSmall, .systemMedium]
     }
 
     var body: some WidgetConfiguration {
@@ -1260,8 +1261,8 @@ struct WeekWidget: Widget {
             WeekEntryView(e: entry)
         }
         .configurationDisplayName("Week")
-        .description("Your week's events at a glance, Monday to Sunday. The large size adds today's jobs underneath. Tap to open Week.")
-        .supportedFamilies([.systemMedium, .systemLarge])
+        .description("Your week's events at a glance, Monday to Sunday, with today's jobs underneath. Tap to open Week.")
+        .supportedFamilies([.systemLarge])
     }
 }
 
@@ -1269,7 +1270,6 @@ struct WeekWidget: Widget {
 struct AppWidgets: WidgetBundle {
     var body: some Widget {
         TodayWidget()
-        TodaySimpleWidget()
-        WeekWidget()
+        WeekWidget()   // v1.35.6: "Today · Simple" removed to keep the choice simple
     }
 }
