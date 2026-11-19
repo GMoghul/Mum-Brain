@@ -686,24 +686,41 @@ struct BrainDumpChip: View {
 
 // MARK: - Sizes
 
+// v1.35.7: the small widget is a calm daily nudge rather than a squeezed list:
+// the icon, the day and date, and the same wash and + as the medium one, with the job count on the wash
 struct SmallView: View {
     let e: DayEntry
     let p: Palette
+    var count: String {
+        if e.total == 0 { return "No jobs today" }
+        if e.jobsLeft == 0 { return "All done" }
+        if e.doneCount > 0 { return "\(e.doneCount) of \(e.total) done" }
+        return e.total == 1 ? "1 job today" : "\(e.total) jobs today"
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            BrainIcon(size: 30)
+            Spacer(minLength: 6)
             Text(e.weekday)
-                .font(F.head(22))
+                .font(F.sub(17))
                 .foregroundColor(p.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
-            Text(e.spokenShort)
+            Text(e.spokenDate)
                 .font(F.sub(13))
                 .foregroundColor(p.muted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+                .padding(.top, 1)
             Spacer(minLength: 6)
-            if e.open.isEmpty {
-                Message(e: e, p: p, size: 12.5)
-            } else {
-                JobList(e: e, p: p, limit: 4, size: 11.5, spacing: 6)
+            BottomLine(p: p, style: .wash, leftWidth: 86) {
+                Text(count)
+                    .font(F.body(11))
+                    .foregroundColor(p.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            } mid: {
+                EmptyView()
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
