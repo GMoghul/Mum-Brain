@@ -584,7 +584,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .chip.c-proj{color:color-mix(in srgb,var(--pc) 70%,var(--ink));background:color-mix(in srgb,var(--pc) 14%,var(--solid))}
 /* v1.34.0 events: a colour bar where the tick ring would be, on top of each day with the jobs underneath */
 .task.ev .evbar{flex:none;width:calc(26px * var(--ts));height:calc(26px * var(--ts));display:grid;place-items:center;margin-top:-1px}
-.task.ev .evbar::before{content:"";width:5px;height:100%;border-radius:3px;background:var(--c)}
+.task.ev .evbar::before{content:"";width:calc(18px * var(--ts));height:calc(18px * var(--ts));border-radius:50%;background:var(--c)} /* v1.35.0: a filled dot, a little smaller than the tick ring so it never reads as a ticked-off job */
 :root[data-sp="compact"] .task.ev .evbar{width:calc(23px * var(--ts));height:calc(23px * var(--ts));margin-top:0}
 .task.ev.past{opacity:.55}
 .wday .evlist+.list{margin-top:8px}
@@ -2528,7 +2528,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.34.0';
+const APPV='1.35.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -4059,7 +4059,15 @@ function widgetData(){
   // dots on the large widget's month: days with something planned, this month and next
   const marks={},n0=new Date(),m0=new Date(n0.getFullYear(),n0.getMonth(),1),m2=new Date(n0.getFullYear(),n0.getMonth()+2,1);
   for(let d=ymd(m0);d<ymd(m2);d=addDays(d,1)){const k=live.filter(t=>occurs(t,d)&&!isDone(t,d)).length;if(k)marks[d]=k;}
-  return {v:1,days,marks,
+  // v1.35.0 Week widget: this week and next, Mon – Sun, as short pills (events filled, jobs tinted).
+  // k: 1 first day, 2 middle, 3 last day of a multi-day event; x: job done
+  const wk=[],m0w=addDays(t0,-((parse(t0).getDay()+6)%7));
+  for(let i=0;i<14;i++){const d=addDays(m0w,i);
+    const e=evOn()?live.filter(t=>isEv(t)&&occurs(t,d)).sort((a,b)=>((evEnd(b)?1:0)-(evEnd(a)?1:0))||((a.time?1:0)-(b.time?1:0))||(a.time||'').localeCompare(b.time||'')||ko(a)-ko(b)):[];
+    const j=live.filter(t=>!isEv(t)&&occurs(t,d)).sort((a,b)=>(isDone(a,d)-isDone(b,d))||byStar(a,b)||byTime(a,b));
+    wk.push({d,e:e.slice(0,10).map(t=>{const z=evEnd(t);return {t:t.title||'',c:hex(t.color),k:z?(d===t.date?1:d===z?3:2):0};}),
+      j:j.slice(0,10).map(t=>({t:t.title||'',c:hex(t.color),x:!!isDone(t,d)})),n:e.length+j.filter(t=>!isDone(t,d)).length});}
+  return {v:1,days,marks,wk,
     dump:live.filter(undatedJob).length,
     late:live.filter(t=>!isRep(t)&&!t.ev&&t.date&&t.date<t0&&!t.done).length,
     theme:{accent:pal.accent,bg:pal.bg,ink:pal.ink||'',muted:pal.muted||'',line:pal.line||'',w:pal.w,wash:pal.wash,mode:P.mode||'auto',font:P.font||'sfround'}};
@@ -4074,7 +4082,7 @@ var CAPP=NATIVE?((window.Capacitor.Plugins&&window.Capacitor.Plugins.App)||(wind
 function openLink(u){
   if(!u||!/^mumbrain:/i.test(u))return;
   ui.searching=false;ui.proj=null;ui.linkAt=Date.now();
-  if(/dump/i.test(u))ui.tab='dump';else{ui.tab='today';ui.day=today();}
+  if(/dump/i.test(u))ui.tab='dump';else if(/week/i.test(u)){ui.tab='week';ui.week=null;}else{ui.tab='today';ui.day=today();}
   window.scrollTo(0,0);render();
 }
 if(CAPP){

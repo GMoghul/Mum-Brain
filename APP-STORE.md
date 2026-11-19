@@ -117,6 +117,9 @@ The live web app on GitHub Pages (`main`) is not affected.
    - Personal unless put on the Shared list. On Today, Week and Month, events sit on top with jobs underneath; an **All / Mine / Shared** switch appears once there are shared events. Events don't show on Brain dump.
    - Widget: the day's events go first (up to 4) with `ev:true`, drawn as a colour bar with no tick, and left out of the job counts.
    - Switching Events off turns every event back into an ordinary dated job on its first day, so nothing is lost; past ones stay out of "Still to do from earlier" and Scheduled.
+34. **Event dots and a Week widget (v1.35.0, 19 Nov 2026):** events show a filled dot in their colour instead of a bar (in the app and on the Today widget), a little smaller than the tick ring so it can't be mistaken for a ticked-off job.
+   - New **Week** widget (medium and large), Mon – Sun like a wall calendar: month name and + at the top, today circled, and each day's events as filled colour pills (multi-day ones run into the next column) with the jobs still to do as tinted pills underneath; "+N" when a day is full (4 pills on medium, 11 on large). Tapping opens the Week tab (`mumbrain://week`).
+   - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
 ## Brand pack (keeping a future "everyone" edition open)

@@ -39,6 +39,21 @@ struct WTheme: Codable {
     var font: String? = nil   // the app's font choice (v1.10.0); "clean" = Soft serif
 }
 
+// v1.35.0 Week widget: one day of this week or next, as short pills
+struct WPill: Codable {
+    let t: String
+    let c: String
+    var k: Int? = nil    // events: 0 one day, 1 first, 2 middle, 3 last day of a multi-day event
+    var x: Bool? = nil   // jobs: done
+}
+
+struct WWeekDay: Codable {
+    let d: String
+    let e: [WPill]
+    let j: [WPill]
+    var n: Int? = nil    // events + jobs still to do that day (more may exist than were sent)
+}
+
 struct WData: Codable {
     let v: Int
     let days: [WDay]
@@ -46,6 +61,7 @@ struct WData: Codable {
     let dump: Int
     let late: Int
     let theme: WTheme
+    var wk: [WWeekDay]? = nil
 }
 
 enum Store {
@@ -239,6 +255,7 @@ struct RowsBar: View {
 let starColor = Color(hex: "#F2C14E")
 let todayURL = URL(string: "mumbrain://today")
 let dumpURL = URL(string: "mumbrain://dump")!
+let weekURL = URL(string: "mumbrain://week")
 
 // MARK: - Timeline
 
@@ -453,10 +470,10 @@ struct Row: View {
     var body: some View {
         HStack(spacing: 7) {
             if job.isEv {
-                // an event: a short bar in its colour where the tick ring would be
-                RoundedRectangle(cornerRadius: 2)
+                // an event: a filled dot in its colour, a little smaller than the tick ring (v1.35.0)
+                Circle()
                     .fill(Color(hex: job.c))
-                    .frame(width: max(4, size * 0.3), height: size + 1)
+                    .frame(width: (size + 1) * 0.72, height: (size + 1) * 0.72)
                     .frame(width: size + 1, height: size + 1)
             } else if #available(iOSApplicationExtension 17.0, *), !day.isEmpty {
                 // tap the circle to tick the job off (bigger tap area than the circle itself)
@@ -1015,10 +1032,154 @@ struct TodaySimpleWidget: Widget {
     }
 }
 
+// MARK: - Week widget (v1.35.0): Mon – Sun like a wall calendar, events as filled pills, jobs as tinted pills
+
+// dark text on light colours, white on darker ones, so every pill stays readable
+func lightHex(_ hex: String) -> Bool {
+    var h = hex.trimmingCharacters(in: .whitespaces)
+    if h.hasPrefix("#") { h.removeFirst() }
+    guard h.count == 6, let v = UInt32(h, radix: 16) else { return false }
+    let r = Double((v >> 16) & 255) / 255, g = Double((v >> 8) & 255) / 255, b = Double(v & 255) / 255
+    return 0.299 * r + 0.587 * g + 0.114 * b > 0.68
+}
+
+struct WeekPill: View {
+    let pill: WPill
+    let ev: Bool
+    let p: Palette
+    var body: some View {
+        let c = Color(hex: pill.c)
+        let k = pill.k ?? 0
+        Text(pill.t)
+            .font(.system(size: 10.5, weight: .semibold))
+            .foregroundColor(ev ? (lightHex(pill.c) ? Color(hex: "#23201C") : .white) : p.ink)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 3)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(height: 15)
+            .background(
+                RoundedRectangle(cornerRadius: 3.5)
+                    .fill(ev ? c : c.opacity(p.dark ? 0.32 : 0.16))
+                    // a multi-day event runs on into the next day's column
+                    .padding(.leading, (k == 2 || k == 3) ? -2 : 0)
+                    .padding(.trailing, (k == 1 || k == 2) ? -2 : 0)
+            )
+            .clipped()
+    }
+}
+
+struct WeekDayColumn: View {
+    let day: WWeekDay?
+    let date: Date
+    let isToday: Bool
+    let p: Palette
+    let maxPills: Int
+    var body: some View {
+        let ev = day?.e ?? []
+        let jobs = (day?.j ?? []).filter { $0.x != true }
+        let all: [(WPill, Bool)] = ev.map { ($0, true) } + jobs.map { ($0, false) }
+        let total = max(day?.n ?? 0, all.count)
+        let fits = total > maxPills ? maxPills - 1 : maxPills
+        let shown = Array(all.prefix(fits))
+        VStack(spacing: 2.5) {
+            Text(Fmt.weekday.string(from: date).prefix(3).uppercased())
+                .font(.system(size: 9.5, weight: .medium))
+                .foregroundColor(p.muted)
+                .lineLimit(1)
+            ZStack {
+                if isToday { Circle().fill(p.accent) }
+                Text("\(Calendar.current.component(.day, from: date))")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundColor(isToday ? .white : p.ink)
+            }
+            .frame(width: 23, height: 23)
+            .padding(.bottom, 1)
+            ForEach(0..<shown.count, id: \.self) { i in
+                WeekPill(pill: shown[i].0, ev: shown[i].1, p: p)
+            }
+            if total > shown.count {
+                Text("+\(total - shown.count)")
+                    .font(.system(size: 9.5, weight: .medium))
+                    .foregroundColor(p.muted)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, 3)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+}
+
+struct WeekView: View {
+    let e: DayEntry
+    let p: Palette
+    let large: Bool
+    var body: some View {
+        var cal = Calendar.current
+        cal.firstWeekday = 2   // weeks run Monday to Sunday
+        let start = cal.dateInterval(of: .weekOfYear, for: e.date)?.start ?? cal.startOfDay(for: e.date)
+        let dates = (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
+        let todayKey = Fmt.ymd.string(from: e.date)
+        return VStack(alignment: .leading, spacing: large ? 10 : 6) {
+            HStack(alignment: .center) {
+                Text(Fmt.month.string(from: e.date))
+                    .font(.system(size: large ? 19 : 16, weight: .bold))
+                    .foregroundColor(p.ink)
+                    .lineLimit(1)
+                Spacer(minLength: 8)
+                AddButton(p: p)
+            }
+            HStack(alignment: .top, spacing: 3) {
+                ForEach(0..<dates.count, id: \.self) { i in
+                    let key = Fmt.ymd.string(from: dates[i])
+                    WeekDayColumn(day: e.data?.wk?.first(where: { $0.d == key }), date: dates[i],
+                                  isToday: key == todayKey, p: p, maxPills: large ? 11 : 4)
+                }
+            }
+            .frame(maxHeight: .infinity, alignment: .top)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+struct WeekEntryView: View {
+    let e: DayEntry
+    @Environment(\.widgetFamily) var family
+    @Environment(\.colorScheme) var scheme
+    var body: some View {
+        let t = e.data?.theme ?? Store.defaultTheme
+        let p = palette(t, scheme: scheme)
+        let dark = t.mode == "dark" || (t.mode != "light" && scheme == .dark)
+        Group {
+            if e.data == nil {
+                NoData(p: p)
+            } else {
+                WeekView(e: e, p: p, large: family == .systemLarge || family == .systemExtraLarge)
+            }
+        }
+        .modifier(WidgetBg(p: p, accessory: false, dark: dark))
+        .widgetURL(weekURL)
+    }
+}
+
+struct WeekWidget: Widget {
+    let kind = "MumBrainWeek"
+
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: Provider()) { entry in
+            WeekEntryView(e: entry)
+        }
+        .configurationDisplayName("Week")
+        .description("Your week at a glance, Monday to Sunday: events and jobs for each day. Tap to open Week.")
+        .supportedFamilies([.systemMedium, .systemLarge])
+    }
+}
+
 @main
 struct AppWidgets: WidgetBundle {
     var body: some Widget {
         TodayWidget()
         TodaySimpleWidget()
+        WeekWidget()
     }
 }
