@@ -1075,14 +1075,14 @@ struct WeekPill: View {
         RoundedRectangle(cornerRadius: 3.5)
             .fill(ev ? c : c.opacity(p.dark ? 0.32 : 0.16))
             .frame(maxWidth: .infinity)
-            .frame(height: 15)
+            .frame(height: 13.5)
             .overlay(
                 Text(pill.t)
-                    .font(.system(size: 10.5, weight: .semibold))
+                    .font(.system(size: 9.5, weight: .semibold))
                     .foregroundColor(ev ? (lightHex(pill.c) ? Color(hex: "#23201C") : .white) : p.ink)
                     .lineLimit(1)
                     .fixedSize()
-                    .padding(.leading, 3),
+                    .padding(.leading, 2.5),
                 alignment: .leading
             )
             .clipped()
@@ -1105,18 +1105,18 @@ struct WeekDayColumn: View {
         let total = all.count
         let fits = total > maxPills ? maxPills - 1 : maxPills
         let shown = Array(all.prefix(fits))
-        VStack(spacing: 2.5) {
+        VStack(spacing: 2) {
             Text(Fmt.weekday.string(from: date).prefix(3).uppercased())
-                .font(.system(size: 9.5, weight: .medium))
+                .font(.system(size: 8.5, weight: .medium))
                 .foregroundColor(p.muted)
                 .lineLimit(1)
             ZStack {
                 if isToday { Circle().fill(p.accent) }
                 Text("\(Calendar.current.component(.day, from: date))")
-                    .font(.system(size: 14, weight: .medium))
+                    .font(.system(size: 12.5, weight: .medium))
                     .foregroundColor(isToday ? .white : p.ink)
             }
-            .frame(width: 23, height: 23)
+            .frame(width: 20, height: 20)
             .padding(.bottom, 1)
             ForEach(0..<shown.count, id: \.self) { i in
                 WeekPill(pill: shown[i].0, ev: shown[i].1, p: p)
