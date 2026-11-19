@@ -1109,7 +1109,7 @@ struct WeekDayColumn: View {
                     .padding(.leading, 3)
             }
         }
-        .frame(minWidth: 0, maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .frame(minWidth: 0, maxWidth: .infinity, alignment: .top) // only as tall as its events (v1.35.3)
     }
 }
 
@@ -1181,11 +1181,18 @@ struct WeekBody: View {
                 .padding(.bottom, large ? 6 : 4)
             WeekCalendar(e: e, p: p, maxPills: large ? 5 : 3)
             if large {
-                Rectangle().fill(p.line).frame(height: 0.5).padding(.top, 10)
-                Text("Today")
-                    .font(F.body(11))
-                    .foregroundColor(p.muted)
-                    .padding(.top, 8)
+                // today's list follows straight on from the calendar; any spare room goes above the wash
+                Rectangle().fill(p.line).frame(height: 0.5).padding(.top, 12)
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text("Today")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(p.ink)
+                    Text(e.spokenDate)
+                        .font(F.body(12))
+                        .foregroundColor(p.muted)
+                        .lineLimit(1)
+                }
+                .padding(.top, 10)
                 Group {
                     if e.open.isEmpty {
                         Message(e: e, p: p, size: 14, centred: false)
@@ -1193,12 +1200,16 @@ struct WeekBody: View {
                         JobList(e: e, p: p, limit: limit, size: 13, spacing: 7)
                     }
                 }
-                .padding(.top, 6)
+                .padding(.top, 8)
             }
             Spacer(minLength: 4)
             BottomLine(p: p, style: .wash, leftWidth: large ? 122 : 0) {
+                // just the words on the wash (the bar didn't sit well on it)
                 if e.total > 0 {
-                    ProgressLine(e: e, p: p)
+                    Text(e.doneCount == 0 ? (e.total == 1 ? "1 job today" : "\(e.total) jobs today") : "\(e.doneCount) of \(e.total) done")
+                        .font(F.body(11))
+                        .foregroundColor(p.muted)
+                        .lineLimit(1)
                 }
             } mid: {
                 if !large {
