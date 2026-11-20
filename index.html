@@ -172,6 +172,10 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .rep-hint.bk-last{margin-top:10px;color:var(--ink)}
 .rep-hint.bk-last.due{color:var(--warn)}
 .bk-last+.rep-hint{margin-top:4px}
+/* v1.36.5: the two backup options as numbered headings that match, with the same status line + grey note under each */
+.bk-h{display:block;font-size:15px;font-weight:600;color:var(--ink);margin:18px 0 8px}
+.bk-h.bk-two{margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+.bk-sub{display:block;font-size:13.5px;font-weight:500;color:var(--muted);margin:16px 0 6px}
 .star{flex:none;width:32px;height:32px;margin:-4px -2px -4px 0;display:grid;place-items:center;color:var(--line)}
 .star.on{color:var(--star)}
 /* v1.29.0: a job that isn't important shows a thin outline star (still one tap to mark it), not a grey filled one */
@@ -1138,15 +1142,16 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     </div>
     <div class="field"><span class="lbl">Backup</span>
       <div id="icb-box" hidden>
-        <span class="lbl lbl-sub" style="margin-top:0">iCloud backup</span>
+        <span class="bk-h" style="margin-top:0">1. iCloud backup</span>
         <div class="row" style="flex-wrap:nowrap"><div class="seg" id="s-icb" style="grid-template-columns:repeat(2,1fr);flex:1"><button data-icb="on">On</button><button data-icb="off">Off</button></div><button class="opt" id="icb-restore" hidden>Restore from iCloud</button></div>
+        <div class="rep-hint bk-last" id="icb-last" hidden></div>
         <div class="rep-hint" id="icb-hint"></div>
-        <span class="lbl lbl-sub">Backup file</span>
+        <span class="bk-h bk-two">2. Backup file</span>
       </div>
       <div class="row"><button class="opt" id="bk-save">Save a backup</button><label class="opt" style="display:inline-flex;align-items:center;cursor:pointer">Restore a backup<input type="file" id="bk-load" accept=".json,application/json" hidden></label></div>
       <div class="rep-hint bk-last" id="bk-last"></div>
       <div class="rep-hint" id="bk-hint">Your jobs are saved on this device. A backup file keeps them safe. On iPhone, choose Save to Files when the share sheet opens.</div>
-      <span class="lbl lbl-sub">Park it worries in the backup file</span>
+      <span class="bk-sub">Park it worries in the backup file</span>
       <div class="seg" id="s-bkpark" style="grid-template-columns:repeat(2,1fr)"><button data-bkpark="on">Include</button><button data-bkpark="off">Leave out</button></div>
       <div class="rep-hint" id="bk-park-hint"></div>
       <div class="bk-confirm" id="bk-confirm" hidden></div>
@@ -2531,7 +2536,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.36.4';
+const APPV='1.36.5';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -4472,7 +4477,8 @@ async function icbRestore(slot){
 function paintIcb(){
   const box=document.getElementById('icb-box');if(!box)return;
   box.hidden=!ICB;if(!ICB)return;
-  const on=icbOn(),info=icbInfo(),hint=document.getElementById('icb-hint');
+  const on=icbOn(),info=icbInfo(),hint=document.getElementById('icb-hint'),last=document.getElementById('icb-last');
+  last.hidden=true; // v1.36.5: "Last saved" sits on its own line, like "Last backup file"
   document.querySelectorAll('[data-icb]').forEach(b=>b.classList.toggle('on',b.dataset.icb===(on?'on':'off')));
   document.getElementById('icb-restore').hidden=!icb.all.length;
   const leftOut=' Your family\'s shared list and Park it worries aren\'t included.';
@@ -4480,7 +4486,8 @@ function paintIcb(){
   if(!on)hint.textContent='Off. Your jobs are only on this phone, so save a backup file now and then.';
   else if(icb.avail===false||(info&&info.err==='noaccount')){hint.classList.add('due');hint.textContent='iCloud isn\'t switched on for this phone. Sign in to iCloud in your phone\'s Settings and the backup will start automatically.';}
   else if(info&&info.err==='toobig'){hint.classList.add('due');hint.textContent='Your list is too big for iCloud backup. Save a backup file instead.';}
-  else if(info&&info.ok)hint.innerHTML='<b>Last saved to your iCloud:</b> '+esc(fmtStamp(info.at))+' · '+info.n+' job'+(info.n===1?'':'s')+'. It updates automatically, and only you can see it.'+leftOut;
+  else if(info&&info.ok){last.hidden=false;last.innerHTML='<b>Last saved to your iCloud:</b> '+esc(fmtStamp(info.at))+' · '+info.n+' job'+(info.n===1?'':'s');
+    hint.textContent='It updates automatically, and only you can see it.'+leftOut;}
   else hint.textContent='Your jobs are saved to your own iCloud automatically, a few seconds after anything changes. Only you can see it.'+leftOut;
 }
 if(ICB){

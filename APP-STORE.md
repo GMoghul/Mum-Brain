@@ -139,6 +139,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.36.2: Week widget month name one point bigger (16 medium, 19 large).
    - v1.36.3: Week widget month name in a true bold italic serif (New York, 17 medium / 20 large) with the brain mark a touch taller (19 / 21), matching the agreed mockup's proportions.
    - v1.36.4: widget greeting and the Week widget's month share one font: Newsreader Italic at medium weight (Fonts/Newsreader-MediumItalic.ttf, a static instance of Google's variable Newsreader at opsz 16, wght 500, OFL), same size on the medium Today and Week widgets.
+   - v1.36.5: Settings › Backup shows the two options as matching numbered headings ("1. iCloud backup", "2. Backup file", with a thin line between), each with a dark "Last saved" line then a grey note; the Park it choice has a lighter sub-label under option 2.
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
