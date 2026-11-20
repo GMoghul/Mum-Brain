@@ -986,8 +986,6 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="swatches" id="f-colors"></div>
       <button class="more" id="more-btn" aria-expanded="false">More colours</button>
       <div class="swatches more-grid" id="f-more" hidden></div>
-      <div class="newlist" id="cname-w" hidden><input class="f-date" id="cname-in" maxlength="20" placeholder="Name this colour, e.g. Work" autocomplete="off" enterkeyhint="done" aria-label="Name for this colour"></div>
-      <div class="rep-hint" id="cname-hint" hidden>Give a colour a name once and every event in that colour shows it.</div>
     </div>
 
     <div class="field" id="f-starf">
@@ -2514,7 +2512,7 @@ function evRow(t,o){
   if(e&&s){const n=Math.round((parse(s)-parse(t.date))/864e5)+1,tot=Math.round((parse(e)-parse(t.date))/864e5)+1;chips+=`<span class="chip"><span class="ct">Day ${n} of ${tot}</span></span>`;}
   if(hasAlarm(t))chips+=`<span class="chip c-alarm" title="${ALARMS[t.alarm]||''}">${I.bell}<span class="ct">${t.alarm==='0'?'Reminder':esc((ALARMS[t.alarm]||'').replace(' before',''))}</span></span>`;
   if(isRep(t))chips+=`<span class="chip c-ico" title="${esc(repLabel(t))}">${I.rep}<span class="ct">${esc(repLabel(t))}</span></span>`;
-  const cn=colName(t.color);if(cn)chips+=`<span class="chip c-proj" style="--pc:${c}"><i class="pdot"></i><span class="ct">${esc(cn)}</span></span>`;
+  const cn=t.grp||'';if(cn)chips+=`<span class="chip c-proj" style="--pc:${c}"><i class="pdot"></i><span class="ct">${esc(cn)}</span></span>`;
   if(t.list===SHARED&&(!ui.filter||ui.filter===STAR))chips+=`<span class="chip c-list">${I.people}<span class="ct">${esc(listName(SHARED))}</span></span>`;
   const past=isRep(t)?(s&&s<t0):evLast(t)<t0;
   return `<li class="task ev${past?' past':''}" data-open="${t.id}"><span class="evbar" style="--c:${c}" aria-hidden="true"></span>
@@ -2655,7 +2653,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.37.0';
+const APPV='1.37.1';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3377,13 +3375,11 @@ moreBtn.addEventListener('click',()=>setMore(fMore.hidden));
 document.getElementById('f-custom').addEventListener('input',e=>{draft.color=e.target.value.toUpperCase();paint();});
 fTime.addEventListener('change',()=>{draft.time=fTime.value||null;if(!draft.time){draft.alarm='none';draft.etime=null;}paint();});
 /* events: the Event switch, an end date for multi-day ones, a finish time, and a name for the colour */
-const fEv=document.getElementById('f-ev'),fEnd=document.getElementById('f-end'),fEtime=document.getElementById('f-etime'),cnIn=document.getElementById('cname-in');
-let cnEdit=null;
+const fEv=document.getElementById('f-ev'),fEnd=document.getElementById('f-end'),fEtime=document.getElementById('f-etime');
+let cnEdit=null; // v1.37.1: colour names replaced by event groups (old names are left in prefs, unused)
 fEv.addEventListener('click',()=>{draft.ev=!draft.ev;if(draft.ev){if(!draft.date)draft.date=today();draft.proj=null;}else{draft.end=null;draft.etime=null;}paint();});
 fEnd.addEventListener('change',()=>{draft.end=fEnd.value&&draft.date&&fEnd.value>draft.date?fEnd.value:null;paint();});
 fEtime.addEventListener('change',()=>{draft.etime=fEtime.value||null;paint();});
-cnIn.addEventListener('input',()=>{cnEdit={k:draft.color,v:cnIn.value.trim()};});
-cnIn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();cnIn.blur();}});
 function paintEvent(){
   const on=evOn(),ev=on&&!!draft.ev;
   document.getElementById('f-evf').hidden=!on||!!draft.shop;
@@ -3403,8 +3399,6 @@ function paintEvent(){
   document.getElementById('alarm-lbl').textContent=ev?'Reminder':'Alarm';
   document.getElementById('f-starf').hidden=ev;
   document.getElementById('f-clf').hidden=ev&&!(draft.checklist&&draft.checklist.length);
-  document.getElementById('cname-w').hidden=!ev;document.getElementById('cname-hint').hidden=!ev;
-  if(ev&&document.activeElement!==cnIn)cnIn.value=cnEdit&&cnEdit.k===draft.color?cnEdit.v:colName(draft.color);
   paintGroups();
 }
 /* v1.37.0: an event can go in a group (optional, just a name) */
@@ -3538,7 +3532,6 @@ function commit(){
     draft.etime=draft.time?(fEtime.value||null):null;
     if(draft.etime&&!draft.end&&draft.etime<=draft.time)draft.etime=null; // a finish time before it starts is dropped
     draft.proj=null;draft.due=null;draft.starred=false;
-    if(cnEdit){state.prefs.cnames=state.prefs.cnames||{};if(cnEdit.v)state.prefs.cnames[cnEdit.k]=cnEdit.v;else delete state.prefs.cnames[cnEdit.k];}
   }
   if(!(evOn()&&draft.ev))delete draft.grp;else if(grpIn.value.trim()&&!document.getElementById('grp-add').hidden){const g=addGroup(grpIn.value);if(g)draft.grp=g;}
   if(nl){const id=draft.id;setTimeout(()=>snack('Added for '+whenLabel(nl.date,nl.time),()=>{const x=find(id);if(!x)return;x.title=typed;x.date=isRep(x)?today():null;x.time=null;x.alarm='none';save();render();}),50);}
