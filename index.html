@@ -599,6 +599,25 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .evb.st{margin-right:-3px;border-radius:2px 0 0 2px}
 .evb.mid{margin:0 -3px;border-radius:0}
 .evb.en{margin-left:-3px;border-radius:0 2px 2px 0}
+/* v1.37.0 Events calendar: the Month tab's second view (calendar button at the top), events only, TimeTree-style */
+#mvbtn.on{background:var(--primary);color:#fff}
+#s-grpw .lbl{display:block;font-size:14px;font-weight:600;color:var(--muted);margin-bottom:8px}
+.ecal{padding:8px 6px 6px}
+.ecal .calnav{padding:0 4px}
+.ecal .wk{padding:0 0 2px}
+.ewk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:26px repeat(4,17px);row-gap:2px;padding-bottom:5px;border-top:1px solid var(--line)}
+.ecell{grid-row:1/-1;display:flex;justify-content:center;align-items:flex-start;padding-top:3px;border-radius:10px;font-size:13.5px;font-weight:500;color:var(--ink);min-width:0}
+.ecell .n{width:22px;height:22px;display:grid;place-items:center;border-radius:50%}
+.ecell.out{color:color-mix(in srgb,var(--muted) 60%,transparent)}
+.ecell.today .n{color:var(--accent);font-weight:700}
+.ecell.sel{background:color-mix(in srgb,var(--accent) 10%,transparent)}
+.ecell.sel .n{background:var(--accent);color:#fff;font-weight:600}
+.ech{z-index:1;pointer-events:none;align-self:center;min-width:0;height:16px;margin:0 2px;padding:0 4px;border-radius:4px;background:var(--c);color:var(--ci);font-size:10.5px;font-weight:600;line-height:16px;white-space:nowrap;overflow:hidden}
+.ech.cl{margin-left:0;border-top-left-radius:0;border-bottom-left-radius:0}
+.ech.cr{margin-right:0;border-top-right-radius:0;border-bottom-right-radius:0}
+.ech.cl:not(.st){padding-left:3px}
+.ech.past,.ech.out{opacity:.5}
+.emore{z-index:1;pointer-events:none;align-self:center;text-align:center;font-size:10.5px;font-weight:700;color:var(--muted);line-height:16px}
 .evtog{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;text-align:left;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--accent) 7%,var(--solid));color:var(--ink)}
 .evtog b{display:block;font-size:15.5px;font-weight:600}
 .evtog small{display:block;font-size:13px;color:var(--muted);margin-top:2px;line-height:1.35}
@@ -818,7 +837,9 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
   </svg>
 </div>
 <main>
-  <div class="topbar"><button class="iconbtn" id="searchbtn" aria-label="Search">
+  <div class="topbar"><button class="iconbtn" id="mvbtn" aria-label="Events calendar" aria-pressed="false" hidden>
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="16" rx="3"/><path d="M3.5 9.5h17"/><path d="M7 13.5h6M10 17h7" stroke-width="2.6"/></svg>
+  </button><button class="iconbtn" id="searchbtn" aria-label="Search">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
   </button><button class="iconbtn" id="calbtn" aria-label="Open calendar">
     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>
@@ -928,6 +949,13 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <span class="lbl">List</span>
       <div class="row" id="f-lists"></div>
       <div class="newlist" id="newlist" hidden><input class="f-date" id="nl-in" placeholder="New list name" autocomplete="off" enterkeyhint="done" aria-label="New list name"><button class="opt on" id="nl-add">Add list</button></div>
+    </div>
+
+    <div class="field" id="f-grpf" hidden>
+      <span class="lbl">Group</span>
+      <div class="row" id="f-grps"></div>
+      <div class="newlist" id="grp-add" hidden><input class="f-date" id="grp-in" maxlength="20" placeholder="Group name" autocomplete="off" enterkeyhint="done" aria-label="Group name"><button class="opt on" id="grp-ok">Add</button></div>
+      <div class="rep-hint">Optional. Each group gets its own tag on the Events calendar, so you can see just those.</div>
     </div>
 
     <div id="f-sharef" hidden>
@@ -1101,6 +1129,12 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="field"><span class="lbl">Events</span>
       <div class="seg" id="s-ev" style="grid-template-columns:repeat(2,1fr)"><button data-evon="on">On</button><button data-evon="off">Off</button></div>
       <div class="rep-hint">Adds an Event switch to the job screen, for things at a set time like appointments, work or holidays. Events sit at the top of Today, Week and Month, with your jobs underneath, and there's nothing to tick off. Switch it off any time and your events go back to being ordinary jobs.</div>
+      <div id="s-grpw" hidden>
+        <span class="lbl" style="margin-top:16px">Event groups</span>
+        <div id="s-grps"></div>
+        <div class="newlist"><input class="f-date" id="sg-in" maxlength="20" placeholder="New group name" autocomplete="off" enterkeyhint="done" aria-label="New group name"><button class="opt on" id="sg-add">Add group</button></div>
+        <div class="rep-hint">Groups are optional and just a name, with no colour needed. They show as tags on the Events calendar (Month tab, calendar button at the top). Groups on shared events show for your family too. Deleting a group keeps its events.</div>
+      </div>
     </div>
     <div class="field"><span class="lbl">Lists</span>
       <div id="s-lists"></div>
@@ -1218,6 +1252,7 @@ const BRAND={
   egJob:'Book dentist',                // New job box example
   egQuick:'Dentist Fri 3pm',           // Quick-add box example
   egEvent:'Swimming lesson',           // New event box example (v1.34.0 events)
+  egGroup:'Kids',                      // New event group example (v1.37.0 Events calendar)
   egProject:'Camping trip',            // New project name example
   egProjects:'a camping trip, moving house or baby prep', // empty Projects screen
   shop:{eg:'milk, 2 bread',     // Shopping list add box example
@@ -1495,7 +1530,7 @@ applyPrefs();paintWash();
 
 let ui={filter:null,searching:false,q:'',week:null,tab:'today',day:today(),month:null,mpick:false,pickYear:null,sel:today(),showDone:false,refocus:false};
 const startTab=()=>{const v=state.prefs&&state.prefs.start;return v==='today'||v==='week'||v==='month'?v:'dump';};
-ui.tab=startTab();ui.showSched=true;ui.showRep=true;try{ui.showSched=localStorage.getItem(KEY+'-sched')!=='hide';ui.showRep=localStorage.getItem(KEY+'-rep')!=='hide';}catch(e){} // opens on Brain dump by default (somewhere to put the thought straight away), or the tab chosen in Settings › General
+ui.tab=startTab();ui.showSched=true;ui.showRep=true;ui.mview='plan';try{ui.mview=localStorage.getItem(KEY+'-mview')==='cal'?'cal':'plan';ui.showSched=localStorage.getItem(KEY+'-sched')!=='hide';ui.showRep=localStorage.getItem(KEY+'-rep')!=='hide';}catch(e){} // opens on Brain dump by default (somewhere to put the thought straight away), or the tab chosen in Settings › General
 // the app always opens on Brain dump › All (the list tag chosen last time isn't brought back)
 /* coming back after 10+ minutes away also returns to Brain dump › All, unless a job sheet is open */
 {let hid=0;document.addEventListener('visibilitychange',()=>{if(document.hidden){hid=Date.now();return;}
@@ -2498,6 +2533,90 @@ function evSection(s,title){
 }
 const evFilter=()=>evOn()&&state.tasks.some(t=>isEv(t)&&t.list===SHARED)&&(!ui.filter)
   ?`<div class="evf seg seg3" role="group" aria-label="Which events to show">${[['all','All'],['mine','Mine'],['shared','Shared']].map(([k,n])=>`<button class="${(ui.evf||'all')===k?'on':''}" data-act="evf" data-evf="${k}">${n}</button>`).join('')}</div>`:'';
+/* v1.37.0 Events calendar: the Month tab's second view. Planner = jobs only, Events = events only.
+   The choice is kept per phone (not in backups). */
+const calMode=()=>evOn()&&ui.mview==='cal';
+/* groups: optional names on events (t.grp), no colour. The list is the ones made in Settings or the job
+   sheet plus any found on events, so groups on shared events show for the whole family. */
+const grpKey=n=>(n||'').trim().toLowerCase();
+function evGroups(){
+  const m=new Map(),add=n=>{const k=grpKey(n);if(k&&!m.has(k))m.set(k,n.trim());};
+  (state.prefs.evgroups||[]).forEach(add);
+  state.tasks.filter(t=>t.ev&&t.grp&&!archivedJob(t)).map(t=>t.grp).sort((a,b)=>a.localeCompare(b)).forEach(add);
+  return [...m.values()];
+}
+function addGroup(v){
+  v=(v||'').trim().slice(0,20);if(!v)return null;
+  const have=evGroups().find(n=>grpKey(n)===grpKey(v));if(have)return have;
+  state.prefs.evgroups=(state.prefs.evgroups||[]).concat(v);save();return v;
+}
+function delGroup(name){
+  const k=grpKey(name);
+  state.prefs.evgroups=(state.prefs.evgroups||[]).filter(n=>grpKey(n)!==k);
+  state.tasks.forEach(t=>{if(t.grp&&grpKey(t.grp)===k)delete t.grp;}); // the events stay, just without the group
+  if(ui.evc==='g:'+k)ui.evc=null;
+  save();
+}
+const evCalShow=t=>{const f=ui.evc;if(!f)return true;if(f==='mine')return t.list!==SHARED;if(f==='shared')return t.list===SHARED;return !!t.grp&&('g:'+grpKey(t.grp))===f;};
+function evCalBar(){
+  const G=evGroups(),sh=SHARING||state.tasks.some(t=>isEv(t)&&t.list===SHARED);
+  if(ui.evc&&ui.evc.startsWith('g:')&&!G.some(n=>'g:'+grpKey(n)===ui.evc))ui.evc=null;
+  if(!sh&&(ui.evc==='mine'||ui.evc==='shared'))ui.evc=null;
+  const all=[[null,'All']].concat(sh?[['mine','Mine'],['shared','Shared']]:[]).concat(G.map(n=>['g:'+grpKey(n),n]));
+  return `<div class="filters" role="tablist" aria-label="Which events to show">${all.map(([k,n])=>`<button class="fchip${(ui.evc||null)===k?' on':''}" data-act="evc" data-evc="${k?esc(k):''}">${k==='shared'?I.people:''}${esc(n)}</button>`).join('')}</div>`;
+}
+const inkOn=c=>{let h=(c||'').replace('#','');if(h.length===3)h=h.split('').map(x=>x+x).join('');const n=parseInt(h,16);if(isNaN(n))return'#fff';
+  const r=n>>16&255,g=n>>8&255,b=n&255;return (0.299*r+0.587*g+0.114*b)>165?'#2a2a2a':'#fff';};
+function evCalWeeks(y,m){
+  const MAXL=4,t0=today(),first=new Date(y,m,1),last=new Date(y,m,dim(y,m));
+  let d0=addDays(ymd(first),-((first.getDay()+6)%7));const end=addDays(ymd(last),(7-last.getDay())%7);
+  const cand=state.tasks.filter(t=>isEv(t)&&!archivedJob(t)&&evCalShow(t));
+  const order=(a,b)=>((a.time?1:0)-(b.time?1:0))||(a.time||'').localeCompare(b.time||'')||ko(a)-ko(b);
+  let out='';
+  for(;d0<=end;d0=addDays(d0,7)){
+    const days=[...Array(7)].map((_,i)=>addDays(d0,i));
+    const on=days.map(s=>cand.filter(t=>occurs(t,s)));
+    // multi-day events as one bar across the week, then single-day ones underneath
+    const items=[],multi={};
+    on.forEach((L,c)=>L.forEach(t=>{if(evEnd(t)){if(multi[t.id])multi[t.id].e=c;else items.push(multi[t.id]={t,s:c,e:c});}}));
+    items.sort((a,b)=>a.s-b.s||(b.e-b.s)-(a.e-a.s)||order(a.t,b.t));
+    on.forEach((L,c)=>L.filter(t=>!evEnd(t)).sort(order).forEach(t=>items.push({t,s:c,e:c})));
+    const occ=[];
+    for(const it of items){let l=0;for(;;l++){occ[l]=occ[l]||[];let free=true;for(let c=it.s;c<=it.e;c++)if(occ[l][c]){free=false;break;}if(free)break;}
+      for(let c=it.s;c<=it.e;c++)occ[l][c]=1;it.l=l;}
+    const total=days.map((_,c)=>items.filter(it=>c>=it.s&&c<=it.e).length);
+    const tail=days.map((_,c)=>items.filter(it=>c>=it.s&&c<=it.e&&it.l>=MAXL-1).length);
+    const shown=(it,c)=>it.l<MAXL-1||(it.l===MAXL-1&&tail[c]===1);
+    const hidden=days.map((_,c)=>total[c]-items.filter(it=>c>=it.s&&c<=it.e&&shown(it,c)).length);
+    let h='';
+    days.forEach((s,c)=>{const dd=parse(s),out=dd.getMonth()!==m;
+      const L=on[c],lab=L.length?', '+L.length+(L.length===1?' event':' events'):'';
+      h+=`<button class="ecell${s===t0?' today':''}${s===ui.sel?' sel':''}${out?' out':''}" style="grid-column:${c+1}" data-act="evpick" data-date="${s}" aria-label="${dayLabel(s)}${lab}"><span class="n">${dd.getDate()}</span></button>`;});
+    for(const it of items){
+      let c=it.s;
+      while(c<=it.e){
+        if(!shown(it,c)){c++;continue;}
+        let e=c;while(e+1<=it.e&&shown(it,e+1))e++;
+        const t=it.t,col=hex(t.color),ee=evEnd(t),a=days[c],b=days[e];
+        const st=!ee||a===t.date,en=!ee||b===ee,past=(ee||b)<t0,out=parse(a).getMonth()!==m&&parse(b).getMonth()!==m;
+        h+=`<div class="ech${st?' st':' cl'}${en?'':' cr'}${past?' past':''}${out?' out':''}" style="grid-column:${c+1}/span ${e-c+1};grid-row:${it.l+2};--c:${col};--ci:${inkOn(col)}" aria-hidden="true">${esc(t.title)}</div>`;
+        c=e+1;
+      }
+    }
+    days.forEach((_,c)=>{if(hidden[c]>0)h+=`<div class="emore" style="grid-column:${c+1};grid-row:${MAXL+1}" aria-hidden="true">+${hidden[c]}</div>`;});
+    out+=`<div class="ewk">${h}</div>`;
+  }
+  return out;
+}
+function renderEvCal(head,y,m){
+  const sd=parse(ui.sel),title=`${DAYS[sd.getDay()]} ${sd.getDate()} ${MONTHS[sd.getMonth()]}`;
+  const L=state.tasks.filter(t=>isEv(t)&&!archivedJob(t)&&evCalShow(t)&&occurs(t,ui.sel))
+    .sort((a,b)=>((evEnd(b)?1:0)-(evEnd(a)?1:0))||((a.time?1:0)-(b.time?1:0))||(a.time||'').localeCompare(b.time||'')||ko(a)-ko(b));
+  let h=head+evCalBar()+`<div class="cal ecal"${ui.mpick?' hidden':''}><div class="calnav"><button class="navbtn" data-act="prev" aria-label="Previous month">${I.left}</button>${(y===new Date().getFullYear()&&m===new Date().getMonth())?'':'<button class="pill sm" data-act="thismonth">This month</button>'}<button class="navbtn" data-act="next" aria-label="Next month">${I.right}</button></div><div class="wk">${['M','T','W','T','F','S','S'].map(x=>`<div>${x}</div>`).join('')}</div>${evCalWeeks(y,m)}</div>`;
+  const od=`<button class="open-day" data-act="openday">Open day</button>`;
+  h+=`<section class="sec evsec" id="evday"><div class="sec-h"><h2>${title}</h2>${od}</div>`+(L.length?`<ul class="list">${L.map(t=>evRow(t,{ctx:ui.sel})).join('')}</ul>`:`<div class="empty">No events on this day. Tap + to add one.</div>`)+`</section>`;
+  view.innerHTML=h;
+}
 function row(t,o){
   if(isEv(t))return evRow(t,o);
   const c=hex(t.color),ctx=o.ctx||null;
@@ -2536,7 +2655,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.36.5';
+const APPV='1.37.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3158,27 +3277,25 @@ function renderMonth(){
   for(let i=0;i<off;i++)cells+='<div></div>';
   for(let dd=1;dd<=days;dd++){
     const s=ymd(new Date(y,m,dd));
-    const on=state.tasks.filter(t=>vis(t)&&!isEv(t)&&occurs(t,s)).sort(byStar),ev=dayEvents(s);
+    const on=state.tasks.filter(t=>vis(t)&&!isEv(t)&&occurs(t,s)).sort(byStar);
     const dots=on.slice(0,4).map(t=>`<i style="--c:${hex(t.color)}" class="${isDone(t,s)?'d':''}"></i>`).join('');
-    // events as short bars (joined up across the days of a multi-day one), jobs as dots underneath
-    // v1.35.5: one thin line however many events (the first one's colour; multi-day ones come first, so they join up)
-    const bars=ev.slice(0,1).map(t=>{const e=evEnd(t),k=e?(s===t.date?' st':s===e?' en':' mid'):'';return `<i class="evb${k}" style="--c:${hex(t.color)}"></i>`;}).join('');
-    const lab=[ev.length?ev.length+(ev.length===1?' event':' events'):'',on.length?on.length+(on.length===1?' job':' jobs'):''].filter(Boolean).join(', ');
-    cells+=`<button class="cell${s===t0?' today':''}${s===ui.sel?' sel':''}${s<t0?' past':''}${evOn()?' hasev':''}" data-act="pick" data-date="${s}" aria-label="${dayLabel(s)}${lab?', '+lab:''}"><span class="n">${dd}</span>${evOn()?`<span class="evbs">${bars}</span>`:''}<span class="dots">${dots}</span></button>`;
+    // v1.37.0: the planner is jobs only (dots); events have their own calendar (button at the top)
+    const lab=on.length?on.length+(on.length===1?' job':' jobs'):'';
+    cells+=`<button class="cell${s===t0?' today':''}${s===ui.sel?' sel':''}${s<t0?' past':''}" data-act="pick" data-date="${s}" aria-label="${dayLabel(s)}${lab?', '+lab:''}"><span class="n">${dd}</span><span class="dots">${dots}</span></button>`;
   }
   const sd=parse(ui.sel);
   const list=state.tasks.filter(t=>vis(t)&&!isEv(t)&&occurs(t,ui.sel)).sort((a,b)=>(isDone(a,ui.sel)-isDone(b,ui.sel))||byTime(a,b));
-  const evL=dayEvents(ui.sel);
   const chev='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
-  let h=`<header class="mhead"><h1><button class="mtitle" data-act="mpick" aria-expanded="${ui.mpick}">${MONTHS[m]} <span>${y}</span>${chev}</button></h1>
+  const head=`<header class="mhead"><h1><button class="mtitle" data-act="mpick" aria-expanded="${ui.mpick}">${MONTHS[m]} <span>${y}</span>${chev}</button></h1>
 </header>
-  ${ui.mpick?picker(y,m):''}
-  ${filterBar()}${evFilter()}
+  ${ui.mpick?picker(y,m):''}`;
+  if(calMode())return renderEvCal(head,y,m);
+  let h=head+`
+  ${filterBar()}
   <div class="cal"${ui.mpick?' hidden':''}><div class="calnav"><button class="navbtn" data-act="prev" aria-label="Previous month">${I.left}</button>${(y===new Date().getFullYear()&&m===new Date().getMonth())?'':'<button class="pill sm" data-act="thismonth">This month</button>'}<button class="navbtn" data-act="next" aria-label="Next month">${I.right}</button></div><div class="wk">${['M','T','W','T','F','S','S'].map(x=>`<div>${x}</div>`).join('')}</div><div class="grid">${cells}</div></div>`;
   const title=`${DAYS[sd.getDay()]} ${sd.getDate()} ${MONTHS[sd.getMonth()]}`;
   const od=`<button class="open-day" data-act="openday">Open day</button>`;
-  if(evL.length){h+=`<section class="sec evsec"><div class="sec-h"><h2>${title}</h2>${od}</div><ul class="list">${evL.map(t=>evRow(t,{ctx:ui.sel})).join('')}</ul></section>`;if(list.length)h+=section('Jobs',list,{ctx:ui.sel});}
-  else if(list.length)h+=section(title,list,{ctx:ui.sel},od);
+  if(list.length)h+=section(title,list,{ctx:ui.sel},od);
   else h+=`<section class="sec"><div class="sec-h"><h2>${title}</h2>${od}</div><div class="empty">Nothing on this day. Tap + to add a job to it.</div></section>`;
   view.innerHTML=h;
 }
@@ -3241,6 +3358,7 @@ function render(){
   if(ui.searching){
     if(!document.getElementById('sq'))renderSearch();else searchResults();return;}
   document.getElementById('calbtn').hidden=ui.tab==='month';
+  {const mv=document.getElementById('mvbtn'),c=calMode();mv.hidden=!(ui.tab==='month'&&evOn());mv.classList.toggle('on',c);mv.setAttribute('aria-pressed',String(c));mv.setAttribute('aria-label',c?'Back to the planner':'Events calendar');}
   document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===ui.tab));
   {const db=document.querySelector('.tab[data-tab="dump"]'),n=startTab()!=='dump'&&ui.tab!=='dump'?state.tasks.filter(undatedJob).length:0;db.classList.toggle('hasdot',n>0);db.setAttribute('aria-label',n?`Brain dump, ${n} job${n>1?'s':''} without a day`:'Brain dump');}
   if(ui.tab==='dump')renderDump();else if(ui.tab==='month')renderMonth();else if(ui.tab==='week')renderWeek();else renderToday();
@@ -3287,7 +3405,20 @@ function paintEvent(){
   document.getElementById('f-clf').hidden=ev&&!(draft.checklist&&draft.checklist.length);
   document.getElementById('cname-w').hidden=!ev;document.getElementById('cname-hint').hidden=!ev;
   if(ev&&document.activeElement!==cnIn)cnIn.value=cnEdit&&cnEdit.k===draft.color?cnEdit.v:colName(draft.color);
+  paintGroups();
 }
+/* v1.37.0: an event can go in a group (optional, just a name) */
+const fGrps=document.getElementById('f-grps'),grpIn=document.getElementById('grp-in');
+function paintGroups(){
+  const ev=evOn()&&!!draft.ev;document.getElementById('f-grpf').hidden=!ev;if(!ev)return;
+  const G=evGroups();if(draft.grp&&!G.some(n=>grpKey(n)===grpKey(draft.grp)))G.push(draft.grp);
+  const cur=grpKey(draft.grp);
+  fGrps.innerHTML=`<button class="opt${cur?'':' on'}" data-grp="">None</button>`+G.map(n=>`<button class="opt${grpKey(n)===cur?' on':''}" data-grp="${esc(n)}">${esc(n)}</button>`).join('')+'<button class="opt" data-grpadd="1">+ New group</button>';
+  grpIn.placeholder='Group name, e.g. '+BRAND.egGroup;
+}
+function grpAdd(){const g=addGroup(grpIn.value);if(!g)return;draft.grp=g;grpIn.value='';document.getElementById('grp-add').hidden=true;paintGroups();}
+document.getElementById('grp-ok').addEventListener('click',grpAdd);
+grpIn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();grpAdd();}});
 let draft=null,isNew=false,clTicked=new Set(); // checklist items ticked/unticked on this phone while the sheet is open
 
 function blank(o){return Object.assign({id:newId(),title:'',note:'',checklist:[],list:null,color:'grey',starred:false,date:null,time:null,alarm:'none',repeat:'none',done:false,completions:{},ts:Date.now(),created:today()},o||{});}
@@ -3299,6 +3430,7 @@ function openEditor(id,defaults){
   fDel.style.display=isNew?'none':'';
   const c=draft.color||'';setMore(!!c&&c[0]==='#');newlist.hidden=true;clIn.value='';paintCl();fDel.classList.remove('arm');fDel.textContent='Delete';
   document.getElementById('own-add').hidden=true;document.getElementById('own-in').value='';
+  document.getElementById('grp-add').hidden=true;grpIn.value='';
   const fw=document.getElementById('f-who'),wl=isNew?'':whoLines(t);fw.innerHTML=wl;fw.hidden=!wl;
   paint();
   ed.querySelector('.sheet').scrollTop=0; // always open at the top, not where the last job was left
@@ -3408,6 +3540,7 @@ function commit(){
     draft.proj=null;draft.due=null;draft.starred=false;
     if(cnEdit){state.prefs.cnames=state.prefs.cnames||{};if(cnEdit.v)state.prefs.cnames[cnEdit.k]=cnEdit.v;else delete state.prefs.cnames[cnEdit.k];}
   }
+  if(!(evOn()&&draft.ev))delete draft.grp;else if(grpIn.value.trim()&&!document.getElementById('grp-add').hidden){const g=addGroup(grpIn.value);if(g)draft.grp=g;}
   if(nl){const id=draft.id;setTimeout(()=>snack('Added for '+whenLabel(nl.date,nl.time),()=>{const x=find(id);if(!x)return;x.title=typed;x.date=isRep(x)?today():null;x.time=null;x.alarm='none';save();render();}),50);}
   if(isNew)state.tasks.push(draft);else{const i=state.tasks.findIndex(t=>t.id===draft.id);if(i>=0)state.tasks[i]=draft;}
   save();closeEditor();render();
@@ -3432,6 +3565,9 @@ ed.addEventListener('click',e=>{
   if(e.target.closest('[data-end]')){draft.end=null;paint();return;}
   const db=e.target.closest('[data-due]');
   if(db){draft.due=null;paintShareFields();return;}
+  if(e.target.closest('[data-grpadd]')){const a=document.getElementById('grp-add');a.hidden=!a.hidden;if(!a.hidden)grpIn.focus();return;}
+  const gb=e.target.closest('button[data-grp]');
+  if(gb){const g=gb.dataset.grp;if(g)draft.grp=g;else delete draft.grp;paintGroups();return;}
   if(e.target.closest('[data-ownadd]')){const a=document.getElementById('own-add');a.hidden=!a.hidden;if(!a.hidden)document.getElementById('own-in').focus();return;}
   const ob=e.target.closest('[data-own]');
   if(ob){const d=ob.dataset.own;if(!d){draft.own=null;draft.ownN=null;}
@@ -3515,6 +3651,9 @@ document.getElementById('fab').addEventListener('click',()=>{
   const L=newDefaults();
   if(ui.searching)openEditor(null,{});
   else if(ui.tab==='today')openEditor(null,Object.assign(L,{date:ui.day}));
+  else if(ui.tab==='month'&&calMode()){const f=ui.evc,o={date:ui.sel,ev:true};
+    if(f==='shared'&&SHARING)o.list=SHARED;else if(f&&f.startsWith('g:')){const g=evGroups().find(n=>'g:'+grpKey(n)===f);if(g)o.grp=g;}
+    openEditor(null,o);}
   else if(ui.tab==='month')openEditor(null,Object.assign(L,{date:ui.sel}));
   else if(ui.tab==='week'){const t0=today();openEditor(null,Object.assign(L,{date:(t0>=ui.week&&t0<=addDays(ui.week,6))?t0:ui.week}));}
   else if(ui.filter===PROJ&&!ui.proj)openPSheet('new');
@@ -3548,6 +3687,8 @@ view.addEventListener('click',e=>{
     if(act==='togsched'){ui.showSched=!ui.showSched;try{localStorage.setItem(KEY+'-sched',ui.showSched?'show':'hide');}catch(err){}render();return;}
     if(act==='cleardone'){undoable(n=>`Cleared ${n} finished job${n>1?'s':''}`,()=>{const n0=state.tasks.length;state.tasks=state.tasks.filter(t=>isRep(t)||t.proj||!t.done||!vis(t));return n0-state.tasks.length;});return;}
     if(act==='pick'){ui.sel=a.dataset.date;render();return;}
+    if(act==='evpick'){ui.sel=a.dataset.date;render();const d=document.getElementById('evday');if(d){const r=d.getBoundingClientRect();if(r.top>innerHeight-140)d.scrollIntoView({behavior:'smooth',block:'start'});}return;}
+    if(act==='evc'){ui.evc=a.dataset.evc||null;render();return;}
     if(act==='prev'||act==='next'){shiftMonth(act==='prev'?-1:1);return;}
     if(act==='thismonth'){ui.month=null;ui.sel=today();ui.mpick=false;render();return;}
     if(act==='mpick'){ui.mpick=!ui.mpick;ui.pickYear=ui.month.getFullYear();render();return;}
@@ -3616,6 +3757,10 @@ function shiftMonth(n){ui.mpick=false;if(!ui.month){const x=new Date();ui.month=
   ui.month=new Date(ui.month.getFullYear(),ui.month.getMonth()+n,1);render();anim(n>0?'in-l':'in-r');}
 view.addEventListener('animationend',()=>view.classList.remove('in-l','in-r'));
 document.getElementById('searchbtn').addEventListener('click',()=>{ui.searching=true;window.scrollTo(0,0);view.innerHTML='';render();});
+document.getElementById('mvbtn').addEventListener('click',()=>{
+  ui.mview=calMode()?'plan':'cal';ui.mpick=false;try{localStorage.setItem(KEY+'-mview',ui.mview);}catch(e){}
+  window.scrollTo(0,0);render();
+});
 document.getElementById('calbtn').addEventListener('click',()=>{
   ui.searching=false;ui.sel=ui.tab==='today'?ui.day:today();const d=parse(ui.sel);ui.month=new Date(d.getFullYear(),d.getMonth(),1);
   ui.tab='month';window.scrollTo(0,0);render();
@@ -4161,6 +4306,21 @@ function paintSLists(){
   document.getElementById('s-lists').innerHTML=L.map(([id,n])=>`<div class="lrow${(id===PROJ&&!on)||(id===PARK&&!pk)||(id===SHOP&&!so)?' off':''}" data-lid="${id}">${L.length>1?`<span class="grip" aria-hidden="true">${GRIP}</span>`:''}<span>${esc(n)}${hint[id]?`<small class="lhint">${hint[id]}</small>`:''}</span>${end(id)}</div>`).join('')
     +(SHARING?'':`<div class="lrow off"><span>Shared<small class="lhint">Shows here once you create or join a family in Family sharing. Moving from another phone? Enter the same family code.</small></span><span class="fixed">Built in</span></div>`);
 }
+/* v1.37.0: Settings › General › Events › Event groups */
+function paintSGroups(){
+  const w=document.getElementById('s-grpw');w.hidden=!evOn();if(!evOn())return;
+  const G=evGroups();
+  document.getElementById('s-grps').innerHTML=G.length?G.map(n=>`<div class="lrow"><span>${esc(n)}</span><button data-delgrp="${esc(n)}">Delete</button></div>`).join('')
+    :'<div class="none-note">No groups yet. Add one here or from the event screen.</div>';
+  document.getElementById('sg-in').placeholder='New group name, e.g. '+BRAND.egGroup;
+}
+{const sg=document.getElementById('sg-in'),go=()=>{if(addGroup(sg.value)){sg.value='';paintSGroups();render();}};
+  document.getElementById('sg-add').addEventListener('click',go);
+  sg.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();go();}});
+  document.getElementById('s-grps').addEventListener('click',e=>{
+    const b=e.target.closest('[data-delgrp]');if(!b)return;
+    if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='Tap to confirm';return;}
+    delGroup(b.dataset.delgrp);paintSGroups();render();});}
 const slIn=document.getElementById('sl-in');
 document.getElementById('sl-add').addEventListener('click',()=>{addList(slIn);paintSLists();render();});
 slIn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addList(slIn);paintSLists();render();}});
@@ -4188,7 +4348,7 @@ function paintSettings(){
   document.querySelectorAll('[data-cel]').forEach(b=>b.classList.toggle('on',b.dataset.cel===(P.cel||'rabbit')));
   document.querySelectorAll('[data-nudge]').forEach(b=>b.classList.toggle('on',b.dataset.nudge===(P.nudge||'on')));
   document.querySelectorAll('[data-lite]').forEach(b=>b.classList.toggle('on',b.dataset.lite===(P.lite||'on')));
-  document.querySelectorAll('[data-evon]').forEach(b=>b.classList.toggle('on',b.dataset.evon===(P.evon||'off')));
+  document.querySelectorAll('[data-evon]').forEach(b=>b.classList.toggle('on',b.dataset.evon===(P.evon||'off')));paintSGroups();
   document.querySelectorAll('[data-spc]').forEach(b=>b.classList.toggle('on',b.dataset.spc===(P.sp||'std')));
   document.querySelectorAll('[data-start]').forEach(b=>b.classList.toggle('on',b.dataset.start===startTab()));
   document.querySelectorAll('[data-wkv]').forEach(b=>b.classList.toggle('on',b.dataset.wkv===(P.wkv||'cal')));
@@ -4242,7 +4402,7 @@ st.addEventListener('click',e=>{
   if(b.dataset.wkv){state.prefs.wkv=b.dataset.wkv;ui.week=weekHome();render();}
   if(b.dataset.tidy){state.prefs.tidy=b.dataset.tidy;tidy();render();}
   if(b.dataset.nudge){state.prefs.nudge=b.dataset.nudge;render();}
-  if(b.dataset.evon){state.prefs.evon=b.dataset.evon;if(b.dataset.evon==='off')ui.evf=null;syncNotifs(true);render();} // v1.34.0 events trial (off to start)
+  if(b.dataset.evon){state.prefs.evon=b.dataset.evon;if(b.dataset.evon==='off')ui.evf=null;paintSGroups();syncNotifs(true);render();} // v1.34.0 events trial (off to start)
   if(b.dataset.bkpark)state.prefs.bkPark=b.dataset.bkpark; // v1.36.0: Park it worries can be left out of backup files, for privacy (in to start)
   if(b.dataset.lite){state.prefs.lite=b.dataset.lite;render();} // v1.33.2: the Lighter day button on Today can be switched off (on to start)
   if(b.dataset.morn){state.prefs.morn=b.dataset.morn;syncNotifs(true);}
