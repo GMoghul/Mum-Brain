@@ -226,7 +226,8 @@ enum F {
         }
     }
     static func greet(_ size: CGFloat) -> Font {
-        font == "clean" ? .custom("Fraunces-Italic", size: size) : .custom("Newsreader-Italic", size: size * 1.08)
+        // v1.36.4: the greeting (and the Week widget's month) in Newsreader Italic at medium weight
+        font == "clean" ? .custom("Fraunces-Italic", size: size) : .custom("Newsreader-MediumItalic", size: size * 1.08)
     }
     static func sub(_ size: CGFloat) -> Font { font == "clean" ? .custom("Fraunces-Italic", size: size) : sys(size, .regular) }
     static func body(_ size: CGFloat) -> Font { font == "clean" ? .custom("Figtree-Medium", size: size) : sys(size, .regular) }
@@ -1221,7 +1222,7 @@ struct WeekBody: View {
             // the month about 1.6x the dates, the brain a little taller than the word
             let mark: CGFloat = large ? 21 : 19
             Text(Fmt.month.string(from: e.date))
-                .font(.system(size: large ? 20 : 17, weight: .bold, design: .serif).italic())
+                .font(F.greet(large ? 19 : 17))   // v1.36.4: same font, weight and size as the Today widget's greeting
                 .foregroundColor(p.ink)
                 .lineLimit(1)
                 .overlay(BrainMark(size: mark).offset(x: -(mark + 6)), alignment: .leading)
