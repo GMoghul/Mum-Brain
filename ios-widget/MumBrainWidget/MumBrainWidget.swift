@@ -1090,10 +1090,10 @@ struct WeekPill: View {
         RoundedRectangle(cornerRadius: 3.5)
             .fill(ev ? c : c.opacity(p.dark ? 0.32 : 0.16))
             .frame(maxWidth: .infinity)
-            .frame(height: 12.5)
+            .frame(height: 11.5)
             .overlay(
                 Text(pill.t)
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(.system(size: 8.5, weight: .semibold))
                     .foregroundColor(ev ? (lightHex(pill.c) ? Color(hex: "#23201C") : .white) : p.ink)
                     .lineLimit(1)
                     .fixedSize()
@@ -1118,30 +1118,29 @@ struct WeekDayColumn: View {
         let ev = day?.e ?? []
         let all: [(WPill, Bool)] = ev.map { ($0, true) }
         let total = all.count
-        let fits = total > maxPills ? maxPills - 1 : maxPills
-        let shown = Array(all.prefix(fits))
+        // v1.35.16: always room for maxPills events; any more show as "+N" on a line underneath
+        let shown = Array(all.prefix(maxPills))
         VStack(spacing: 2) {
             Text(Fmt.weekday.string(from: date).prefix(3).uppercased())
-                .font(.system(size: 8.5, weight: .medium))
+                .font(.system(size: 8, weight: .medium))
                 .foregroundColor(p.muted)
                 .lineLimit(1)
             ZStack {
                 if isToday { Circle().fill(p.accent) }
                 Text("\(Calendar.current.component(.day, from: date))")
-                    .font(.system(size: 11.5, weight: .medium))
+                    .font(.system(size: 10.5, weight: .medium))
                     .foregroundColor(isToday ? .white : p.ink)
             }
-            .frame(width: 19, height: 19)
+            .frame(width: 17, height: 17)
             .padding(.bottom, 1)
             ForEach(0..<shown.count, id: \.self) { i in
                 WeekPill(pill: shown[i].0, ev: shown[i].1, p: p)
             }
             if total > shown.count {
                 Text("+\(total - shown.count)")
-                    .font(.system(size: 9.5, weight: .medium))
-                    .foregroundColor(p.muted)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.leading, 3)
+                    .font(.system(size: 8.5, weight: .medium))
+                    .foregroundColor(p.ink)
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .top) // only as tall as its events (v1.35.3)
@@ -1189,6 +1188,7 @@ struct WeekView: View {
                 }
             } else {
                 WeekBody(e: e, p: p, large: large, limit: 4, pills: large ? 7 : 3)
+                    .padding(.top, large ? 0 : -4)   // medium: a little of the top margin, so 3 events and a "+N" fit
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -1215,16 +1215,23 @@ struct WeekBody: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // v1.35.13: a small app icon before the month, so it reads as Mum Brain like the Today widgets
-            // v1.35.15: back to the tile, a little bigger than before (it read better than the bare mark)
-            HStack(alignment: .center, spacing: 7) {
-                BrainIcon(size: large ? 28 : 24)
-                Text(Fmt.month.string(from: e.date))
-                    .font(.system(size: large ? 18 : 15, weight: .bold))
-                    .foregroundColor(p.ink)
-                    .lineLimit(1)
-            }
-            .padding(.bottom, large ? 6 : 4)
+            // v1.35.16: the month centred in the Today widget's italic (a touch heavier), the brain mark
+            // hanging to its left, and a thin line in the wash's blue above the days
+            let mark: CGFloat = large ? 20 : 17
+            Text(Fmt.month.string(from: e.date))
+                .font(F.greet(large ? 18 : 15))
+                .foregroundColor(p.ink)
+                .shadow(color: p.ink, radius: 0, x: 0.3, y: 0)   // a touch bolder (the italic has no bold face)
+                .lineLimit(1)
+                .overlay(BrainMark(size: mark).offset(x: -(mark + 6)), alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .frame(height: large ? 21 : 17)
+            Rectangle()
+                .fill(Color(hex: "#A9C6F2").opacity(0.6))
+                .frame(height: 1)
+                .padding(.horizontal, 2)
+                .padding(.top, 3)
+                .padding(.bottom, 3)
             WeekCalendar(e: e, p: p, maxPills: pills)
             if large {
                 // today's list follows straight on from the calendar; any spare room goes above the wash
@@ -1248,7 +1255,7 @@ struct WeekBody: View {
                 }
                 .padding(.top, 8)
             }
-            Spacer(minLength: 4)
+            Spacer(minLength: large ? 4 : 5)   // keeps a "+N" clear of the words on the wash
             BottomLine(p: p, style: .wash, leftWidth: large ? 122 : 0) {
                 // just the words on the wash (the bar didn't sit well on it)
                 if e.total > 0 {
