@@ -1217,15 +1217,16 @@ struct WeekBody: View {
         VStack(alignment: .leading, spacing: 0) {
             // v1.35.16: the month centred in the Today widget's italic (a touch heavier), the brain mark
             // hanging to its left, and a thin line in the wash's blue above the days
-            let mark: CGFloat = large ? 20 : 17
+            // v1.36.3: a true bold italic serif (the phone's own New York), sized to match the chosen mockup:
+            // the month about 1.6x the dates, the brain a little taller than the word
+            let mark: CGFloat = large ? 21 : 19
             Text(Fmt.month.string(from: e.date))
-                .font(F.greet(large ? 19 : 16))   // v1.36.2: one point up
+                .font(.system(size: large ? 20 : 17, weight: .bold, design: .serif).italic())
                 .foregroundColor(p.ink)
-                .shadow(color: p.ink, radius: 0, x: 0.3, y: 0)   // a touch bolder (the italic has no bold face)
                 .lineLimit(1)
                 .overlay(BrainMark(size: mark).offset(x: -(mark + 6)), alignment: .leading)
                 .frame(maxWidth: .infinity, alignment: .center)
-                .frame(height: large ? 21 : 17)
+                .frame(height: large ? 23 : 20)
             Rectangle()
                 .fill(Color(hex: "#A9C6F2").opacity(0.6))
                 .frame(height: 1)

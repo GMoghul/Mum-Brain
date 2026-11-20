@@ -137,6 +137,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.36.0: Settings › Backup has "Park it worries in the backup file" (Include / Leave out, Include to start), so worries can be kept out of backup files for privacy. A line under it explains each choice; restoring a file without worries leaves the ones on the phone as they are.
    - v1.36.1: Week widget heading: month centred in the Today widget's italic (slightly heavier), the bare brain mark hanging to its left, a thin wash-blue line under it. Calendar text one step smaller (day names 8, dates 10.5 in a 17pt circle, pills 11.5pt with 8.5pt text) so 3 events always fit on medium; extra events show as a centred "+N" in the dates' colour underneath.
    - v1.36.2: Week widget month name one point bigger (16 medium, 19 large).
+   - v1.36.3: Week widget month name in a true bold italic serif (New York, 17 medium / 20 large) with the brain mark a touch taller (19 / 21), matching the agreed mockup's proportions.
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
