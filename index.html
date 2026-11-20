@@ -1146,6 +1146,9 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="row"><button class="opt" id="bk-save">Save a backup</button><label class="opt" style="display:inline-flex;align-items:center;cursor:pointer">Restore a backup<input type="file" id="bk-load" accept=".json,application/json" hidden></label></div>
       <div class="rep-hint bk-last" id="bk-last"></div>
       <div class="rep-hint" id="bk-hint">Your jobs are saved on this device. A backup file keeps them safe. On iPhone, choose Save to Files when the share sheet opens.</div>
+      <span class="lbl lbl-sub">Park it worries in the backup file</span>
+      <div class="seg" id="s-bkpark" style="grid-template-columns:repeat(2,1fr)"><button data-bkpark="on">Include</button><button data-bkpark="off">Leave out</button></div>
+      <div class="rep-hint" id="bk-park-hint"></div>
       <div class="bk-confirm" id="bk-confirm" hidden></div>
     </div>
     <div class="field"><span class="lbl">About &amp; support</span>
@@ -2528,7 +2531,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.35.15';
+const APPV='1.36.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -4220,7 +4223,7 @@ document.getElementById('fb-send').addEventListener('click',async()=>{
 });
 function closeSettings(){st.classList.remove('open');st.setAttribute('aria-hidden','true');}
 st.addEventListener('click',e=>{
-  const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-lite],button[data-evon],button[data-morn],button[data-mstyle],button[data-mjobs],button[data-bdr],button[data-projs],button[data-parks],button[data-shops],button[data-icb],button[data-wkv],button[data-start]');if(!b)return;
+  const b=e.target.closest('[data-sact],button[data-pal],button[data-washv],button[data-sharp],button[data-sty],button[data-font],button[data-mode],button[data-ts],button[data-spc],button[data-tidy],button[data-cel],button[data-nudge],button[data-lite],button[data-bkpark],button[data-evon],button[data-morn],button[data-mstyle],button[data-mjobs],button[data-bdr],button[data-projs],button[data-parks],button[data-shops],button[data-icb],button[data-wkv],button[data-start]');if(!b)return;
   if(b.dataset.sact){closeSettings();return;}
   if(b.dataset.pal)state.prefs.palette=b.dataset.pal;
   if(b.dataset.washv)state.prefs.washv=b.dataset.washv;
@@ -4235,6 +4238,7 @@ st.addEventListener('click',e=>{
   if(b.dataset.tidy){state.prefs.tidy=b.dataset.tidy;tidy();render();}
   if(b.dataset.nudge){state.prefs.nudge=b.dataset.nudge;render();}
   if(b.dataset.evon){state.prefs.evon=b.dataset.evon;if(b.dataset.evon==='off')ui.evf=null;syncNotifs(true);render();} // v1.34.0 events trial (off to start)
+  if(b.dataset.bkpark)state.prefs.bkPark=b.dataset.bkpark; // v1.36.0: Park it worries can be left out of backup files, for privacy (in to start)
   if(b.dataset.lite){state.prefs.lite=b.dataset.lite;render();} // v1.33.2: the Lighter day button on Today can be switched off (on to start)
   if(b.dataset.morn){state.prefs.morn=b.dataset.morn;syncNotifs(true);}
   if(b.dataset.mstyle){state.prefs.mornStyle=b.dataset.mstyle;syncNotifs(true);}
@@ -4318,7 +4322,8 @@ render();
 /* ask the phone to keep this app's saved jobs rather than clearing them to free space */
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(()=>{});}catch(e){}
 document.getElementById('bk-save').addEventListener('click',async()=>{
-  const json=JSON.stringify({app:'todo',version:1,savedAt:new Date().toISOString(),state,park},null,1); // park: the Park it worries, so they move to a new phone too
+  const withPark=state.prefs.bkPark!=='off'; // v1.36.0: Park it worries can be left out of the file, for privacy
+  const json=JSON.stringify(withPark?{app:'todo',version:1,savedAt:new Date().toISOString(),state,park}:{app:'todo',version:1,savedAt:new Date().toISOString(),state},null,1); // park: the Park it worries, so they move to a new phone too
   const n=state.tasks.filter(t=>t.list!==SHARED&&!t.shop).length,name=BRAND.backupPrefix+today()+'-'+n+'-job'+(n===1?'':'s')+'.json';
   const hint=document.getElementById('bk-hint');
   const done=msg=>{try{localStorage.setItem(KEY+'-lastbk',JSON.stringify({at:new Date().toISOString(),n}));}catch(err){}paintBk();hint.textContent=msg;};
@@ -4343,6 +4348,13 @@ function paintBk(){
   el.innerHTML=L?`<b>Last backup${ICB?' file':''}:</b> ${esc(fmtStamp(L.at))} · ${n1(L.n)}${old&&n?' – worth saving a new one.':''}`:(n&&!ic?'<b>No backup saved yet</b> on this phone.':'');
   paintIcb();
   el.classList.toggle('due',old&&!!n);
+  // v1.36.0: Park it worries in the backup file (in to start). iCloud never keeps them, so say what each choice means
+  const inc=(state.prefs.bkPark||'on')!=='off';
+  document.querySelectorAll('[data-bkpark]').forEach(b=>b.classList.toggle('on',b.dataset.bkpark===(inc?'on':'off')));
+  const ph=document.getElementById('bk-park-hint');
+  if(ph)ph.textContent=inc
+    ?'Your backup file keeps your Park it worries too, so save it somewhere private. Your family\'s shared list stays with your family and isn\'t changed by a restore.'
+    :'Your Park it worries stay on this phone only, so they\'d be lost with the phone. Restoring a backup file leaves the worries already on this phone as they are.';
 }
 const n1=n=>n+' job'+(n===1?'':'s');
 let pendingBk=null,pendingPark=null;
