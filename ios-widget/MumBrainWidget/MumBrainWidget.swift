@@ -1219,7 +1219,7 @@ struct WeekBody: View {
             // hanging to its left, and a thin line in the wash's blue above the days
             let mark: CGFloat = large ? 20 : 17
             Text(Fmt.month.string(from: e.date))
-                .font(F.greet(large ? 18 : 15))
+                .font(F.greet(large ? 19 : 16))   // v1.36.2: one point up
                 .foregroundColor(p.ink)
                 .shadow(color: p.ink, radius: 0, x: 0.3, y: 0)   // a touch bolder (the italic has no bold face)
                 .lineLimit(1)
