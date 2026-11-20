@@ -132,6 +132,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.35.11: Week widget dates a notch smaller (11.5pt, today's circle 19pt) and pills slimmer (12.5pt high, 9pt text).
    - v1.35.12: events no longer go to the Today widgets (small, medium, lock screen), which show jobs only; the medium Week widget is for events and the large Week widget shows both.
    - v1.35.13: a small app icon before the month name on both Week widgets.
+   - v1.35.14: the Week widgets use the brain mark on its own (BrainMark.png, no pale tile) before the month, like a logo beside the word.
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 

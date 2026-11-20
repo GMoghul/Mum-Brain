@@ -367,6 +367,21 @@ struct BrainIcon: View {
     }
 }
 
+// v1.35.14: the brain mark on its own (no tile), for sitting beside text like a logo
+struct BrainMark: View {
+    let size: CGFloat
+    var body: some View {
+        Group {
+            if let ui = UIImage(named: "BrainMark") {
+                Image(uiImage: ui).resizable().interpolation(.high).scaledToFit()
+            } else {
+                BrainIcon(size: size)
+            }
+        }
+        .frame(width: size, height: size)
+    }
+}
+
 // One soft, slightly wavy brushstroke row
 struct BrushRow: Shape {
     let seed: Double
@@ -1201,8 +1216,9 @@ struct WeekBody: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // v1.35.13: a small app icon before the month, so it reads as Mum Brain like the Today widgets
-            HStack(alignment: .center, spacing: 6) {
-                BrainIcon(size: large ? 22 : 19)
+            HStack(alignment: .center, spacing: 5) {
+                BrainMark(size: large ? 21 : 18)
+                    .offset(y: 0.5)
                 Text(Fmt.month.string(from: e.date))
                     .font(.system(size: large ? 18 : 15, weight: .bold))
                     .foregroundColor(p.ink)
