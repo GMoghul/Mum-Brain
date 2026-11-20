@@ -1200,11 +1200,15 @@ struct WeekBody: View {
     }
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(Fmt.month.string(from: e.date))
-                .font(.system(size: large ? 18 : 15, weight: .bold))
-                .foregroundColor(p.ink)
-                .lineLimit(1)
-                .padding(.bottom, large ? 6 : 4)
+            // v1.35.13: a small app icon before the month, so it reads as Mum Brain like the Today widgets
+            HStack(alignment: .center, spacing: 6) {
+                BrainIcon(size: large ? 22 : 19)
+                Text(Fmt.month.string(from: e.date))
+                    .font(.system(size: large ? 18 : 15, weight: .bold))
+                    .foregroundColor(p.ink)
+                    .lineLimit(1)
+            }
+            .padding(.bottom, large ? 6 : 4)
             WeekCalendar(e: e, p: p, maxPills: pills)
             if large {
                 // today's list follows straight on from the calendar; any spare room goes above the wash
