@@ -1075,10 +1075,10 @@ struct WeekPill: View {
         RoundedRectangle(cornerRadius: 3.5)
             .fill(ev ? c : c.opacity(p.dark ? 0.32 : 0.16))
             .frame(maxWidth: .infinity)
-            .frame(height: 13.5)
+            .frame(height: 12.5)
             .overlay(
                 Text(pill.t)
-                    .font(.system(size: 9.5, weight: .semibold))
+                    .font(.system(size: 9, weight: .semibold))
                     .foregroundColor(ev ? (lightHex(pill.c) ? Color(hex: "#23201C") : .white) : p.ink)
                     .lineLimit(1)
                     .fixedSize()
@@ -1113,10 +1113,10 @@ struct WeekDayColumn: View {
             ZStack {
                 if isToday { Circle().fill(p.accent) }
                 Text("\(Calendar.current.component(.day, from: date))")
-                    .font(.system(size: 12.5, weight: .medium))
+                    .font(.system(size: 11.5, weight: .medium))
                     .foregroundColor(isToday ? .white : p.ink)
             }
-            .frame(width: 20, height: 20)
+            .frame(width: 19, height: 19)
             .padding(.bottom, 1)
             ForEach(0..<shown.count, id: \.self) { i in
                 WeekPill(pill: shown[i].0, ev: shown[i].1, p: p)
