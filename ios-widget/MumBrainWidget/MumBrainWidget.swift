@@ -1216,9 +1216,9 @@ struct WeekBody: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // v1.35.13: a small app icon before the month, so it reads as Mum Brain like the Today widgets
-            HStack(alignment: .center, spacing: 5) {
-                BrainMark(size: large ? 21 : 18)
-                    .offset(y: 0.5)
+            // v1.35.15: back to the tile, a little bigger than before (it read better than the bare mark)
+            HStack(alignment: .center, spacing: 7) {
+                BrainIcon(size: large ? 28 : 24)
                 Text(Fmt.month.string(from: e.date))
                     .font(.system(size: large ? 18 : 15, weight: .bold))
                     .foregroundColor(p.ink)
