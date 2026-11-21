@@ -2666,7 +2666,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.37.2';
+const APPV='1.37.3';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3765,7 +3765,10 @@ function anim(c){view.classList.remove('in-l','in-r');void view.offsetWidth;view
 function shiftDay(n){ui.day=addDays(ui.day,n);window.scrollTo(0,0);render();anim(n>0?'in-l':'in-r');}
 function shiftWeek(n){ui.week=addDays(ui.week,7*n);window.scrollTo(0,0);render();anim(n>0?'in-l':'in-r');}
 function shiftMonth(n){ui.mpick=false;if(!ui.month){const x=new Date();ui.month=new Date(x.getFullYear(),x.getMonth(),1);}
-  ui.month=new Date(ui.month.getFullYear(),ui.month.getMonth()+n,1);render();anim(n>0?'in-l':'in-r');}
+  ui.month=new Date(ui.month.getFullYear(),ui.month.getMonth()+n,1);
+  // v1.37.3: the selected day follows the month (today in this month, otherwise the 1st), like the month picker
+  const x=new Date();ui.sel=(ui.month.getFullYear()===x.getFullYear()&&ui.month.getMonth()===x.getMonth())?today():ymd(ui.month);
+  render();anim(n>0?'in-l':'in-r');}
 view.addEventListener('animationend',()=>view.classList.remove('in-l','in-r'));
 document.getElementById('searchbtn').addEventListener('click',()=>{ui.searching=true;window.scrollTo(0,0);view.innerHTML='';render();});
 document.getElementById('mvbtn').addEventListener('click',()=>{
