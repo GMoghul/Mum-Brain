@@ -604,6 +604,15 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 #s-grpw .lbl{display:block;font-size:14px;font-weight:600;color:var(--muted);margin-bottom:8px}
 .ecal{padding:8px 6px 6px}
 .ecal .calnav{padding:0 4px}
+.sugg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+.sugg button{display:inline-flex;align-items:center;gap:7px;max-width:100%;height:34px;padding:0 12px;border-radius:17px;background:var(--bg);font-size:14.5px;font-weight:500;color:var(--ink)}
+.sugg button span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sugg i{flex:none;width:9px;height:9px;border-radius:50%;background:var(--c)}
+.mvseg{display:inline-flex;background:var(--bg);border-radius:11px;padding:3px;gap:2px}
+.mvseg button{height:30px;padding:0 16px;border-radius:8px;font-size:14px;font-weight:500;color:var(--muted)}
+.mvseg button.on{background:var(--solid);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.backm{display:flex;justify-content:flex-end;margin:-16px 0 8px}
+.backm .pill.sm{background:none;box-shadow:none;height:30px;padding:0 6px;font-size:14.5px}
 .ecal .wk{padding:0 0 2px}
 .ewk{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:26px repeat(4,17px);row-gap:2px;padding-bottom:5px;border-top:1px solid var(--line)}
 .ecell{grid-row:1/-1;display:flex;justify-content:center;align-items:flex-start;padding-top:3px;border-radius:10px;font-size:13.5px;font-weight:500;color:var(--ink);min-width:0}
@@ -876,6 +885,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="grab"></div>
     <div class="sheet-top"><h2 id="ed-h">New job</h2><button class="x" data-act="close">Cancel</button></div>
     <input class="f-title" id="f-title" placeholder="Type your job here, e.g. Book dentist" aria-label="Job" autocomplete="off" enterkeyhint="done">
+    <div class="sugg" id="f-sugg" hidden aria-label="Suggestions"></div>
     <textarea class="f-note" id="f-note" placeholder="Add details here (optional)" aria-label="Details"></textarea>
     <div class="f-who" id="f-who" hidden></div>
     <div class="field" id="f-evf" hidden>
@@ -2622,9 +2632,14 @@ function evCalWeeks(y,m){
   }
   return out;
 }
+/* v1.38.1: the arrow row holds the Jobs | Events switch (Events on); "Back to this month" moved up by the title */
+function calNav(){
+  const c=calMode(),mid=evOn()?`<div class="mvseg" role="group" aria-label="Show on the calendar"><button data-act="mview" data-v="plan" class="${c?'':'on'}" aria-pressed="${!c}">Jobs</button><button data-act="mview" data-v="cal" class="${c?'on':''}" aria-pressed="${c}">Events</button></div>`:'';
+  return `<div class="calnav"><button class="navbtn" data-act="prev" aria-label="Previous month">${I.left}</button>${mid}<button class="navbtn" data-act="next" aria-label="Next month">${I.right}</button></div>`;
+}
 function renderEvCal(head,y,m){
   // v1.37.2: no list underneath any more; tapping a day opens its day card
-  view.innerHTML=head+evCalBar()+`<div class="cal ecal"${ui.mpick?' hidden':''}><div class="calnav"><button class="navbtn" data-act="prev" aria-label="Previous month">${I.left}</button>${(y===new Date().getFullYear()&&m===new Date().getMonth())?'':'<button class="pill sm" data-act="thismonth">This month</button>'}<button class="navbtn" data-act="next" aria-label="Next month">${I.right}</button></div><div class="wk">${['M','T','W','T','F','S','S'].map(x=>`<div>${x}</div>`).join('')}</div>${evCalWeeks(y,m)}</div>`;
+  view.innerHTML=head+evCalBar()+`<div class="cal ecal"${ui.mpick?' hidden':''}>${calNav()}<div class="wk">${['M','T','W','T','F','S','S'].map(x=>`<div>${x}</div>`).join('')}</div>${evCalWeeks(y,m)}</div>`;
 }
 /* v1.37.2: the day card, slides up when a day on the Events calendar is tapped */
 function evDayList(s){
@@ -2680,7 +2695,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.38.0';
+const APPV='1.38.1';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3320,11 +3335,12 @@ function renderMonth(){
   const chev='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
   const head=`<header class="mhead"><h1><button class="mtitle" data-act="mpick" aria-expanded="${ui.mpick}">${MONTHS[m]} <span>${y}</span>${chev}</button></h1>
 </header>
+  ${(y===new Date().getFullYear()&&m===new Date().getMonth())||ui.mpick?'':'<div class="backm"><button class="pill sm" data-act="thismonth">Back to this month</button></div>'}
   ${ui.mpick?picker(y,m):''}`;
   if(calMode())return renderEvCal(head,y,m);
   let h=head+`
   ${filterBar()}
-  <div class="cal"${ui.mpick?' hidden':''}><div class="calnav"><button class="navbtn" data-act="prev" aria-label="Previous month">${I.left}</button>${(y===new Date().getFullYear()&&m===new Date().getMonth())?'':'<button class="pill sm" data-act="thismonth">This month</button>'}<button class="navbtn" data-act="next" aria-label="Next month">${I.right}</button></div><div class="wk">${['M','T','W','T','F','S','S'].map(x=>`<div>${x}</div>`).join('')}</div><div class="grid">${cells}</div></div>`;
+  <div class="cal"${ui.mpick?' hidden':''}>${calNav()}<div class="wk">${['M','T','W','T','F','S','S'].map(x=>`<div>${x}</div>`).join('')}</div><div class="grid">${cells}</div></div>`;
   const title=`${DAYS[sd.getDay()]} ${sd.getDate()} ${MONTHS[sd.getMonth()]}`;
   const od=`<button class="open-day" data-act="openday">Open day</button>`;
   if(list.length)h+=section(title,list,{ctx:ui.sel},od);
@@ -3390,7 +3406,7 @@ function render(){
   if(ui.searching){
     if(!document.getElementById('sq'))renderSearch();else searchResults();return;}
   document.getElementById('calbtn').hidden=ui.tab==='month';
-  {const mv=document.getElementById('mvbtn'),c=calMode();mv.hidden=!(ui.tab==='month'&&evOn());mv.classList.toggle('on',c);mv.setAttribute('aria-pressed',String(c));mv.setAttribute('aria-label',c?'Back to the planner':'Events calendar');}
+  {const mv=document.getElementById('mvbtn'),c=calMode();mv.hidden=true;mv.classList.toggle('on',c);mv.setAttribute('aria-pressed',String(c));mv.setAttribute('aria-label',c?'Back to the planner':'Events calendar');}
   document.querySelectorAll('.tab').forEach(b=>b.setAttribute('aria-selected',b.dataset.tab===ui.tab));
   {const db=document.querySelector('.tab[data-tab="dump"]'),n=startTab()!=='dump'&&ui.tab!=='dump'?state.tasks.filter(undatedJob).length:0;db.classList.toggle('hasdot',n>0);db.setAttribute('aria-label',n?`Brain dump, ${n} job${n>1?'s':''} without a day`:'Brain dump');}
   if(ui.tab==='dump')renderDump();else if(ui.tab==='month')renderMonth();else if(ui.tab==='week')renderWeek();else renderToday();
@@ -3411,7 +3427,7 @@ fTime.addEventListener('change',()=>{draft.time=fTime.value||null;if(!draft.time
 /* events: the Event switch, an end date for multi-day ones, a finish time, and a name for the colour */
 const fEv=document.getElementById('f-ev'),fEnd=document.getElementById('f-end'),fEtime=document.getElementById('f-etime');
 let cnEdit=null; // v1.37.1: colour names replaced by event groups (old names are left in prefs, unused)
-fEv.addEventListener('click',()=>{draft.ev=!draft.ev;if(draft.ev){if(!draft.date)draft.date=today();draft.proj=null;}else{draft.end=null;draft.etime=null;}paint();});
+fEv.addEventListener('click',()=>{draft.ev=!draft.ev;if(draft.ev){if(!draft.date)draft.date=today();draft.proj=null;}else{draft.end=null;draft.etime=null;}paint();paintSugg();});
 document.getElementById('f-until').addEventListener('change',e=>{const v=e.target.value;if(v&&v>=(draft.date||today()))draft.until=v;else delete draft.until;paint();});
 fEnd.addEventListener('change',()=>{draft.end=fEnd.value&&draft.date&&fEnd.value>draft.date?fEnd.value:null;paint();});
 fEtime.addEventListener('change',()=>{draft.etime=fEtime.value||null;paint();});
@@ -3460,6 +3476,7 @@ function openEditor(id,defaults){
   const c=draft.color||'';setMore(!!c&&c[0]==='#');newlist.hidden=true;clIn.value='';paintCl();fDel.classList.remove('arm');fDel.textContent='Delete';
   document.getElementById('own-add').hidden=true;document.getElementById('own-in').value='';
   document.getElementById('grp-add').hidden=true;grpIn.value='';
+  suggL=[];fSugg.hidden=true;fSugg.innerHTML='';
   const fw=document.getElementById('f-who'),wl=isNew?'':whoLines(t);fw.innerHTML=wl;fw.hidden=!wl;
   paint();
   ed.querySelector('.sheet').scrollTop=0; // always open at the top, not where the last job was left
@@ -3578,7 +3595,37 @@ function commit(){
 }
 fDate.addEventListener('change',()=>{draft.date=fDate.value||null;paint();});
 fTitle.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit();}});
-fTitle.addEventListener('input',()=>fTitle.classList.remove('bad'));
+fTitle.addEventListener('input',()=>{fTitle.classList.remove('bad');paintSugg();});
+/* v1.38.1: suggestions while typing a new job or event: tap one to fill in the title and copy its time, colour,
+   group and list. Not the date or the repeat. */
+let suggL=[];
+const fSugg=document.getElementById('f-sugg');
+function paintSugg(){
+  const q=fTitle.value.trim().toLowerCase();suggL=[];
+  if(isNew&&draft&&!draft.shop&&q.length>=2){
+    const ev=evOn()&&!!draft.ev,seen=new Set();
+    const C=state.tasks.filter(t=>t.title&&!!(evOn()&&t.ev)===ev&&!t.shop&&t.id!==draft.id)
+      .sort((a,b)=>(b.ts||0)-(a.ts||0));
+    for(const t of C){
+      const l=t.title.trim().toLowerCase();if(l===q||seen.has(l))continue;
+      if(!(l.startsWith(q)||l.split(/\s+/).some(w=>w.startsWith(q))))continue;
+      seen.add(l);suggL.push(t);if(suggL.length>=3)break;
+    }
+    suggL.sort((a,b)=>(b.title.toLowerCase().startsWith(q)?1:0)-(a.title.toLowerCase().startsWith(q)?1:0));
+  }
+  fSugg.hidden=!suggL.length;
+  fSugg.innerHTML=suggL.map((t,i)=>`<button type="button" data-sg="${i}"><i style="--c:${hex(t.color)}"></i><span>${esc(t.title)}</span></button>`).join('');
+}
+fSugg.addEventListener('pointerdown',e=>e.preventDefault()); // keeps the keyboard up while tapping
+fSugg.addEventListener('click',e=>{
+  const b=e.target.closest('[data-sg]');if(!b)return;const t=suggL[+b.dataset.sg];if(!t)return;
+  draft.title=t.title;fTitle.value=t.title;
+  draft.time=t.time||null;draft.etime=t.etime||null;draft.alarm=t.time?(t.alarm||'none'):'none';
+  draft.color=t.color;
+  if(t.grp)draft.grp=t.grp;else delete draft.grp;
+  if(t.list===SHARED&&!SHARING)draft.list=null;else draft.list=t.list||null;
+  suggL=[];fSugg.hidden=true;fSugg.innerHTML='';paint();
+});
 document.getElementById('f-save').addEventListener('click',commit);
 fStar.addEventListener('click',()=>{draft.starred=!draft.starred;paint();});
 fDel.addEventListener('click',()=>{
@@ -3720,6 +3767,7 @@ view.addEventListener('click',e=>{
     if(act==='evpick'){ui.sel=a.dataset.date;render();openEvDay(ui.sel);return;}
     if(act==='evc'){ui.evc=a.dataset.evc||null;render();return;}
     if(act==='prev'||act==='next'){shiftMonth(act==='prev'?-1:1);return;}
+    if(act==='mview'){const v=a.dataset.v==='cal'?'cal':'plan';if(ui.mview!==v){ui.mview=v;try{localStorage.setItem(KEY+'-mview',v);}catch(e){}render();}return;}
     if(act==='thismonth'){ui.month=null;ui.sel=today();ui.mpick=false;render();return;}
     if(act==='mpick'){ui.mpick=!ui.mpick;ui.pickYear=ui.month.getFullYear();render();return;}
     if(act==='pyprev'||act==='pynext'){ui.pickYear+=act==='pynext'?1:-1;render();return;}
