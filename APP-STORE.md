@@ -148,6 +148,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.37.5: the planner Month view matches: today has the filled circle, a picked day gets the pale purple background.
    - v1.38.0: repeats (jobs and events) can have an end date: "Repeat until" under Repeat on the job sheet (No end / Pick an end date), stored as `until`; nothing shows after it (calendar, lists, alarms, widget), and the repeat label reads e.g. "Every Mon, until 3 Mar".
    - v1.38.1: Month tab: a Jobs | Events switch sits in the middle of the arrow row (replacing the top calendar button); "This month" is now "Back to this month" in purple under the top-right buttons. New jobs/events suggest past titles as you type (2+ letters, up to 3); tapping one fills the title and copies time, colour, group and list, not the date or repeat.
+   - v1.38.2: smaller Jobs | Events switch, in line with the arrows.
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
