@@ -947,6 +947,14 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="rep-hint" id="rep-hint"></div>
     </div>
 
+    <div class="field" id="f-untilf" hidden>
+      <span class="lbl" id="until-lbl">Repeat until</span>
+      <div class="row">
+        <button class="opt" data-until="none">No end</button>
+        <label class="pick" id="f-until-w"><input type="date" class="f-date" id="f-until" aria-labelledby="until-lbl"><span>Pick an end date</span></label>
+      </div>
+    </div>
+
     <div class="field">
       <span class="lbl">List</span>
       <div class="row" id="f-lists"></div>
@@ -1999,7 +2007,7 @@ function noteText(b,a,name){
     else if(!a.done&&b.done)L.push('Un-ticked, back on the list');
   }
   if((a.title||'')!==(b.title||''))L.push('Renamed from “'+clip(b.title,60)+'”');
-  if(a.date!==b.date||a.time!==b.time||((isRep(a)||isRep(b))&&(a.repeat!==b.repeat||JSON.stringify(a.days||null)!==JSON.stringify(b.days||null)))){
+  if(a.date!==b.date||a.time!==b.time||((isRep(a)||isRep(b))&&(a.repeat!==b.repeat||(a.until||'')!==(b.until||'')||JSON.stringify(a.days||null)!==JSON.stringify(b.days||null)))){
     const wb=whenOf(b)||'No day',wa=whenOf(a)||'No day';
     if(wb!==wa)L.push('When: '+wb+' → '+wa);
   }
@@ -2221,6 +2229,7 @@ const colName=k=>(state.prefs&&state.prefs.cnames&&state.prefs.cnames[k])||'';
 function occurs(t,s){
   if(!isRep(t)){const e=evEnd(t);return e?(s>=t.date&&s<=e):t.date===s;}
   const st=startOf(t);if(!st||s<st)return false;
+  if(t.until&&s>t.until)return false; // v1.38.0: repeats can stop on an end date
   const D=parse(s),S=parse(st);
   switch(t.repeat){
     case'daily':return true;
@@ -2362,6 +2371,11 @@ function dayLabel(s){
   return DAYS[d.getDay()].slice(0,3)+' '+d.getDate()+' '+MONTHS[d.getMonth()].slice(0,3)+(yr?' '+d.getFullYear():'');
 }
 function repLabel(t,start){
+  const L=repLabel0(t,start);if(!L||!t.until)return L;
+  const u=parse(t.until),y=u.getFullYear()!==new Date().getFullYear()?' '+u.getFullYear():'';
+  return L+', until '+u.getDate()+' '+MONTHS[u.getMonth()].slice(0,3)+y;
+}
+function repLabel0(t,start){
   const S=parse(start||startOf(t)||today());
   if(t.repeat==='days'){const ds=(t.days&&t.days.length?t.days:[S.getDay()]).slice().sort((a,b)=>((a+6)%7)-((b+6)%7));const k=ds.join();
     if(k==='1,2,3,4,5')return'Every weekday';if(k==='6,0')return'Every weekend';if(ds.length===7)return'Every day';
@@ -2666,7 +2680,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.37.5';
+const APPV='1.38.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3398,6 +3412,7 @@ fTime.addEventListener('change',()=>{draft.time=fTime.value||null;if(!draft.time
 const fEv=document.getElementById('f-ev'),fEnd=document.getElementById('f-end'),fEtime=document.getElementById('f-etime');
 let cnEdit=null; // v1.37.1: colour names replaced by event groups (old names are left in prefs, unused)
 fEv.addEventListener('click',()=>{draft.ev=!draft.ev;if(draft.ev){if(!draft.date)draft.date=today();draft.proj=null;}else{draft.end=null;draft.etime=null;}paint();});
+document.getElementById('f-until').addEventListener('change',e=>{const v=e.target.value;if(v&&v>=(draft.date||today()))draft.until=v;else delete draft.until;paint();});
 fEnd.addEventListener('change',()=>{draft.end=fEnd.value&&draft.date&&fEnd.value>draft.date?fEnd.value:null;paint();});
 fEtime.addEventListener('change',()=>{draft.etime=fEtime.value||null;paint();});
 function paintEvent(){
@@ -3494,6 +3509,8 @@ function paint(){
   const fd=document.getElementById('f-days');fd.hidden=draft.repeat!=='days';
   fd.querySelectorAll('[data-wd]').forEach(b=>{const on=(draft.days||[]).includes(Number(b.dataset.wd));b.classList.toggle('on',on);b.setAttribute('aria-pressed',on);});
   document.getElementById('rep-hint').textContent=isRep(draft)?repLabel(draft,draft.date||t0):'';
+  {const r=isRep(draft),fu=document.getElementById('f-until');document.getElementById('f-untilf').hidden=!r;
+    if(r){fu.value=draft.until||'';fu.min=draft.date||t0;fu.parentNode.classList.toggle('unset',!draft.until);document.querySelector('[data-until="none"]').classList.toggle('on',!draft.until);}}
   const known=COLORS.some(c=>c[0]===draft.color)||MORE.includes(draft.color);
   document.querySelectorAll('#f-colors .sw,#f-more .sw[data-color]').forEach(b=>b.classList.toggle('on',b.dataset.color===draft.color));
   const cu=document.getElementById('sw-custom'),isCu=!known&&draft.color&&draft.color[0]==='#';
@@ -3546,6 +3563,7 @@ function commit(){
   let nl=null;const typed=draft.title;
   if(isNew&&!draft.date&&!draft.time){nl=nlParse(draft.title);if(nl){draft.title=nl.title;draft.date=nl.date;draft.time=nl.time;}}
   if(isRep(draft)&&!draft.date)draft.date=today();
+  if(!isRep(draft)||(draft.until&&draft.until<draft.date))delete draft.until;
   if(evOn()&&draft.ev){
     if(!draft.date)draft.date=today();
     if(isRep(draft)||!draft.end||draft.end<=draft.date)draft.end=null;
@@ -3576,6 +3594,7 @@ ed.addEventListener('click',e=>{
     else draft.checklist=cl.filter(i=>i.id!==cb.dataset.cld);
     paintCl();return;}
   if(e.target.closest('[data-end]')){draft.end=null;paint();return;}
+  if(e.target.closest('[data-until]')){delete draft.until;paint();return;}
   const db=e.target.closest('[data-due]');
   if(db){draft.due=null;paintShareFields();return;}
   if(e.target.closest('[data-grpadd]')){const a=document.getElementById('grp-add');a.hidden=!a.hidden;if(!a.hidden)grpIn.focus();return;}

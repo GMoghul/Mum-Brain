@@ -146,6 +146,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.37.3: moving month with the arrows or a swipe now moves the selected day too (today in the current month, otherwise the 1st), so the planner's list matches the month shown.
    - v1.37.4: Events calendar: today always has the filled circle; a picked day only gets the pale purple background.
    - v1.37.5: the planner Month view matches: today has the filled circle, a picked day gets the pale purple background.
+   - v1.38.0: repeats (jobs and events) can have an end date: "Repeat until" under Repeat on the job sheet (No end / Pick an end date), stored as `until`; nothing shows after it (calendar, lists, alarms, widget), and the repeat label reads e.g. "Every Mon, until 3 Mar".
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
