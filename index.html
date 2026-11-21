@@ -107,6 +107,8 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .today-head{padding:0 4px 22px}
 .today-head .dow{font-size:calc(28px * var(--hs));font-weight:var(--hw);line-height:1}
 .today-head .date{margin-top:6px;font-size:17.5px;color:var(--muted);font-weight:500;font-family:var(--font-sub);font-style:var(--sub-style)}
+.lighter-line{display:flex;align-items:center;justify-content:center;gap:6px;margin:-12px auto 24px;height:40px;padding:0 14px;font-size:14.5px;font-weight:600;color:var(--accent)}
+.lighter-line svg{width:15px;height:15px}
 .progress{margin-top:18px;display:flex;align-items:center;gap:12px;font-size:14px;color:var(--muted)}
 .bar{flex:1;height:6px;border-radius:6px;background:var(--line);overflow:hidden}
 .bar i{display:block;height:100%;background:var(--accent);border-radius:6px;transition:width .35s ease}
@@ -2695,7 +2697,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.38.3';
+const APPV='1.38.4';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3294,7 +3296,7 @@ function renderToday(){
     ${isT?'':`<button class="pill sm" data-act="dtoday">Back to today</button>`}
     <button class="navbtn" data-act="dprev" aria-label="Previous day">${I.left}</button>
     <button class="navbtn" data-act="dnext" aria-label="Next day">${I.right}</button></div>
-  ${list.length?`<div class="progress"><div class="bar"><i style="width:${pct}%"></i></div><span>${n} of ${list.length} done</span>${isT&&state.prefs.lite!=='off'&&lightJobs().length?`<button class="pill sm lighter" data-act="lighter">${I.leaf}Lighter day</button>`:''}</div>`:''}</header>`;
+</header>`; // v1.38.4: progress bar removed; Lighter day moved to the bottom
   if(isT)h+=nudgeCard()+fbCard();
   h+=filterBar()+evFilter()+evSection(dayS);
   // more than 3 old jobs fold to one line, so today's jobs come first
@@ -3304,6 +3306,7 @@ function renderToday(){
   if(list.length)h+=`<button class="addslot" data-act="addto" data-date="${dayS}"><span>Add something for ${isT?'today':'this day'}</span><i>${I.plus}</i></button>`;
   const left=isT?overdue.length+list.filter(t=>!isRep(t)&&!t.done).length:0;
   if(left)h+=`<button class="roll" data-act="roll">${I.right}Move ${left} unfinished to tomorrow</button>`;
+  if(isT&&list.length&&state.prefs.lite!=='off'&&lightJobs().length)h+=`<button class="lighter-line" data-act="lighter">${I.leaf}Lighter day</button>`;
   else if(!list.length&&!overdue.length&&evs.length)h+=`<button class="addslot" data-act="addto" data-date="${dayS}"><span>Add a job for ${isT?'today':'this day'}</span><i>${I.plus}</i></button>`;
   else if(!list.length&&!overdue.length)h+=`<div class="empty"><strong>Nothing planned${isT?' for today':''}</strong>Tap + to add a job${isT?', or give a day to something in your brain dump':' to this day'}.</div>`;
   view.innerHTML=h;
