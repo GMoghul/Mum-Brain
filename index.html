@@ -609,9 +609,9 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .ecell{grid-row:1/-1;display:flex;justify-content:center;align-items:flex-start;padding-top:3px;border-radius:10px;font-size:13.5px;font-weight:500;color:var(--ink);min-width:0}
 .ecell .n{width:22px;height:22px;display:grid;place-items:center;border-radius:50%}
 .ecell.out{color:color-mix(in srgb,var(--muted) 60%,transparent)}
-.ecell.today .n{color:var(--accent);font-weight:700}
+/* v1.37.4: today always has the filled circle; a picked day is just the pale purple */
+.ecell.today .n{background:var(--accent);color:#fff;font-weight:600}
 .ecell.sel{background:color-mix(in srgb,var(--accent) 10%,transparent)}
-.ecell.sel .n{background:var(--accent);color:#fff;font-weight:600}
 .ech{z-index:1;pointer-events:none;align-self:center;min-width:0;height:16px;margin:0 2px;padding:0 4px;border-radius:4px;background:var(--c);color:var(--ci);font-size:10.5px;font-weight:600;line-height:16px;white-space:nowrap;overflow:hidden}
 .ech.cl{margin-left:0;border-top-left-radius:0;border-bottom-left-radius:0}
 .ech.cr{margin-right:0;border-top-right-radius:0;border-bottom-right-radius:0}
@@ -2666,7 +2666,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.37.3';
+const APPV='1.37.4';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
