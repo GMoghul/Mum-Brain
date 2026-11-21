@@ -145,6 +145,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.37.2: on the Events calendar, tapping a day opens a day card (slides up) with that day's events, "Open day" and "Add event"; tap an event to edit it; swipe down or Close to shut it. The list under the calendar is gone.
    - v1.37.3: moving month with the arrows or a swipe now moves the selected day too (today in the current month, otherwise the 1st), so the planner's list matches the month shown.
    - v1.37.4: Events calendar: today always has the filled circle; a picked day only gets the pale purple background.
+   - v1.37.5: the planner Month view matches: today has the filled circle, a picked day gets the pale purple background.
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 

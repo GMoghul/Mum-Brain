@@ -211,10 +211,10 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .wk div{text-align:center;font-size:12.5px;font-weight:600;color:var(--muted);padding-bottom:4px}
 .cell{height:42px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:2px;border-radius:12px;gap:2px;font-size:15px;font-weight:500}
 .cell .n{width:28px;height:28px;display:grid;place-items:center;border-radius:50%}
-.cell.today .n{color:var(--accent);font-weight:700}
-.cell.sel .n{background:var(--accent);color:#fff}
 .cell.past .n{color:var(--muted)}
-.cell.sel.past .n{color:#fff}
+/* v1.37.5: today always has the filled circle; a picked day is just the pale purple (same as the Events calendar) */
+.cell.today .n{background:var(--accent);color:#fff;font-weight:600}
+.cell.sel{background:color-mix(in srgb,var(--accent) 10%,transparent)}
 .dots{display:flex;gap:3px;height:6px}
 .dots i{width:6px;height:6px;border-radius:50%;background:var(--c)}
 .dots i.d{opacity:.3}
@@ -2666,7 +2666,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.37.4';
+const APPV='1.37.5';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
