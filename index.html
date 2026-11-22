@@ -2608,8 +2608,12 @@ function evCalWeeks(y,m){
     // multi-day events as one bar across the week, then single-day ones underneath
     const items=[],multi={};
     on.forEach((L,c)=>L.forEach(t=>{if(evEnd(t)){if(multi[t.id])multi[t.id].e=c;else items.push(multi[t.id]={t,s:c,e:c});}}));
+    // v1.38.7: an all-day repeating event on back-to-back days (e.g. every Mon to Thu) shows as one bar too
+    const joinRep=t=>isRep(t)&&!t.time;
+    on.forEach((L,c)=>L.forEach(t=>{if(!joinRep(t))return;const k='r'+t.id,m0=multi[k];
+      if(m0&&m0.e===c-1)m0.e=c;else items.push(multi[k]={t,s:c,e:c,rj:1});}));
     items.sort((a,b)=>a.s-b.s||(b.e-b.s)-(a.e-a.s)||order(a.t,b.t));
-    on.forEach((L,c)=>L.filter(t=>!evEnd(t)).sort(order).forEach(t=>items.push({t,s:c,e:c})));
+    on.forEach((L,c)=>L.filter(t=>!evEnd(t)&&!joinRep(t)).sort(order).forEach(t=>items.push({t,s:c,e:c})));
     const occ=[];
     for(const it of items){let l=0;for(;;l++){occ[l]=occ[l]||[];let free=true;for(let c=it.s;c<=it.e;c++)if(occ[l][c]){free=false;break;}if(free)break;}
       for(let c=it.s;c<=it.e;c++)occ[l][c]=1;it.l=l;}
@@ -2700,7 +2704,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.38.6';
+const APPV='1.38.7';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3669,7 +3673,14 @@ ed.addEventListener('click',e=>{
   if(b.dataset.act==='close'){closeEditor();return;}
   const t0=today();
   if(b.dataset.day){const k=b.dataset.day;draft.date=k==='today'?t0:k==='tomorrow'?addDays(t0,1):null;}
-  if(b.dataset.rep){draft.repeat=b.dataset.rep;if(isRep(draft)&&!draft.date)draft.date=t0;
+  if(b.dataset.rep){
+    // v1.38.7: a multi-day event (up to a week) set to Weekly or Pick days becomes "Every Mon, Tue, Wed, Thu" for its days
+    const span=draft.ev&&draft.date&&draft.end&&draft.end>draft.date?Math.round((parse(draft.end)-parse(draft.date))/864e5):0;
+    if(span&&span<7&&(b.dataset.rep==='weekly'||b.dataset.rep==='days')){
+      draft.days=[...Array(span+1)].map((_,i)=>parse(addDays(draft.date,i)).getDay());draft.repeat='days';draft.end=null;
+      paint();return;
+    }
+    draft.repeat=b.dataset.rep;if(isRep(draft)&&!draft.date)draft.date=t0;
     if(draft.repeat==='days'&&!(draft.days&&draft.days.length))draft.days=[parse(draft.date).getDay()];}
   if(b.dataset.color)draft.color=b.dataset.color;
   if(b.dataset.time){draft.time=null;draft.alarm='none';}

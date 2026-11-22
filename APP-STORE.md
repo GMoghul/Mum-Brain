@@ -153,6 +153,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.38.4: Today: the progress bar and "x of y done" are gone; Lighter day is now a purple link under "Move unfinished to tomorrow".
    - v1.38.5: Week: an empty day's "Nothing planned" box is itself the button to add a job (the "Add" link is gone).
    - v1.38.6: Week: the purple "Open" links are gone; tap a day heading (with a small grey ›) to open that day.
+   - v1.38.7: multi-day events can repeat weekly: choosing Weekly or Pick days on an event with an end date (up to a week) turns it into Pick days for those weekdays (e.g. Mon–Thu). On the Events calendar, an all-day repeating event on back-to-back days shows as one bar.
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 
