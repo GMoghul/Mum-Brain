@@ -635,6 +635,8 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .ech.cl:not(.st){padding-left:3px}
 .ech.past,.ech.out{opacity:.5}
 .evday{margin:0 0 4px}
+.evday-hint{margin:-4px 0 10px;font-size:13.5px;color:var(--muted)}
+.evday .task .grip{margin-right:4px}
 .delq{margin:0 0 14px;color:var(--muted);font-size:15px}
 .delopts{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
 .delopts button{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:50px;padding:0 16px;border-radius:14px;background:var(--bg);color:#c0392b;font-size:16px;font-weight:600;text-align:left}
@@ -2554,15 +2556,24 @@ function evRow(t,o){
   const cn=t.grp||'';if(cn)chips+=`<span class="chip c-proj" style="--pc:${c}"><i class="pdot"></i><span class="ct">${esc(cn)}</span></span>`;
   if(t.list===SHARED&&(!ui.filter||ui.filter===STAR))chips+=`<span class="chip c-list">${I.people}<span class="ct">${esc(listName(SHARED))}</span></span>`;
   const past=isRep(t)?(s&&s<t0):evLast(t)<t0;
-  return `<li class="task ev${past?' past':''}" data-open="${t.id}"${o&&o.ctx&&isRep(t)?` data-occ="${o.ctx}"`:''}><span class="evbar" style="--c:${c}" aria-hidden="true"></span>
-    <div class="body"><div class="title">${esc(t.title)}</div>${t.note?`<div class="note">${esc(t.note.split('\n')[0])}</div>`:''}<div class="chips">${chips}</div></div></li>`;
+  const star=t.starred?`<button class="star on" data-act="star" data-id="${t.id}" aria-label="Unmark as important">${I.star}</button>`:'';
+  return `<li class="task ev${past?' past':''}" data-open="${t.id}"${o&&o.ctx&&isRep(t)?` data-occ="${o.ctx}"`:''}${o.edrag?` data-edrag="${t.id}"`:''}><span class="evbar" style="--c:${c}" aria-hidden="true"></span>
+    <div class="body"><div class="title">${esc(t.title)}</div>${t.note?`<div class="note">${esc(t.note.split('\n')[0])}</div>`:''}<div class="chips">${chips}</div></div>${star}${o.edrag?`<span class="grip" aria-label="Drag to reorder">${GRIP}</span>`:''}</li>`;
 }
+/* v1.39.0: order of events on a day: an order dragged in the day card (t.dord[day]) wins; otherwise
+   starred ("important") first, then multi-day, all-day, by time, then when added */
+const evRank=(t,s)=>t.dord&&t.dord[s]!=null?t.dord[s]:null;
+const evDef=(a,b)=>((evEnd(b)?1:0)-(evEnd(a)?1:0))||((a.time?1:0)-(b.time?1:0))||(a.time||'').localeCompare(b.time||'')||ko(a)-ko(b);
+const evCmp=s=>(a,b)=>{const ra=evRank(a,s),rb=evRank(b,s);
+  if(ra!=null&&rb!=null)return ra-rb;
+  if(ra!=null)return b.starred?1:-1;
+  if(rb!=null)return a.starred?-1:1;
+  return ((b.starred?1:0)-(a.starred?1:0))||evDef(a,b);};
 /* the events for one day, kept apart from the jobs (they sit on top, with jobs underneath) */
 const evShow=t=>!ui.evf||ui.evf==='all'||(ui.evf==='shared'?t.list===SHARED:t.list!==SHARED);
 function dayEvents(s){
   if(!evOn())return[];
-  return state.tasks.filter(t=>isEv(t)&&!archivedJob(t)&&(!ui.filter||(ui.filter===SHARED&&t.list===SHARED))&&evShow(t)&&occurs(t,s))
-    .sort((a,b)=>((evEnd(b)?1:0)-(evEnd(a)?1:0))||((a.time?1:0)-(b.time?1:0))||(a.time||'').localeCompare(b.time||'')||ko(a)-ko(b));
+  return state.tasks.filter(t=>isEv(t)&&!archivedJob(t)&&(!ui.filter||(ui.filter===SHARED&&t.list===SHARED))&&evShow(t)&&occurs(t,s)).sort(evCmp(s));
 }
 function evSection(s,title){
   const L=dayEvents(s);if(!L.length)return'';
@@ -2620,8 +2631,10 @@ function evCalWeeks(y,m){
     const joinRep=t=>isRep(t)&&!t.time;
     on.forEach((L,c)=>L.forEach(t=>{if(!joinRep(t))return;const k='r'+t.id,m0=multi[k];
       if(m0&&m0.e===c-1)m0.e=c;else items.push(multi[k]={t,s:c,e:c,rj:1});}));
-    items.sort((a,b)=>a.s-b.s||(b.e-b.s)-(a.e-a.s)||order(a.t,b.t));
-    on.forEach((L,c)=>L.filter(t=>!evEnd(t)&&!joinRep(t)).sort(order).forEach(t=>items.push({t,s:c,e:c})));
+    on.forEach((L,c)=>L.filter(t=>!evEnd(t)&&!joinRep(t)).forEach(t=>items.push({t,s:c,e:c})));
+    // v1.39.0: starred first so they always show, then bars, then each day's own order (incl. a dragged order)
+    items.sort((a,b)=>((b.t.starred?1:0)-(a.t.starred?1:0))
+      ||(a.s===b.s?evCmp(days[a.s])(a.t,b.t):(((b.e>b.s)?1:0)-((a.e>a.s)?1:0))||a.s-b.s));
     const occ=[];
     for(const it of items){let l=0;for(;;l++){occ[l]=occ[l]||[];let free=true;for(let c=it.s;c<=it.e;c++)if(occ[l][c]){free=false;break;}if(free)break;}
       for(let c=it.s;c<=it.e;c++)occ[l][c]=1;it.l=l;}
@@ -2660,13 +2673,12 @@ function renderEvCal(head,y,m){
 }
 /* v1.37.2: the day card, slides up when a day on the Events calendar is tapped */
 function evDayList(s){
-  return state.tasks.filter(t=>isEv(t)&&!archivedJob(t)&&evCalShow(t)&&occurs(t,s))
-    .sort((a,b)=>((evEnd(b)?1:0)-(evEnd(a)?1:0))||((a.time?1:0)-(b.time?1:0))||(a.time||'').localeCompare(b.time||'')||ko(a)-ko(b));
+  return state.tasks.filter(t=>isEv(t)&&!archivedJob(t)&&evCalShow(t)&&occurs(t,s)).sort(evCmp(s));
 }
 function openEvDay(s){
   const d=parse(s),L=evDayList(s);
   openInfo({h:`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`,
-    body:L.length?`<ul class="list evday">${L.map(t=>evRow(t,{ctx:s})).join('')}</ul>`:'<div class="empty evday-empty">No events on this day yet.</div>',
+    body:L.length?`${L.length>1?'<p class="evday-hint">Drag the dots to change the order on this day.</p>':''}<ul class="list evday">${L.map(t=>evRow(t,{ctx:s,edrag:L.length>1})).join('')}</ul>`:'<div class="empty evday-empty">No events on this day yet.</div>',
     acts:[['Open day','openday','ghost'],['Add event','evadd','save']]});
 }
 function newEvent(date){
@@ -2712,7 +2724,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.38.9';
+const APPV='1.39.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3146,6 +3158,8 @@ function openNudge(id){
 const nPick=e=>{if(e.target.matches&&e.target.matches('#n-date,#n-time'))e.target.parentNode.classList.toggle('unset',!e.target.value);};
 is.addEventListener('input',nPick);is.addEventListener('change',nPick);
 is.addEventListener('click',e=>{
+  const sb=e.target.closest('.evday [data-act="star"]');if(sb){const t=find(sb.dataset.id);if(t){t.starred=!t.starred;save();render();openEvDay(ui.sel);}return;}
+  if(e.target.closest('.evday .grip'))return;
   const op=e.target.closest('.evday [data-open]');if(op){const id=op.dataset.open,oc=op.dataset.occ;closeInfo();openEditor(id);edOcc=oc||null;return;}
   const b=e.target.closest('[data-iact]');if(!b)return;const a=b.dataset.iact;
   if(a==='close')closeInfo();
@@ -3472,7 +3486,7 @@ function paintEvent(){
   document.querySelector('[data-time="none"]').textContent=ev?'All day':'No time';
   document.getElementById('time-lbl').textContent=ev&&draft.time?'Starts and finishes':'Time';
   document.getElementById('alarm-lbl').textContent=ev?'Reminder':'Alarm';
-  document.getElementById('f-starf').hidden=ev;
+  // v1.39.0: events can be marked important too (they go first on the calendar)
   document.getElementById('f-clf').hidden=ev&&!(draft.checklist&&draft.checklist.length);
   paintGroups();
 }
@@ -3967,6 +3981,14 @@ document.addEventListener('touchmove',e=>{if(dragging)e.preventDefault();},{pass
 document.addEventListener('contextmenu',e=>{if(pend||dragging)e.preventDefault();});
 document.addEventListener('selectstart',e=>{if(pend||dragging)e.preventDefault();});
 dragSort(view,'.task[data-drag]',{group:el=>el.dataset.g,drop:dropJob});
+/* v1.39.0: reorder a day's events in the day card */
+dragSort(document.getElementById('is-body'),'.task[data-edrag]',{handle:'.grip',drop:(from,to,el)=>{
+  const ids=[...el.parentElement.querySelectorAll('.task[data-edrag]')].map(x=>x.dataset.edrag);
+  const [x]=ids.splice(from,1);ids.splice(to,0,x);const s=ui.sel;
+  ids.forEach((id,i)=>{const t=find(id);if(t){t.dord=t.dord||{};t.dord[s]=i;
+    const old=addDays(today(),-60);for(const k in t.dord)if(k<old)delete t.dord[k];}});
+  save();render();openEvDay(s);
+}});
 dragSort(fCl,'li',{handle:'.grip',drop:(from,to)=>{const cl=draft.checklist||[];const [x]=cl.splice(from,1);cl.splice(to,0,x);paintCl();}});
 function dropList(from,to,all){const ids=listOrder(all).map(x=>x[0]);const [x]=ids.splice(from,1);ids.splice(to,0,x);applyOrder(ids);paintSLists();render();}
 dragSort(document.getElementById('s-lists'),'.lrow[data-lid]',{handle:'.grip',drop:(f,t)=>dropList(f,t,true)});
