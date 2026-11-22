@@ -151,6 +151,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.38.2: smaller Jobs | Events switch, in line with the arrows.
    - v1.38.3: Jobs | Events switch a touch smaller again.
    - v1.38.4: Today: the progress bar and "x of y done" are gone; Lighter day is now a purple link under "Move unfinished to tomorrow".
+   - v1.38.5: Week: an empty day's "Nothing planned" box is itself the button to add a job (the "Add" link is gone).
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 

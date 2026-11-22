@@ -407,7 +407,7 @@ body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:calc(94px +
 .wday .sec-h h2{display:flex;align-items:center;gap:8px}
 .wday.is-today .sec-h h2{color:var(--accent)}
 .wday .dot-today{width:7px;height:7px;border-radius:50%;background:var(--accent)}
-.wempty{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:10px 14px;color:var(--muted);font-size:14px}
+.wempty{width:100%;text-align:left;display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-radius:14px;box-shadow:var(--shadow);padding:10px 14px;color:var(--muted);font-size:14px}
 .wempty button{color:var(--accent);font-weight:600;font-size:14px}
 .whead-sub{margin-top:6px;font-size:17.5px;color:var(--muted);font-weight:500}
 /* search */
@@ -2697,7 +2697,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.38.4';
+const APPV='1.38.5';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3382,7 +3382,7 @@ function renderWeek(){
     const title=`${isT?'<i class="dot-today"></i>':''}${DAYS[d.getDay()]} ${d.getDate()}`;
     h+=`<section class="sec wday${isT?' is-today':''}" data-wdate="${s}"><div class="sec-h"><h2>${title}</h2><button class="open-day" data-act="openday" data-date="${s}">Open</button></div>`
       +(evl.length?`<ul class="list evlist">${evl.map(t=>evRow(t,{ctx:s})).join('')}</ul>`:'')
-      +(list.length?`<ul class="list">${list.map(t=>row(t,{ctx:s,wdrag:!isRep(t)})).join('')}</ul>`:evl.length?'':`<div class="wempty">Nothing planned<button data-act="addto" data-date="${s}">Add</button></div>`)+`</section>`;
+      +(list.length?`<ul class="list">${list.map(t=>row(t,{ctx:s,wdrag:!isRep(t)})).join('')}</ul>`:evl.length?'':`<button class="wempty" data-act="addto" data-date="${s}" aria-label="Nothing planned. Tap to add a job to ${dayLabel(s)}">Nothing planned</button>`)+`</section>`;
   }
   view.innerHTML=h;
 }
