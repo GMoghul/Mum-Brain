@@ -632,6 +632,10 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .ech.cl:not(.st){padding-left:3px}
 .ech.past,.ech.out{opacity:.5}
 .evday{margin:0 0 4px}
+.delq{margin:0 0 14px;color:var(--muted);font-size:15px}
+.delopts{display:flex;flex-direction:column;gap:8px;margin-bottom:6px}
+.delopts button{display:flex;justify-content:space-between;align-items:center;width:100%;min-height:50px;padding:0 16px;border-radius:14px;background:var(--bg);color:#c0392b;font-size:16px;font-weight:600;text-align:left}
+.delopts small{font-size:13.5px;font-weight:500;color:var(--muted)}
 .evday-empty{padding:18px 0 22px;text-align:center;color:var(--muted)}
 .emore{z-index:1;pointer-events:none;align-self:center;text-align:center;font-size:10.5px;font-weight:700;color:var(--muted);line-height:16px}
 .evtog{display:flex;align-items:center;justify-content:space-between;gap:14px;width:100%;text-align:left;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--accent) 7%,var(--solid));color:var(--ink)}
@@ -2245,6 +2249,7 @@ function occurs(t,s){
   if(!isRep(t)){const e=evEnd(t);return e?(s>=t.date&&s<=e):t.date===s;}
   const st=startOf(t);if(!st||s<st)return false;
   if(t.until&&s>t.until)return false; // v1.38.0: repeats can stop on an end date
+  if(t.skip&&t.skip.includes(s))return false; // v1.38.8: one day of a repeat deleted
   const D=parse(s),S=parse(st);
   switch(t.repeat){
     case'daily':return true;
@@ -2546,7 +2551,7 @@ function evRow(t,o){
   const cn=t.grp||'';if(cn)chips+=`<span class="chip c-proj" style="--pc:${c}"><i class="pdot"></i><span class="ct">${esc(cn)}</span></span>`;
   if(t.list===SHARED&&(!ui.filter||ui.filter===STAR))chips+=`<span class="chip c-list">${I.people}<span class="ct">${esc(listName(SHARED))}</span></span>`;
   const past=isRep(t)?(s&&s<t0):evLast(t)<t0;
-  return `<li class="task ev${past?' past':''}" data-open="${t.id}"><span class="evbar" style="--c:${c}" aria-hidden="true"></span>
+  return `<li class="task ev${past?' past':''}" data-open="${t.id}"${o&&o.ctx&&isRep(t)?` data-occ="${o.ctx}"`:''}><span class="evbar" style="--c:${c}" aria-hidden="true"></span>
     <div class="body"><div class="title">${esc(t.title)}</div>${t.note?`<div class="note">${esc(t.note.split('\n')[0])}</div>`:''}<div class="chips">${chips}</div></div></li>`;
 }
 /* the events for one day, kept apart from the jobs (they sit on top, with jobs underneath) */
@@ -2687,7 +2692,7 @@ function row(t,o){
   }
   if((!ui.filter||ui.filter===STAR)&&t.list&&listName(t.list))chips+=`<span class="chip c-list">${t.list===SHARED?I.people:I.list}<span class="ct">${esc(listName(t.list))}</span></span>`;
   const tail=`<button class="star${t.starred?' on':''}" data-act="star" data-id="${t.id}" aria-label="${t.starred?'Unmark as important':'Mark as important'}">${I.star}</button>`;
-  return `<li class="task${done?' done':''}" data-open="${t.id}"${o.wdrag?` data-wdrag="${t.id}"`:''}${o.drag?` data-drag="${t.id}" data-g="${o.dg?o.dg(t):(t.starred?1:0)}"`:''}>
+  return `<li class="task${done?' done':''}" data-open="${t.id}"${o.ctx&&isRep(t)?` data-occ="${o.ctx}"`:''}${o.wdrag?` data-wdrag="${t.id}"`:''}${o.drag?` data-drag="${t.id}" data-g="${o.dg?o.dg(t):(t.starred?1:0)}"`:''}>
     ${check}
     <div class="body"><div class="title">${esc(t.title)}</div>${t.note?`<div class="note">${esc(t.note.split('\n')[0])}</div>`:''}<div class="chips">${chips}${o.back?`<button class="todump" data-act="todump" data-id="${t.id}">Back to brain dump</button>`:''}</div></div>
     ${tail}
@@ -2704,7 +2709,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.38.7';
+const APPV='1.38.8';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3138,10 +3143,16 @@ function openNudge(id){
 const nPick=e=>{if(e.target.matches&&e.target.matches('#n-date,#n-time'))e.target.parentNode.classList.toggle('unset',!e.target.value);};
 is.addEventListener('input',nPick);is.addEventListener('change',nPick);
 is.addEventListener('click',e=>{
-  const op=e.target.closest('.evday [data-open]');if(op){const id=op.dataset.open;closeInfo();openEditor(id);return;}
+  const op=e.target.closest('.evday [data-open]');if(op){const id=op.dataset.open,oc=op.dataset.occ;closeInfo();openEditor(id);edOcc=oc||null;return;}
   const b=e.target.closest('[data-iact]');if(!b)return;const a=b.dataset.iact;
   if(a==='close')closeInfo();
   else if(a==='evadd'){closeInfo();newEvent(ui.sel);}
+  else if(a==='del1'||a==='delfut'||a==='delall'){
+    const p=pendDel;pendDel=null;closeInfo();if(!p)return;const N=p.noun==='event'?'Event':'Job';
+    if(a==='del1')undoable(N+' deleted for that day',()=>{const t=find(p.id);if(!t)return 0;t.skip=(t.skip||[]).concat(p.occ);return 1;});
+    else if(a==='delfut'&&p.occ>(find(p.id)||{}).date)undoable(N+' deleted from that day on',()=>{const t=find(p.id);if(!t)return 0;t.until=addDays(p.occ,-1);if(t.skip)t.skip=t.skip.filter(x=>x<p.occ);return 1;});
+    else undoable(N+' deleted',()=>{const n0=state.tasks.length;state.tasks=state.tasks.filter(t=>t.id!==p.id);return n0-state.tasks.length;});
+  }
   else if(a==='openday'){closeInfo();ui.day=ui.sel;ui.tab='today';window.scrollTo(0,0);render();}
   else if(a==='support'){closeInfo();openSupport();}
   else if(a==='absec')aboutToggle(b);
@@ -3477,7 +3488,9 @@ grpIn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();grpA
 let draft=null,isNew=false,clTicked=new Set(); // checklist items ticked/unticked on this phone while the sheet is open
 
 function blank(o){return Object.assign({id:newId(),title:'',note:'',checklist:[],list:null,color:'grey',starred:false,date:null,time:null,alarm:'none',repeat:'none',done:false,completions:{},ts:Date.now(),created:today()},o||{});}
+let edOcc=null; // v1.38.8: which day of a repeat the sheet was opened from
 function openEditor(id,defaults){
+  edOcc=null;
   const t=id?find(id):null;isNew=!t;clTicked=new Set();cnEdit=null;
   draft=t?JSON.parse(JSON.stringify(t)):blank(defaults);
   fTitle.value=draft.title;fNote.value=draft.note||'';fTitle.classList.remove('bad');
@@ -3638,7 +3651,20 @@ fSugg.addEventListener('click',e=>{
 });
 document.getElementById('f-save').addEventListener('click',commit);
 fStar.addEventListener('click',()=>{draft.starred=!draft.starred;paint();});
+let pendDel=null;
 fDel.addEventListener('click',()=>{
+  // v1.38.8: a repeating job or event asks which ones to delete
+  const t0=find(draft.id);
+  if(t0&&isRep(t0)){
+    let occ=edOcc&&occurs(t0,edOcc)?edOcc:(occurs(t0,today())?today():null);
+    const noun=isEv(t0)?'event':'job',d=occ?parse(occ):null,dl=d?`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`:'';
+    pendDel={id:t0.id,occ,noun};closeEditor();
+    openInfo({h:'Delete a repeating '+noun,x:'Cancel',acts:[],
+      body:`<p class="delq">This ${noun} repeats. Which do you want to delete?</p><div class="delopts">`
+        +(occ?`<button data-iact="del1">Only this one<small>${dl}</small></button><button data-iact="delfut">This and all after it</button>`:'')
+        +`<button data-iact="delall">All of them</button></div>`});
+    return;
+  }
   if(!fDel.classList.contains('arm')){fDel.classList.add('arm');fDel.textContent='Tap again to delete';return;}
   const did=draft.id,wasEv=isEv(draft);closeEditor();undoable(wasEv?'Event deleted':'Job deleted',()=>{const n0=state.tasks.length;state.tasks=state.tasks.filter(t=>t.id!==did);return n0-state.tasks.length;});
 });
@@ -3839,7 +3865,7 @@ view.addEventListener('click',e=>{
       const p=projOf(a.dataset.id);if(p)undoAll(`${p.name} deleted`,()=>{state.projects=state.projects.filter(x=>x.id!==p.id);state.tasks=state.tasks.filter(t=>t.proj!==p.id);});return;}
     if(act==='sclose'){ui.searching=false;ui.q='';window.scrollTo(0,0);render();return;}
   }
-  const r=e.target.closest('[data-open]');if(r&&Date.now()-swipedAt>400)openEditor(r.dataset.open);
+  const r=e.target.closest('[data-open]');if(r&&Date.now()-swipedAt>400){openEditor(r.dataset.open);edOcc=r.dataset.occ||null;}
   const wr=e.target.closest('[data-wopen]');if(wr)openWorry(wr.dataset.wopen);
   const sr=e.target.closest('[data-sopen]');if(sr&&Date.now()-swipedAt>400)openShopItem(sr.dataset.sopen);
 });
