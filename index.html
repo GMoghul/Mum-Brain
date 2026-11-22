@@ -256,6 +256,10 @@ body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:calc(94px +
 /* v1.38.9: while empty, the words set the box's width (so "Pick an end date" / "Finish time" fit); the input sits on top to take the tap */
 .pick.unset:not(#f-time-w)>span{position:relative;inset:auto;min-height:36px;padding:0 14px;border-radius:10px;background:var(--bg)}
 .pick.unset:not(#f-time-w)>input{position:absolute;inset:0;width:100%;height:100%;min-width:0!important}
+/* v1.39.1: iPhone gives date/time boxes a built-in minimum width, which pushed the hidden box over the next button */
+.pick.unset:not(#f-time-w){overflow:hidden;border-radius:10px}
+.pick.unset:not(#f-time-w)>input{-webkit-appearance:none;appearance:none}
+.pick input::-webkit-date-and-time-value{min-width:0}
 .pick.unset>input{color:transparent}
 .pick.unset>input::-webkit-datetime-edit{color:transparent}
 #f-date{min-width:124px}#f-time-w{width:124px}
@@ -2724,7 +2728,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.39.0';
+const APPV='1.39.1';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
