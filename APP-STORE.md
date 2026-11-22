@@ -155,6 +155,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.38.6: Week: the purple "Open" links are gone; tap a day heading (with a small grey ›) to open that day.
    - v1.38.7: multi-day events can repeat weekly: choosing Weekly or Pick days on an event with an end date (up to a week) turns it into Pick days for those weekdays (e.g. Mon–Thu). On the Events calendar, an all-day repeating event on back-to-back days shows as one bar.
    - v1.38.8: deleting a repeating job or event asks: Only this one (adds the day to `skip`), This and all after it (sets `until` to the day before), or All of them. Undo works for each. The day comes from the row tapped (`data-occ`), otherwise today if it falls on it; with neither, only All of them is offered.
+   - v1.38.9: empty date/time boxes (Pick an end date, Pick a date, Finish time) grow to fit their words.
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 

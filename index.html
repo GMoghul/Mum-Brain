@@ -253,6 +253,9 @@ body::after{content:"";position:fixed;left:0;right:0;bottom:0;height:calc(94px +
 .pick{position:relative;display:inline-flex}
 .pick>span{display:none;position:absolute;inset:0;align-items:center;padding:0 12px;font-size:15px;color:var(--muted);pointer-events:none;white-space:nowrap}
 .pick.unset>span{display:flex}
+/* v1.38.9: while empty, the words set the box's width (so "Pick an end date" / "Finish time" fit); the input sits on top to take the tap */
+.pick.unset:not(#f-time-w)>span{position:relative;inset:auto;min-height:36px;padding:0 14px;border-radius:10px;background:var(--bg)}
+.pick.unset:not(#f-time-w)>input{position:absolute;inset:0;width:100%;height:100%;min-width:0!important}
 .pick.unset>input{color:transparent}
 .pick.unset>input::-webkit-datetime-edit{color:transparent}
 #f-date{min-width:124px}#f-time-w{width:124px}
@@ -2709,7 +2712,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.38.8';
+const APPV='1.38.9';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
