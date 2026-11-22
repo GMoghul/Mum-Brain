@@ -159,6 +159,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.39.0: event order. Events can be marked important (star on the event screen and on its row); starred events come first on each day and on the Events calendar. In the day card, drag the dots to set that day's order (stored as `dord[day]` on each event, older than 60 days pruned); a dragged order wins over stars for that day.
    - v1.39.1: empty date boxes no longer spill over the next button on iPhone (iOS min-width on date inputs).
    - v1.39.2: dragging an event's dots in the day card no longer pulls the card down.
+   - v1.40.0: UK bank holidays on the calendar (Events on). Settings › General › Events › Bank holidays: England & Wales (default), Scotland, Northern Ireland, Off (`prefs.bh`). Built-in list 2026–2028 from GOV.UK; the app refreshes from https://www.gov.uk/bank-holidays.json at most monthly (kept in localStorage `-bh`). Shown as grey all-day events, not editable, not shared, hidden when a group pill is chosen.
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 

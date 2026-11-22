@@ -613,7 +613,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .evb.en{margin-left:-3px;border-radius:0 2px 2px 0}
 /* v1.37.0 Events calendar: the Month tab's second view (calendar button at the top), events only, TimeTree-style */
 #mvbtn.on{background:var(--primary);color:#fff}
-#s-grpw .lbl{display:block;font-size:14px;font-weight:600;color:var(--muted);margin-bottom:8px}
+#s-bhw .lbl,#s-grpw .lbl{display:block;font-size:14px;font-weight:600;color:var(--muted);margin-bottom:8px}
 .ecal{padding:8px 6px 6px}
 .ecal .calnav{padding:0 4px}
 .sugg{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
@@ -1165,6 +1165,11 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
     <div class="field"><span class="lbl">Events</span>
       <div class="seg" id="s-ev" style="grid-template-columns:repeat(2,1fr)"><button data-evon="on">On</button><button data-evon="off">Off</button></div>
       <div class="rep-hint">Adds an Event switch to the job screen, for things at a set time like appointments, work or holidays. Events sit at the top of Today, Week and Month, with your jobs underneath, and there's nothing to tick off. Switch it off any time and your events go back to being ordinary jobs.</div>
+      <div id="s-bhw" hidden>
+        <span class="lbl" style="margin-top:16px">Bank holidays</span>
+        <div class="seg" id="s-bh" style="grid-template-columns:repeat(2,1fr)"><button data-bh="ew">England &amp; Wales</button><button data-bh="sc">Scotland</button><button data-bh="ni">Northern Ireland</button><button data-bh="off">Off</button></div>
+        <div class="rep-hint">Shows UK bank holidays on your calendar, from GOV.UK. They're just for you and aren't shared.</div>
+      </div>
       <div id="s-grpw" hidden>
         <span class="lbl" style="margin-top:16px">Event groups</span>
         <div id="s-grps"></div>
@@ -2561,9 +2566,33 @@ function evRow(t,o){
   if(t.list===SHARED&&(!ui.filter||ui.filter===STAR))chips+=`<span class="chip c-list">${I.people}<span class="ct">${esc(listName(SHARED))}</span></span>`;
   const past=isRep(t)?(s&&s<t0):evLast(t)<t0;
   const star=t.starred?`<button class="star on" data-act="star" data-id="${t.id}" aria-label="Unmark as important">${I.star}</button>`:'';
+  if(t.bh)return `<li class="task ev bh${past?' past':''}"><span class="evbar" style="--c:${c}" aria-hidden="true"></span><div class="body"><div class="title">${esc(t.title)}</div><div class="chips"><span class="chip"><span class="ct">Bank holiday</span></span></div></div></li>`;
   return `<li class="task ev${past?' past':''}" data-open="${t.id}"${o&&o.ctx&&isRep(t)?` data-occ="${o.ctx}"`:''}${o.edrag?` data-edrag="${t.id}"`:''}><span class="evbar" style="--c:${c}" aria-hidden="true"></span>
     <div class="body"><div class="title">${esc(t.title)}</div>${t.note?`<div class="note">${esc(t.note.split('\n')[0])}</div>`:''}<div class="chips">${chips}</div></div>${star}${o.edrag?`<span class="grip" aria-label="Drag to reorder">${GRIP}</span>`:''}</li>`;
 }
+/* v1.40.0: UK bank holidays (Settings › General › Events). Built in from gov.uk for 2026–2028; the app also
+   checks gov.uk/bank-holidays.json now and then and keeps the newer list, so later years appear by themselves. */
+const BH0={"england-and-wales": "2026-01-01|New Year’s Day;2026-04-03|Good Friday;2026-04-06|Easter Monday;2026-05-04|Early May bank holiday;2026-05-25|Spring bank holiday;2026-08-31|Summer bank holiday;2026-12-25|Christmas Day;2026-12-28|Boxing Day;2027-01-01|New Year’s Day;2027-03-26|Good Friday;2027-03-29|Easter Monday;2027-05-03|Early May bank holiday;2027-05-31|Spring bank holiday;2027-08-30|Summer bank holiday;2027-12-27|Christmas Day;2027-12-28|Boxing Day;2028-01-03|New Year’s Day;2028-04-14|Good Friday;2028-04-17|Easter Monday;2028-05-01|Early May bank holiday;2028-05-29|Spring bank holiday;2028-08-28|Summer bank holiday;2028-12-25|Christmas Day;2028-12-26|Boxing Day", "scotland": "2026-01-01|New Year’s Day;2026-01-02|2nd January;2026-04-03|Good Friday;2026-05-04|Early May bank holiday;2026-05-25|Spring bank holiday;2026-06-15|World Cup bank holiday;2026-08-03|Summer bank holiday;2026-11-30|St Andrew’s Day;2026-12-25|Christmas Day;2026-12-28|Boxing Day;2027-01-01|New Year’s Day;2027-01-04|2nd January;2027-03-26|Good Friday;2027-05-03|Early May bank holiday;2027-05-31|Spring bank holiday;2027-08-02|Summer bank holiday;2027-11-30|St Andrew’s Day;2027-12-27|Christmas Day;2027-12-28|Boxing Day;2028-01-03|New Year’s Day;2028-01-04|2nd January;2028-04-14|Good Friday;2028-05-01|Early May bank holiday;2028-05-29|Spring bank holiday;2028-08-07|Summer bank holiday;2028-11-30|St Andrew’s Day;2028-12-25|Christmas Day;2028-12-26|Boxing Day", "northern-ireland": "2026-01-01|New Year’s Day;2026-03-17|St Patrick’s Day;2026-04-03|Good Friday;2026-04-06|Easter Monday;2026-05-04|Early May bank holiday;2026-05-25|Spring bank holiday;2026-07-13|Battle of the Boyne (Orangemen’s Day);2026-08-31|Summer bank holiday;2026-12-25|Christmas Day;2026-12-28|Boxing Day;2027-01-01|New Year’s Day;2027-03-17|St Patrick’s Day;2027-03-26|Good Friday;2027-03-29|Easter Monday;2027-05-03|Early May bank holiday;2027-05-31|Spring bank holiday;2027-07-12|Battle of the Boyne (Orangemen’s Day);2027-08-30|Summer bank holiday;2027-12-27|Christmas Day;2027-12-28|Boxing Day;2028-01-03|New Year’s Day;2028-03-17|St Patrick’s Day;2028-04-14|Good Friday;2028-04-17|Easter Monday;2028-05-01|Early May bank holiday;2028-05-29|Spring bank holiday;2028-07-12|Battle of the Boyne (Orangemen’s Day);2028-08-28|Summer bank holiday;2028-12-25|Christmas Day;2028-12-26|Boxing Day"};
+const BHR={ew:'england-and-wales',sc:'scotland',ni:'northern-ireland'};
+let bhCache=null,bhKey='';
+function bhRegion(){const r=state.prefs.bh;return r===undefined?'ew':r;} // England & Wales unless changed
+function bhList(){
+  const r=bhRegion();if(!evOn()||!BHR[r])return[];
+  if(bhKey===r&&bhCache)return bhCache;
+  const m=new Map();
+  (BH0[BHR[r]]||'').split(';').forEach(x=>{const[d,t]=x.split('|');if(d)m.set(d,t);});
+  try{const j=JSON.parse(localStorage.getItem(KEY+'-bh')||'null');if(j&&j[BHR[r]])j[BHR[r]].forEach(([d,t])=>m.set(d,t));}catch(e){}
+  bhCache=[...m].map(([d,t])=>({id:'bh-'+d,bh:true,ev:true,title:t,date:d,color:'#8E9AAF',repeat:'none',list:null,ts:0}));bhKey=r;
+  return bhCache;
+}
+async function bhRefresh(){
+  try{const last=+localStorage.getItem(KEY+'-bht')||0;if(Date.now()-last<30*864e5)return;
+    const r=await fetch('https://www.gov.uk/bank-holidays.json');if(!r.ok)return;const j=await r.json(),o={};
+    for(const k in j)if(j[k]&&j[k].events)o[k]=j[k].events.filter(e=>e.date>='2026').map(e=>[e.date,e.title]);
+    localStorage.setItem(KEY+'-bh',JSON.stringify(o));localStorage.setItem(KEY+'-bht',String(Date.now()));bhCache=null;render();
+  }catch(e){}
+}
+const evPool=()=>bhList().length?state.tasks.concat(bhList()):state.tasks;
 /* v1.39.0: order of events on a day: an order dragged in the day card (t.dord[day]) wins; otherwise
    starred ("important") first, then multi-day, all-day, by time, then when added */
 const evRank=(t,s)=>t.dord&&t.dord[s]!=null?t.dord[s]:null;
@@ -2574,10 +2603,10 @@ const evCmp=s=>(a,b)=>{const ra=evRank(a,s),rb=evRank(b,s);
   if(rb!=null)return a.starred?-1:1;
   return ((b.starred?1:0)-(a.starred?1:0))||evDef(a,b);};
 /* the events for one day, kept apart from the jobs (they sit on top, with jobs underneath) */
-const evShow=t=>!ui.evf||ui.evf==='all'||(ui.evf==='shared'?t.list===SHARED:t.list!==SHARED);
+const evShow=t=>t.bh||!ui.evf||ui.evf==='all'||(ui.evf==='shared'?t.list===SHARED:t.list!==SHARED);
 function dayEvents(s){
   if(!evOn())return[];
-  return state.tasks.filter(t=>isEv(t)&&!archivedJob(t)&&(!ui.filter||(ui.filter===SHARED&&t.list===SHARED))&&evShow(t)&&occurs(t,s)).sort(evCmp(s));
+  return evPool().filter(t=>isEv(t)&&!archivedJob(t)&&(!ui.filter||(ui.filter===SHARED&&t.list===SHARED))&&evShow(t)&&occurs(t,s)).sort(evCmp(s));
 }
 function evSection(s,title){
   const L=dayEvents(s);if(!L.length)return'';
@@ -2609,7 +2638,7 @@ function delGroup(name){
   if(ui.evc==='g:'+k)ui.evc=null;
   save();
 }
-const evCalShow=t=>{const f=ui.evc;if(!f)return true;if(f==='mine')return t.list!==SHARED;if(f==='shared')return t.list===SHARED;return !!t.grp&&('g:'+grpKey(t.grp))===f;};
+const evCalShow=t=>{const f=ui.evc;if(!f)return true;if(t.bh)return !f.startsWith('g:');if(f==='mine')return t.list!==SHARED;if(f==='shared')return t.list===SHARED;return !!t.grp&&('g:'+grpKey(t.grp))===f;};
 function evCalBar(){
   const G=evGroups(),sh=SHARING||state.tasks.some(t=>isEv(t)&&t.list===SHARED);
   if(ui.evc&&ui.evc.startsWith('g:')&&!G.some(n=>'g:'+grpKey(n)===ui.evc))ui.evc=null;
@@ -2622,7 +2651,7 @@ const inkOn=c=>{let h=(c||'').replace('#','');if(h.length===3)h=h.split('').map(
 function evCalWeeks(y,m){
   const MAXL=4,t0=today(),first=new Date(y,m,1),last=new Date(y,m,dim(y,m));
   let d0=addDays(ymd(first),-((first.getDay()+6)%7));const end=addDays(ymd(last),(7-last.getDay())%7);
-  const cand=state.tasks.filter(t=>isEv(t)&&!archivedJob(t)&&evCalShow(t));
+  const cand=evPool().filter(t=>isEv(t)&&!archivedJob(t)&&evCalShow(t));
   const order=(a,b)=>((a.time?1:0)-(b.time?1:0))||(a.time||'').localeCompare(b.time||'')||ko(a)-ko(b);
   let out='';
   for(;d0<=end;d0=addDays(d0,7)){
@@ -2677,12 +2706,12 @@ function renderEvCal(head,y,m){
 }
 /* v1.37.2: the day card, slides up when a day on the Events calendar is tapped */
 function evDayList(s){
-  return state.tasks.filter(t=>isEv(t)&&!archivedJob(t)&&evCalShow(t)&&occurs(t,s)).sort(evCmp(s));
+  return evPool().filter(t=>isEv(t)&&!archivedJob(t)&&evCalShow(t)&&occurs(t,s)).sort(evCmp(s));
 }
 function openEvDay(s){
   const d=parse(s),L=evDayList(s);
   openInfo({h:`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`,
-    body:L.length?`${L.length>1?'<p class="evday-hint">Drag the dots to change the order on this day.</p>':''}<ul class="list evday">${L.map(t=>evRow(t,{ctx:s,edrag:L.length>1})).join('')}</ul>`:'<div class="empty evday-empty">No events on this day yet.</div>',
+    body:L.length?`${L.filter(t=>!t.bh).length>1?'<p class="evday-hint">Drag the dots to change the order on this day.</p>':''}<ul class="list evday">${L.map(t=>evRow(t,{ctx:s,edrag:L.filter(x=>!x.bh).length>1&&!t.bh})).join('')}</ul>`:'<div class="empty evday-empty">No events on this day yet.</div>',
     acts:[['Open day','openday','ghost'],['Add event','evadd','save']]});
 }
 function newEvent(date){
@@ -2728,7 +2757,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.39.2';
+const APPV='1.40.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -4461,6 +4490,8 @@ function paintSLists(){
 }
 /* v1.37.0: Settings › General › Events › Event groups */
 function paintSGroups(){
+  document.getElementById('s-bhw').hidden=!evOn();
+  document.querySelectorAll('[data-bh]').forEach(b=>b.classList.toggle('on',b.dataset.bh===bhRegion()));
   const w=document.getElementById('s-grpw');w.hidden=!evOn();if(!evOn())return;
   const G=evGroups();
   document.getElementById('s-grps').innerHTML=G.length?G.map(n=>`<div class="lrow"><span>${esc(n)}</span><button data-delgrp="${esc(n)}">Delete</button></div>`).join('')
@@ -4474,6 +4505,8 @@ function paintSGroups(){
     const b=e.target.closest('[data-delgrp]');if(!b)return;
     if(!b.classList.contains('arm')){b.classList.add('arm');b.textContent='Tap to confirm';return;}
     delGroup(b.dataset.delgrp);paintSGroups();render();});}
+document.getElementById('s-bh').addEventListener('click',e=>{const b=e.target.closest('[data-bh]');if(!b)return;
+  state.prefs.bh=b.dataset.bh;bhCache=null;save();paintSGroups();render();});
 const slIn=document.getElementById('sl-in');
 document.getElementById('sl-add').addEventListener('click',()=>{addList(slIn);paintSLists();render();});
 slIn.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addList(slIn);paintSLists();render();}});
@@ -4636,7 +4669,7 @@ if(!seen){if(state.tasks.length){try{localStorage.setItem(WK,'1');}catch(e){}}el
 
 tidy();
 returnOld();
-render();
+render();setTimeout(bhRefresh,4000); // v1.40.0: fetch newer bank holidays now and then
 /* ask the phone to keep this app's saved jobs rather than clearing them to free space */
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persisted().then(p=>p||navigator.storage.persist()).catch(()=>{});}catch(e){}
 document.getElementById('bk-save').addEventListener('click',async()=>{
