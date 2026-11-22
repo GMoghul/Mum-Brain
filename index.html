@@ -130,6 +130,9 @@ main{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:16px 18px
 .sec-h h2{margin:0;flex:none;font-size:calc(14px * var(--ts));font-weight:600;color:var(--muted)}
 .sec-h::after{content:"";flex:1;min-width:12px;height:1px;background:var(--line);order:1}
 .sec-h>:not(h2){order:2;flex:none}
+.sec-h.wopen{width:100%;text-align:left;font:inherit} /* v1.38.6: tap a Week day heading to open it */
+.wchev{display:flex;color:var(--muted);opacity:.7}
+.wchev svg{width:16px;height:16px}
 .sec-h .count{font-size:14px;color:var(--muted)}
 .sec-h button{font-size:14px;color:var(--accent);font-weight:500}
 .list{list-style:none;margin:0;padding:0;background:var(--surface);border-radius:18px;box-shadow:var(--shadow);overflow:hidden}
@@ -2697,7 +2700,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.38.5';
+const APPV='1.38.6';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -3380,7 +3383,7 @@ function renderWeek(){
     const s=addDays(w0,i),d=parse(s),isT=s===t0;
     const list=state.tasks.filter(t=>vis(t)&&!isEv(t)&&occurs(t,s)).sort((x,y)=>(isDone(x,s)-isDone(y,s))||byTime(x,y)),evl=dayEvents(s);
     const title=`${isT?'<i class="dot-today"></i>':''}${DAYS[d.getDay()]} ${d.getDate()}`;
-    h+=`<section class="sec wday${isT?' is-today':''}" data-wdate="${s}"><div class="sec-h"><h2>${title}</h2><button class="open-day" data-act="openday" data-date="${s}">Open</button></div>`
+    h+=`<section class="sec wday${isT?' is-today':''}" data-wdate="${s}"><button class="sec-h wopen" data-act="openday" data-date="${s}" aria-label="Open ${dayLabel(s)}"><h2>${title}</h2><span class="wchev" aria-hidden="true">${I.right}</span></button>`
       +(evl.length?`<ul class="list evlist">${evl.map(t=>evRow(t,{ctx:s})).join('')}</ul>`:'')
       +(list.length?`<ul class="list">${list.map(t=>row(t,{ctx:s,wdrag:!isRep(t)})).join('')}</ul>`:evl.length?'':`<button class="wempty" data-act="addto" data-date="${s}" aria-label="Nothing planned. Tap to add a job to ${dayLabel(s)}">Nothing planned</button>`)+`</section>`;
   }
