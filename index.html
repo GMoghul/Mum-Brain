@@ -1163,8 +1163,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="rep-hint">Mon – Sun shows the whole week, including days already passed. Next 7 days always starts from today, with earlier days folded at the top.</div>
     </div>
     <div class="field"><span class="lbl">Events</span>
-      <div class="seg" id="s-ev" style="grid-template-columns:repeat(2,1fr)"><button data-evon="on">On</button><button data-evon="off">Off</button></div>
-      <div class="rep-hint">Adds an Event switch to the job screen, for things at a set time like appointments, work or holidays. Events sit at the top of Today, Week and Month, with your jobs underneath, and there's nothing to tick off. Switch it off any time and your events go back to being ordinary jobs.</div>
+      <div class="rep-hint">Turn on Event on the job screen for things at a set time, like appointments, work or holidays. Events sit at the top of Today and Week, with your jobs underneath, and there's nothing to tick off. On the Month tab, switch between Jobs and Events.</div>
       <div id="s-bhw" hidden>
         <span class="lbl" style="margin-top:16px">Bank holidays</span>
         <div class="seg" id="s-bh" style="grid-template-columns:repeat(2,1fr)"><button data-bh="ew">England &amp; Wales</button><button data-bh="sc">Scotland</button><button data-bh="ni">Northern Ireland</button><button data-bh="off">Off</button></div>
@@ -1174,7 +1173,7 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
         <span class="lbl" style="margin-top:16px">Event groups</span>
         <div id="s-grps"></div>
         <div class="newlist"><input class="f-date" id="sg-in" maxlength="20" placeholder="New group name" autocomplete="off" enterkeyhint="done" aria-label="New group name"><button class="opt on" id="sg-add">Add group</button></div>
-        <div class="rep-hint">Groups are optional and just a name, with no colour needed. They show as tags on the Events calendar (Month tab, calendar button at the top). Groups on shared events show for your family too. Deleting a group keeps its events.</div>
+        <div class="rep-hint">Groups are optional and just a name, with no colour needed. They show as tags on the Events calendar (Month tab, Events). Groups on shared events show for your family too. Deleting a group keeps its events.</div>
       </div>
     </div>
     <div class="field"><span class="lbl">Lists</span>
@@ -2254,7 +2253,7 @@ const startOf=t=>t.date||t.created;
 /* v1.34.0 events (a trial, behind Settings › General › Events). An event is a job with ev:true: it sits on the
    calendar with a time (or all day), can last several days (end), and has nothing to tick off. Switching the
    setting off turns every event back into an ordinary dated job on its first day, so nothing is lost. */
-const evOn=()=>!!(state.prefs&&state.prefs.evon==='on');
+const evOn=()=>true; // v1.41.0: events are now always part of the app (the On/Off switch has gone)
 const isEv=t=>!!(t&&t.ev&&evOn());
 const evEnd=t=>(isEv(t)&&!isRep(t)&&t.date&&t.end&&t.end>t.date)?t.end:null;
 const evLast=t=>evEnd(t)||t.date;
@@ -2757,7 +2756,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.40.0';
+const APPV='1.41.0';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
