@@ -1162,10 +1162,9 @@ body.is-dragging,body.is-dragging *{cursor:grabbing!important;-webkit-user-selec
       <div class="seg" id="s-wk" style="grid-template-columns:repeat(2,1fr)"><button data-wkv="cal">Mon – Sun</button><button data-wkv="roll">Next 7 days</button></div>
       <div class="rep-hint">Mon – Sun shows the whole week, including days already passed. Next 7 days always starts from today, with earlier days folded at the top.</div>
     </div>
-    <div class="field"><span class="lbl">Events</span>
-      <div class="rep-hint">Turn on Event on the job screen for things at a set time, like appointments, work or holidays. Events sit at the top of Today and Week, with your jobs underneath, and there's nothing to tick off. On the Month tab, switch between Jobs and Events.</div>
+    <div class="field">
       <div id="s-bhw" hidden>
-        <span class="lbl" style="margin-top:16px">Bank holidays</span>
+        <span class="lbl">Bank holidays</span>
         <div class="seg" id="s-bh" style="grid-template-columns:repeat(2,1fr)"><button data-bh="ew">England &amp; Wales</button><button data-bh="sc">Scotland</button><button data-bh="ni">Northern Ireland</button><button data-bh="off">Off</button></div>
         <div class="rep-hint">Shows UK bank holidays on your calendar, from GOV.UK. They're just for you and aren't shared.</div>
       </div>
@@ -2756,7 +2755,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.41.0';
+const APPV='1.41.1';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
