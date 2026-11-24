@@ -162,6 +162,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.40.0: UK bank holidays on the calendar (Events on). Settings › General › Events › Bank holidays: England & Wales (default), Scotland, Northern Ireland, Off (`prefs.bh`). Built-in list 2026–2028 from GOV.UK; the app refreshes from https://www.gov.uk/bank-holidays.json at most monthly (kept in localStorage `-bh`). Shown as grey all-day events, not editable, not shared, hidden when a group pill is chosen.
    - v1.41.0: Events are always on; the Settings On/Off switch is gone (Settings › General › Events now holds a short explanation, Bank holidays and Event groups). `prefs.evon` is ignored.
    - v1.41.1: Settings › General: the Events explanation is gone; Bank holidays and Event groups remain.
+   - v1.41.2: Week widget draws events like the Events calendar: the app sends `wl` (per week: Monday `w`, bars `b` with title, colour, start/end column and row), so multi-day events and back-to-back all-day repeats show as one bar with the name once; "+N" under any day with more. Older data (no `wl`) falls back to the per-day pills. The "events this week" count now counts each bar once.
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 

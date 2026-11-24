@@ -54,6 +54,20 @@ struct WWeekDay: Codable {
     var n: Int? = nil    // events + jobs still to do that day (more may exist than were sent)
 }
 
+// v1.41.2: a week's events laid out like the app's Events calendar: each event once, columns s...e (0 = Mon), row r
+struct WBar: Codable {
+    let t: String
+    let c: String
+    let s: Int
+    let e: Int
+    let r: Int
+}
+
+struct WWeekLayout: Codable {
+    let w: String       // the Monday, yyyy-MM-dd
+    let b: [WBar]
+}
+
 struct WData: Codable {
     let v: Int
     let days: [WDay]
@@ -62,6 +76,7 @@ struct WData: Codable {
     let late: Int
     let theme: WTheme
     var wk: [WWeekDay]? = nil
+    var wl: [WWeekLayout]? = nil
 }
 
 enum Store {
@@ -1148,6 +1163,101 @@ struct WeekDayColumn: View {
     }
 }
 
+// v1.41.2: the day names and dates across the top of the week
+struct WeekDayHead: View {
+    let date: Date
+    let isToday: Bool
+    let p: Palette
+    var body: some View {
+        VStack(spacing: 2) {
+            Text(Fmt.weekday.string(from: date).prefix(3).uppercased())
+                .font(.system(size: 8, weight: .medium))
+                .foregroundColor(p.muted)
+                .lineLimit(1)
+            ZStack {
+                if isToday { Circle().fill(p.accent) }
+                Text("\(Calendar.current.component(.day, from: date))")
+                    .font(.system(size: 10.5, weight: .medium))
+                    .foregroundColor(isToday ? .white : p.ink)
+            }
+            .frame(width: 17, height: 17)
+            .padding(.bottom, 1)
+        }
+        .frame(minWidth: 0, maxWidth: .infinity)
+    }
+}
+
+// v1.41.2: one event as a bar, as wide as the days it covers
+struct WeekBar: View {
+    let bar: WBar
+    var body: some View {
+        RoundedRectangle(cornerRadius: 3.5)
+            .fill(Color(hex: bar.c))
+            .overlay(
+                Text(bar.t)
+                    .font(.system(size: 8.5, weight: .semibold))
+                    .foregroundColor(lightHex(bar.c) ? Color(hex: "#23201C") : .white)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.leading, 2.5),
+                alignment: .leading
+            )
+            .clipped()
+    }
+}
+
+// v1.41.2: the week with events as bars across their days (multi-day and Mon–Thu repeats as one bar), any more as "+N"
+struct WeekLaneCalendar: View {
+    let dates: [Date]
+    let todayKey: String
+    let lay: WWeekLayout
+    let p: Palette
+    let maxPills: Int
+    let rowH: CGFloat = 11.5
+    let gap: CGFloat = 2
+    let sp: CGFloat = 3
+    var shown: [WBar] { lay.b.filter { $0.r < maxPills } }
+    var over: [Int] {
+        (0..<7).map { c in lay.b.filter { $0.r >= maxPills && $0.s <= c && c <= $0.e }.count }
+    }
+    var rows: Int { min(maxPills, (lay.b.map { $0.r }.max() ?? -1) + 1) }
+    var body: some View {
+        let more = over
+        let anyMore = more.contains { $0 > 0 }
+        let h = CGFloat(rows) * (rowH + gap) + (anyMore ? 12 : 0)
+        return VStack(spacing: 0) {
+            HStack(alignment: .top, spacing: sp) {
+                ForEach(0..<dates.count, id: \.self) { i in
+                    WeekDayHead(date: dates[i], isToday: Fmt.ymd.string(from: dates[i]) == todayKey, p: p)
+                }
+            }
+            .padding(.bottom, 2)
+            GeometryReader { geo in
+                let colW = (geo.size.width - sp * 6) / 7
+                ZStack(alignment: .topLeading) {
+                    ForEach(0..<shown.count, id: \.self) { i in
+                        let b = shown[i]
+                        WeekBar(bar: b)
+                            .frame(width: CGFloat(b.e - b.s + 1) * colW + CGFloat(b.e - b.s) * sp, height: rowH)
+                            .offset(x: CGFloat(b.s) * (colW + sp), y: CGFloat(b.r) * (rowH + gap))
+                    }
+                    ForEach(0..<7, id: \.self) { c in
+                        if more[c] > 0 {
+                            Text("+\(more[c])")
+                                .font(.system(size: 8.5, weight: .medium))
+                                .foregroundColor(p.ink)
+                                .frame(width: colW, alignment: .center)
+                                .offset(x: CGFloat(c) * (colW + sp), y: CGFloat(rows) * (rowH + gap))
+                        }
+                    }
+                }
+                .frame(width: geo.size.width, height: h, alignment: .topLeading)
+            }
+            .frame(height: h)
+        }
+    }
+}
+
 struct WeekCalendar: View {
     let e: DayEntry
     let p: Palette
@@ -1158,13 +1268,17 @@ struct WeekCalendar: View {
         let start = cal.dateInterval(of: .weekOfYear, for: e.date)?.start ?? cal.startOfDay(for: e.date)
         let dates = (0..<7).compactMap { cal.date(byAdding: .day, value: $0, to: start) }
         let todayKey = Fmt.ymd.string(from: e.date)
-        return HStack(alignment: .top, spacing: 3) {
+        // v1.41.2: newer app versions send the week ready laid out as bars
+        if let lay = e.data?.wl?.first(where: { $0.w == Fmt.ymd.string(from: start) }) {
+            return AnyView(WeekLaneCalendar(dates: dates, todayKey: todayKey, lay: lay, p: p, maxPills: maxPills))
+        }
+        return AnyView(HStack(alignment: .top, spacing: 3) {
             ForEach(0..<dates.count, id: \.self) { i in
                 let key = Fmt.ymd.string(from: dates[i])
                 WeekDayColumn(day: e.data?.wk?.first(where: { $0.d == key }), date: dates[i],
                               isToday: key == todayKey, p: p, maxPills: maxPills)
             }
-        }
+        })
     }
 }
 
@@ -1207,6 +1321,8 @@ struct WeekBody: View {
         var cal = Calendar.current
         cal.firstWeekday = 2
         guard let week = cal.dateInterval(of: .weekOfYear, for: e.date) else { return 0 }
+        // v1.41.2: each bar is one event (a Mon–Thu repeat counts once)
+        if let lay = e.data?.wl?.first(where: { $0.w == Fmt.ymd.string(from: week.start) }) { return lay.b.count }
         var n = 0
         for d in e.data?.wk ?? [] {
             guard let day = Fmt.ymd.date(from: d.d), week.contains(day) else { continue }

@@ -2755,7 +2755,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.41.1';
+const APPV='1.41.2';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -4402,7 +4402,23 @@ function widgetData(){
     const j=live.filter(t=>!isEv(t)&&occurs(t,d)).sort((a,b)=>(isDone(a,d)-isDone(b,d))||byStar(a,b)||byTime(a,b));
     wk.push({d,e:e.slice(0,10).map(t=>{const z=evEnd(t);return {t:t.title||'',c:hex(t.color),k:z?(d===t.date?1:d===z?3:2):0};}),
       j:j.slice(0,10).map(t=>({t:t.title||'',c:hex(t.color),x:!!isDone(t,d)})),n:e.length+j.filter(t=>!isDone(t,d)).length});}
-  return {v:1,days,marks,wk,
+  // v1.41.2: the same bars as the Events calendar: per week (Mon), each event once with its columns (s..e) and row (r),
+  // multi-day and back-to-back all-day repeats as one bar, starred first, then each day's own order
+  const wl=[];
+  if(evOn())for(let w=0;w<2;w++){const days7=[...Array(7)].map((_,i)=>addDays(m0w,7*w+i));
+    const cand=live.concat(bhList()).filter(t=>isEv(t));
+    const on=days7.map(d=>cand.filter(t=>occurs(t,d)));
+    const items=[],multi={},joinRep=t=>isRep(t)&&!t.time;
+    on.forEach((L,c)=>L.forEach(t=>{if(evEnd(t)){if(multi[t.id])multi[t.id].e=c;else items.push(multi[t.id]={t,s:c,e:c});}}));
+    on.forEach((L,c)=>L.forEach(t=>{if(!joinRep(t))return;const k='r'+t.id,q=multi[k];if(q&&q.e===c-1)q.e=c;else items.push(multi[k]={t,s:c,e:c});}));
+    on.forEach((L,c)=>L.filter(t=>!evEnd(t)&&!joinRep(t)).forEach(t=>items.push({t,s:c,e:c})));
+    items.sort((a,b)=>((b.t.starred?1:0)-(a.t.starred?1:0))||(a.s===b.s?evCmp(days7[a.s])(a.t,b.t):(((b.e>b.s)?1:0)-((a.e>a.s)?1:0))||a.s-b.s));
+    const occ=[];
+    for(const it of items){let l=0;for(;;l++){occ[l]=occ[l]||[];let f=true;for(let c=it.s;c<=it.e;c++)if(occ[l][c]){f=false;break;}if(f)break;}
+      for(let c=it.s;c<=it.e;c++)occ[l][c]=1;it.r=l;}
+    wl.push({w:days7[0],b:items.slice(0,60).map(it=>({t:it.t.title||'',c:hex(it.t.color),s:it.s,e:it.e,r:it.r}))});
+  }
+  return {v:1,days,marks,wk,wl,
     dump:live.filter(undatedJob).length,
     late:live.filter(t=>!isRep(t)&&!t.ev&&t.date&&t.date<t0&&!t.done).length,
     theme:{accent:pal.accent,bg:pal.bg,ink:pal.ink||'',muted:pal.muted||'',line:pal.line||'',w:pal.w,wash:pal.wash,mode:P.mode||'auto',font:P.font||'sfround'}};
