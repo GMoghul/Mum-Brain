@@ -163,6 +163,7 @@ The live web app on GitHub Pages (`main`) is not affected.
    - v1.41.0: Events are always on; the Settings On/Off switch is gone (Settings › General › Events now holds a short explanation, Bank holidays and Event groups). `prefs.evon` is ignored.
    - v1.41.1: Settings › General: the Events explanation is gone; Bank holidays and Event groups remain.
    - v1.41.2: Week widget draws events like the Events calendar: the app sends `wl` (per week: Monday `w`, bars `b` with title, colour, start/end column and row), so multi-day events and back-to-back all-day repeats show as one bar with the name once; "+N" under any day with more. Older data (no `wl`) falls back to the per-day pills. The "events this week" count now counts each bar once.
+   - v1.41.3: Bank holidays and Event groups sit at the end of Settings › General again. The General group still looked for the old "Events" heading (gone since v1.41.0), so the box was left loose under Feedback.
    - The app sends `wk`: this week and next, Monday first, each day's events (`k` marks first/middle/last day of a multi-day one) and jobs (`x` = done, left off the widget).
 6. App icon (brain in rows, 21 Oct 2026 – `icon-1024.png` for the App Store; redraw all sizes with `python3 scripts/make-icon.py .`), privacy policy page, store listing and screenshots.
 

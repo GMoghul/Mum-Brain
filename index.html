@@ -2755,7 +2755,7 @@ function section(title,items,o,extra){
 }
 
 /* ---------- morning sort: 3 brain dump jobs a day ---------- */
-const APPV='1.41.2';
+const APPV='1.41.3';
 const undatedJob=t=>t&&!isRep(t)&&!t.date&&!t.done&&!t.proj&&!t.shop;
 function nudgeState(){
   if((state.prefs&&state.prefs.nudge)==='off')return null;
@@ -4454,7 +4454,9 @@ const st=document.getElementById('settings');
    About & support) and only one is open at a time. Names follow the iPhone's own Settings where there's a match.
    Feedback stays on its own at the top for the tester round.
    TODO before the App Store version: move Feedback into the last group, "Help & about" (asked 12 Nov 2026). */
-const SGROUPS=[['General',['Open app on','Week view','Events','Morning sort','Lighter day','Tidy away finished jobs','Celebration']],
+/* v1.41.3: the Bank holidays + Event groups box sits at the end of General. It's found by its first heading
+   ("Bank holidays"); it was listed as 'Events', the old heading, so after v1.41.0 it was left loose at the top. */
+const SGROUPS=[['General',['Open app on','Week view','Morning sort','Lighter day','Tidy away finished jobs','Celebration','Bank holidays']],
   ['Appearance',['Theme','Appearance','Font','Text size','Spacing']],
   ['Lists',['Lists']],['Family sharing',['Family sharing']],
   ['Notifications',['Morning summary','Brain dump reminder']],
@@ -4502,7 +4504,7 @@ function paintSLists(){
   document.getElementById('s-lists').innerHTML=L.map(([id,n])=>`<div class="lrow${(id===PROJ&&!on)||(id===PARK&&!pk)||(id===SHOP&&!so)?' off':''}" data-lid="${id}">${L.length>1?`<span class="grip" aria-hidden="true">${GRIP}</span>`:''}<span>${esc(n)}${hint[id]?`<small class="lhint">${hint[id]}</small>`:''}</span>${end(id)}</div>`).join('')
     +(SHARING?'':`<div class="lrow off"><span>Shared<small class="lhint">Shows here once you create or join a family in Family sharing. Moving from another phone? Enter the same family code.</small></span><span class="fixed">Built in</span></div>`);
 }
-/* v1.37.0: Settings › General › Events › Event groups */
+/* v1.37.0: Settings › General › Event groups (with Bank holidays) */
 function paintSGroups(){
   document.getElementById('s-bhw').hidden=!evOn();
   document.querySelectorAll('[data-bh]').forEach(b=>b.classList.toggle('on',b.dataset.bh===bhRegion()));
